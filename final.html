@@ -1815,22 +1815,22 @@
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 10px 20px; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <span style="font-weight: bold; font-size: 16px;">📷 Barcode Scan Mode</span>
-                        <label class="switch" style="margin: 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 5px 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                        <span style="font-weight: bold; font-size: 14px;">📷 Scan Mode</span>
+                        <label class="switch" style="margin: 0; transform: scale(0.8);">
                             <input type="checkbox" id="continuousScanToggle" onchange="toggleContinuousScanMode()">
                             <span class="slider round"></span>
                         </label>
-                        <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545;">OFF</span>
+                        <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545; font-size: 14px;">OFF</span>
                     </div>
                 </div>
 
                 <!-- Continuous Scanner Container -->
-                <div id="continuousScannerContainer" style="display: none; background: #fff; border: 2px solid #28a745; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div id="continuousScannerContainer" style="display: none; background: #fff; border: 2px solid #28a745; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h3 style="margin-top: 0; color: #28a745;" id="continuousScanStatusIndicator">🟢 Ready to Scan</h3>
                     <div id="continuous-scanner-region" style="width: 100%; max-width: 500px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 8px;"></div>
                     <p style="color: #6c757d; font-size: 14px;">Point the camera at the product barcode, or use a USB scanner.</p>
@@ -1839,7 +1839,7 @@
 
                 <div id="manualAddContainer">
                     <!-- Favourite Products / Quick Sale -->
-                    <div class="scanner-container" id="favouriteProductsSection" style="display: none; background: #fff8f0; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ffeeba;">
+                    <div class="scanner-container" id="favouriteProductsSection" style="display: none; background: #fff8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffeeba;">
                         <h3 style="color: #d39e00; margin-top: 0; margin-bottom: 15px;">⭐ Favourite Products (Quick Sale)</h3>
                         <div id="quickSaleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
                             <!-- Cards will be rendered here -->
@@ -1847,9 +1847,8 @@
                     </div>
 
                     <!-- Quick Sale with Scanner -->
-                    <!-- Quick Sale with Scanner -->
-                    <div class="scanner-container">
-                        <h3>Quick Sale with Barcode</h3>
+                    <div class="scanner-container" style="padding: 10px 15px; margin-bottom: 10px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px;">Quick Sale with Barcode</h4>
                         <div class="barcode-input-group" style="flex-wrap: wrap;">
                             <div class="combobox-container" style="flex: 1; min-width: 250px;">
                                 <input type="text" id="quickSaleBarcode" class="combobox-input" placeholder="Scan or enter barcode" autocomplete="off" oninput="filterBarcodeSale()">
@@ -1864,27 +1863,27 @@
 
                     <!-- Add Item Form -->
                     <div class="scanner-container"
-                        style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                        <h3>Add Item to Sale</h3>
+                        style="background: #f8f9fa; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 14px;">Add Item to Sale</h4>
                         <form id="addItemForm" onsubmit="addItemToCart(event)">
-                            <div class="add-item-grid">
-                                <div class="form-group">
-                                    <label>Product</label>
+                            <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 2; min-width: 200px; margin-bottom: 0;">
+                                    <label style="font-size: 12px; margin-bottom: 2px;">Product</label>
                                     <div class="combobox-container">
-                                        <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product..." autocomplete="off" oninput="filterSaleProducts()">
+                                        <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product..." autocomplete="off" oninput="filterSaleProducts()" style="padding: 6px 10px;">
                                         <span class="combobox-clear" id="saleProductClear" onclick="clearSaleProductSelection()" title="Clear selection">×</span>
                                         <div id="saleProductDropdown" class="custom-dropdown" style="display: none;"></div>
                                     </div>
                                     <input type="hidden" id="saleProductId" required>
-                                    <div id="addInventoryPrompt" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">
-                                        <span style="color: #856404; display: block; margin-bottom: 5px; font-weight: bold;">⚠️ No inventory available</span>
-                                        <button type="button" class="btn btn-sm btn-warning" onclick="handleAddInventoryFromSale()">+ Add Inventory</button>
+                                    <div id="addInventoryPrompt" style="display: none; margin-top: 5px; padding: 5px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; font-size: 11px;">
+                                        <span style="color: #856404; display: block; font-weight: bold;">⚠️ No inventory</span>
+                                        <button type="button" class="btn btn-sm btn-warning" style="padding: 2px 5px; font-size: 10px; margin-top: 2px;" onclick="handleAddInventoryFromSale()">+ Add</button>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Unit/Pack</label>
+                                <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;">
+                                    <label style="font-size: 12px; margin-bottom: 2px;">Unit/Pack</label>
                                     <div class="combobox-container">
-                                        <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select Unit..." autocomplete="off" oninput="filterSaleUnits()">
+                                        <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterSaleUnits()" style="padding: 6px 10px;">
                                         <span class="combobox-clear" id="saleUnitClear" onclick="clearSaleUnitSelection()" title="Clear selection">×</span>
                                         <div id="saleUnitDropdown" class="custom-dropdown" style="display: none;"></div>
                                     </div>
@@ -1892,17 +1891,16 @@
                                         <option value="">Select Unit...</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="saleQuantity" min="1" value="1" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('salePrice').focus();}">
+                                <div class="form-group" style="flex: 0.5; min-width: 70px; margin-bottom: 0;">
+                                    <label style="font-size: 12px; margin-bottom: 2px;">Qty</label>
+                                    <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('salePrice').focus();}" style="padding: 6px 10px;">
                                 </div>
-                                <div class="form-group">
-                                    <label>Unit Price (₹)</label>
-                                    <input type="number" id="salePrice" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}">
+                                <div class="form-group" style="flex: 0.8; min-width: 80px; margin-bottom: 0;">
+                                    <label style="font-size: 12px; margin-bottom: 2px;">Price (₹)</label>
+                                    <input type="number" id="salePrice" class="form-control" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="padding: 6px 10px;">
                                 </div>
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 42px; width: 100%; white-space: nowrap;">+ Add Item</button>
+                                <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
+                                    <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 33px; padding: 0 15px; white-space: nowrap;">+ Add</button>
                                 </div>
                             </div>
                         </form>
@@ -1916,11 +1914,11 @@
                 <div id="cartItems" style="margin-bottom: 20px;"></div>
 
                 <!-- Customer Details -->
-                <div class="scanner-container" style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #b8daff;">
-                    <h3 style="color: #004085; margin-top: 0; margin-bottom: 15px;">👥 Customer Details</h3>
+                <div class="scanner-container" style="background: #e3f2fd; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #b8daff;">
+                    <h4 style="color: #004085; margin: 0 0 10px 0; font-size: 14px;">👥 Customer Details</h4>
                     <div id="existingCustomerSection" style="max-width: 500px;">
-                        <div class="form-group" style="position: relative;">
-                            <label>Search Customer</label>
+                        <div class="form-group" style="position: relative; margin-bottom: 0;">
+                            <label style="font-size: 12px; margin-bottom: 2px;">Search Customer</label>
                             <div style="display: flex; gap: 10px;">
                                 <input type="text" id="saleCustomerSearch" class="form-control" style="flex: 1;" placeholder="Search by name, phone, or GSTIN... (Leave empty for Walk-in)" autocomplete="off" oninput="searchCustomers(this.value)" onkeydown="handleCustomerSearchKeydown(event)">
                                 <button type="button" class="btn btn-success" onclick="openAddCustomerModal()" style="white-space: nowrap;">➕ Add <kbd style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">Alt+M</kbd></button>
@@ -1942,9 +1940,17 @@
                 </div>
 
                 <!-- Sale Summary and Payment -->
-                <div class="scanner-container" style="background: #e9ecef; padding: 20px; border-radius: 10px;">
-                    <h3>Sale Summary & Payment</h3>
-                    <div class="form-grid">
+                <div class="scanner-container" style="background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px;">
+                    <style>
+                        .compact-summary-grid .form-group { margin-bottom: 0; }
+                        .compact-summary-grid label { font-size: 12px; margin-bottom: 2px; }
+                        .compact-summary-grid input[type="number"], .compact-summary-grid input[type="text"] { padding: 4px 8px; font-size: 13px; height: 30px; }
+                        .compact-summary-grid .combobox-input { padding: 4px 8px; font-size: 13px; height: 30px; }
+                        #cartSubtotal, #cartTaxableAmount, #cartCGST, #cartSGST, #cartIGST { font-size: 14px !important; }
+                        #cartTotal { font-size: 16px !important; }
+                    </style>
+                    <h4 style="margin: 0 0 10px 0; font-size: 14px;">Sale Summary & Payment</h4>
+                    <div class="compact-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end;">
                         <div class="form-group">
                             <label>Subtotal (₹)</label>
                             <input type="number" id="cartSubtotal" step="0.01" readonly
@@ -2071,8 +2077,8 @@
 
                 <!-- Draft Sales Section -->
                 <div id="draftSalesSection"
-                    style="display: none; margin-top: 20px; padding: 20px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 10px;">
-                    <h3 style="color: #856404; margin-bottom: 15px;">⏸️ Held Sales (Drafts)</h3>
+                    style="display: none; margin-top: 10px; padding: 10px 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 8px;">
+                    <h4 style="color: #856404; margin: 0 0 10px 0; font-size: 14px;">⏸️ Held Sales (Drafts)</h4>
                     <div id="draftSalesList" style="display: grid; gap: 10px;"></div>
                 </div>
 
@@ -2115,10 +2121,10 @@
                 </div>
 
                 <div class="responsive-header"
-                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                    <h3 class="section-title"
-                        style="margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;"
-                        id="recordSalesTitle">Today's Sales</h3>
+                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <h4 class="section-title"
+                        style="margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;"
+                        id="recordSalesTitle">Today's Sales</h4>
                     <input type="date" id="recordSalesDate" onchange="updateTodaysSales()"
                         style="padding: 8px; border-radius: 5px; border: 1px solid #dee2e6; max-width: 100%;">
                 </div>
@@ -9392,8 +9398,16 @@
             }
 
             let tableHTML = `
-                <div class="scanner-container" style="background: white; border: 2px solid #dee2e6;">
-                    <h3>Shopping Cart (${cart.length} item(s))</h3>
+                <div class="scanner-container" style="background: white; border: 2px solid #dee2e6; padding: 10px; border-radius: 8px;">
+                    <style>
+                        #cartItems table { font-size: 12px; }
+                        #cartItems th, #cartItems td { padding: 4px 8px !important; }
+                        #cartItems .qty-btn { padding: 2px 6px; font-size: 12px; height: 24px; }
+                        #cartItems .qty-value { min-width: 20px; font-size: 12px; padding: 2px; }
+                        #cartItems input[type="number"] { padding: 2px; height: 24px; font-size: 12px; }
+                        #cartItems .btn-sm { padding: 2px 8px; font-size: 11px; }
+                    </style>
+                    <h4 style="margin: 0 0 10px 0; font-size: 14px;">Shopping Cart (${cart.length} item(s))</h4>
                     <div class="table-responsive">
                         <table>
                             <thead>
