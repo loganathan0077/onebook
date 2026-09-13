@@ -1961,6 +1961,11 @@
                                         style="font-weight: bold; font-size: 18px;">
                                 </div>
                                 <div class="form-group">
+                                    <label>Total Item Disc. (₹)</label>
+                                    <input type="number" id="cartTotalItemDiscount" step="0.01" readonly
+                                        style="font-weight: bold; color: red;">
+                                </div>
+                                <div class="form-group">
                                     <label>Ext.Discount (₹)</label>
                                     <input type="number" id="discountAmount" min="0" step="0.01" value="0"
                                         onchange="updateDiscount()" placeholder="Discount amount" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('courierCharges').focus();}">
@@ -9381,6 +9386,9 @@
             const elTaxable = document.getElementById('cartTaxableAmount');
             if (elTaxable) elTaxable.value = finalTaxableValue.toFixed(2);
             
+            const elTotalItemDiscount = document.getElementById('cartTotalItemDiscount');
+            if (elTotalItemDiscount) elTotalItemDiscount.value = totalItemDiscount.toFixed(2);
+            
             const elCGST = document.getElementById('cartCGST');
             if (elCGST) elCGST.value = finalCGST.toFixed(2);
             
@@ -9466,27 +9474,6 @@
                     </div>
             `;
             
-            if (gstEnabled) {
-                tableHTML += `
-                    <div style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:8px; display:inline-block; float:right; width:300px;">
-                        <h4 style="margin-top:0; border-bottom:1px solid #ddd; padding-bottom:10px;">Tax Summary</h4>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Gross Amount:</span> <span>₹${totalGross.toFixed(2)}</span></div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:red;"><span>Total Item Disc:</span> <span>₹${totalItemDiscount.toFixed(2)}</span></div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Taxable Value:</span> <span>₹${finalTaxableValue.toFixed(2)}</span></div>
-                        ${taxType === 'intra' ? `
-                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>CGST:</span> <span>₹${finalCGST.toFixed(2)}</span></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>SGST:</span> <span>₹${finalSGST.toFixed(2)}</span></div>
-                        ` : `
-                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>IGST:</span> <span>₹${finalIGST.toFixed(2)}</span></div>
-                        `}
-                        <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px solid #ddd; padding-top:10px; font-weight:bold; font-size:1.1em;">
-                            <span>Subtotal:</span> <span>₹${grandTotal.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    <div style="clear:both;"></div>
-                `;
-            }
-
             tableHTML += `</div>`;
             cartItemsDiv.innerHTML = tableHTML;
             calculateChange();
