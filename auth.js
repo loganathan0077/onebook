@@ -5,8 +5,8 @@
 const DEFAULT_ADMIN = {
     id: "admin_1",
     name: "Admin",
-    username: "admin",
-    password: "admin",
+    username: "admin@example.com",
+    password: "Admin@2026",
     role: "admin",
     status: "active",
     permissions: []
@@ -23,6 +23,14 @@ export function initializeAuth() {
         }
         users.push(initialAdmin);
         localStorage.setItem('users', JSON.stringify(users));
+    } else {
+        // Force update existing default admin if they are struggling with login
+        let adminUser = users.find(u => u.id === 'admin_1');
+        if (adminUser && adminUser.username === 'admin') {
+            adminUser.username = 'admin@example.com';
+            adminUser.password = 'Admin@2026';
+            localStorage.setItem('users', JSON.stringify(users));
+        }
     }
 }
 
