@@ -1650,9 +1650,9 @@
                         <p id="headerTagline" style="margin: 0; opacity: 0.9;">Inventory & Sales System</p>
                     </div>
                 </div>
-                <div style="text-align: right; width: 100%; display: flex; flex-direction: column; align-items: flex-end;"
+                <div style="text-align: right; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 15px;"
                     class="header-actions">
-                    <p id="userEmail" style="font-size: 0.9em; opacity: 0.9; margin-bottom: 10px;"></p>
+                    <span id="userEmail" style="font-size: 0.9em; opacity: 0.9;"></span>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="handleLogout()"
                             style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;">
@@ -2628,8 +2628,8 @@
                 <div style="margin-bottom: 30px; padding: 15px; background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <h3 style="margin-top: 0; color: #e65100; font-size: 1.2em; border-bottom: 1px solid #ffe0b2; padding-bottom: 10px; margin-bottom: 15px;">Financial Tracking</h3>
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <button class="btn" onclick="switchTab('receivables')" style="flex: 1; padding: 12px; font-size: 1.1em; background: #f57c00; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">💰 Customer Receivables</button>
-                        <button class="btn" onclick="switchTab('payables')" style="flex: 1; padding: 12px; font-size: 1.1em; background: #ef6c00; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">💳 Supplier Payables</button>
+                        <button class="btn" onclick="switchTab('receivables')" style="flex: 1; padding: 12px; font-size: 1.1em; background: var(--th-primary, #f57c00); color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">💰 Customer Receivables</button>
+                        <button class="btn" onclick="switchTab('payables')" style="flex: 1; padding: 12px; font-size: 1.1em; background: var(--th-primary-start, #ef6c00); color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">💳 Supplier Payables</button>
                     </div>
                 </div>
                 
@@ -3628,7 +3628,8 @@
             <input type="hidden" id="editingCategoryDiscountId">
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="btn btn-success" style="flex: 1;" onclick="saveCategoryDiscount()">💾 Save</button>
-                <button class="btn btn-danger" style="flex: 1;" onclick="closeCategoryDiscountModal()">❌ Cancel</button>
+                <button class="btn btn-danger" id="deleteCategoryDiscountBtn" style="display: none; flex: 1;" onclick="handleDeleteCategoryDiscountFromModal()">🗑️ Delete</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeCategoryDiscountModal()">❌ Cancel</button>
             </div>
         </div>
     </div>
@@ -4121,7 +4122,7 @@
             <div id="purchaseBillItemCount" style="margin-top: 10px; color: #666;">Items: <span id="purchaseItemCount">0</span></div>
 
             <!-- Purchase Payment Section -->
-            <div style="margin-top: 20px; padding: 15px; border: 1px solid #ced4da; border-radius: 8px; background: #f8f9fa;">
+            <div id="purchasePaymentSection" style="margin-top: 20px; padding: 15px; border: 1px solid #ced4da; border-radius: 8px; background: #f8f9fa;">
                 <h4 style="margin-top: 0;">Payment Details</h4>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     <div class="form-group" style="flex: 1; min-width: 200px;">
@@ -5504,14 +5505,21 @@
                 return;
             }
 
-            const customerName = document.getElementById('customerName').value || 'Walk-in Customer';
+            let customerName = 'Walk-in Customer';
+            const customerId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
+            if (customerId) {
+                customerName = document.getElementById('displayCustomerName').innerText || 'Walk-in Customer';
+            } else if (document.getElementById('saleCustomerSearch')) {
+                customerName = document.getElementById('saleCustomerSearch').value || 'Walk-in Customer';
+            }
+
             const draft = {
                 id: Date.now(),
                 date: new Date().toISOString(),
                 cart: [...cart],
                 customerName: customerName,
                 discount: parseFloat(document.getElementById('discountAmount').value) || 0,
-                paymentMethod: document.getElementById('paymentMethod').value
+                paymentMethod: document.getElementById('paymentMethod') ? document.getElementById('paymentMethod').value : 'Cash Only'
             };
 
             draftSales.push(draft);
@@ -5521,11 +5529,14 @@
             // Clear current cart
             cart = [];
             document.getElementById('addItemForm').reset();
-            document.getElementById('customerName').value = '';
-            document.getElementById('customerAmount').value = '';
-            document.getElementById('otherPaymentAmount').value = '0';
-            document.getElementById('changeAmount').value = '';
-            document.getElementById('discountAmount').value = '0';
+            
+            if (typeof clearCustomerSelection === 'function') clearCustomerSelection();
+            if (document.getElementById('saleCustomerSearch')) document.getElementById('saleCustomerSearch').value = '';
+            
+            if (document.getElementById('otherPaymentAmount')) document.getElementById('otherPaymentAmount').value = '0';
+            if (document.getElementById('changeAmount')) document.getElementById('changeAmount').value = '';
+            if (document.getElementById('discountAmount')) document.getElementById('discountAmount').value = '0';
+            
             updateCartDisplay();
             updateDraftsDisplay();
 
@@ -5909,7 +5920,8 @@
                 'purchaseBillTableArea',
                 'purchaseBillItemCount',
                 'purchaseBillActions',
-                'purchaseSelectedProduct'
+                'purchaseSelectedProduct',
+                'purchasePaymentSection'
             ];
             idsToToggle.forEach(id => {
                 const el = document.getElementById(id);
@@ -8250,9 +8262,9 @@
                     <td>₹${totalValue}</td>
                     <td class="${stockStatus}">${statusText}</td>
                     <td>
-                        <button class="btn btn-info btn-sm" onclick="addToPOFromInventory(${product.id})" title="Add to Purchase Order">PO</button>
-                        <button class="btn btn-warning btn-sm" onclick="editInventoryProduct(${product.id})">Refill / Edit</button>
-                        <button class="btn btn-danger btn-sm admin-only" onclick="deleteInventoryProduct(${product.id})">Delete</button>
+                        <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="Add to Purchase Order">PO</button>
+                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')">Refill / Edit</button>` : ''}
+                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')">Delete</button>` : ''}
                     </td>
                 </tr>
             `}).join('');
@@ -8304,9 +8316,9 @@
                         <td>₹${totalValue}</td>
                         <td class="${stockStatus}">${statusText}</td>
                         <td>
-                            <button class="btn btn-info btn-sm" onclick="addToPOFromInventory(${product.id})" title="Add to Purchase Order">PO</button>
-                            <button class="btn btn-warning btn-sm" onclick="editInventoryProduct(${product.id})">Edit</button>
-                            ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct(${product.id})">Delete</button>` : ''}
+                            <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="Add to Purchase Order">PO</button>
+                            ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')">Edit</button>` : ''}
+                            ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')">Delete</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -8316,7 +8328,7 @@
         function deleteInventoryProduct(id) {
             if (!window.hasPermission('product_delete')) return showAlert('Unauthorized: You do not have permission to delete products.', 'error');
 
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => String(p.id) === String(id));
             if (!product) {
                 showAlert('Product not found!', '❌');
                 return;
@@ -8325,7 +8337,7 @@
             // Confirm deletion
             showConfirm(`Are you sure you want to delete "${product.name}"?`, () => {
                 // Delete the product
-                products = products.filter(p => p.id !== id);
+                products = products.filter(p => String(p.id) !== String(id));
                 saveData();
                 updateInventoryTable(); // Refresh the table
                 showAlert('Product deleted successfully!', '✅');
@@ -12214,7 +12226,7 @@
             const checkboxes = document.querySelectorAll('.product-select-checkbox:checked');
             checkboxes.forEach(cb => {
                 const id = parseInt(cb.dataset.id);
-                const product = products.find(p => p.id === id);
+                const product = products.find(p => String(p.id) === String(id));
                 if (product) {
                     const stockQty = Math.max(0, parseInt(product.stock) || 0);
                     product._labelQty = stockQty;
@@ -12248,7 +12260,7 @@
             const checkboxes = document.querySelectorAll('.product-select-checkbox:checked');
             checkboxes.forEach(cb => {
                 const id = parseInt(cb.dataset.id);
-                const product = products.find(p => p.id === id);
+                const product = products.find(p => String(p.id) === String(id));
                 if (product) {
                     product._labelQty = parsedQty;
                     // update input visually
@@ -12728,11 +12740,11 @@
                         <input type="checkbox" class="product-select-checkbox" 
                                data-id="${product.id}" 
                                ${selectedLabelProductIds.has(product.id) ? 'checked' : ''}
-                               onchange="toggleProductSelection(${product.id}, this.checked)">
+                               onchange="toggleProductSelection('${product.id}', this.checked)">
                     </td>
                     <td>${product.barcode || 'N/A'}</td>
                     <td>
-                        <span onclick="toggleFavourite(${product.id})" style="cursor: pointer; font-size: 1.2em; margin-right: 5px; user-select: none;" title="Toggle Favourite">
+                        <span onclick="toggleFavourite('${product.id}')" style="cursor: pointer; font-size: 1.2em; margin-right: 5px; user-select: none;" title="Toggle Favourite">
                             ${product.isFavourite ? '⭐' : '☆'}
                         </span>
                         ${product.name}
@@ -12741,12 +12753,12 @@
                     <td>${product.stock} ${product.unit || ''}</td>
                     <td>₹${product.price.toFixed(2)}</td>
                     <td style="text-align: center;">
-                        <input type="number" class="form-control main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" style="width: 70px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty(${product.id}, this.value)">
+                        <input type="number" class="form-control main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" style="width: 70px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)">
                     </td>
                     <td>
-                        <button class="btn btn-info btn-sm" onclick="printSingleLabel(${product.id})" title="Print Label">🖨️</button>
-                        <button class="btn btn-warning btn-sm" onclick="editProduct(${product.id})" title="Edit">✏️</button>
-                        <button class="btn btn-danger btn-sm admin-only" onclick="deleteProduct(${product.id})" title="Delete">🗑️</button>
+                        <button class="btn btn-info btn-sm" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
+                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editProduct('${product.id}')" title="Edit">✏️</button>` : ''}
+                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -12756,11 +12768,11 @@
 
         function deleteProduct(id) {
             if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
 
             // Check if product has sales history
-            const hasSales = sales.some(sale => sale.productId === id);
+            const hasSales = sales.some(sale => String(sale.productId) === String(id));
 
             // Check if product has stock
             if (product.stock > 0) {
@@ -12769,7 +12781,7 @@
             }
 
             const executeDelete = () => {
-                products = products.filter(p => p.id !== id);
+                products = products.filter(p => String(p.id) !== String(id));
                 saveData();
                 updateProductsTable();
                 updateInventoryTable();
@@ -12785,7 +12797,7 @@
         }
 
         function editProduct(id) {
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
 
             currentEditingProductId = id;
@@ -12902,11 +12914,11 @@
             }
 
             // Show modal
-            document.getElementById('editProductModal').classList.add('active');
+            document.getElementById('editProductModal').style.display = 'flex';
         }
 
         function closeEditProductModal() {
-            document.getElementById('editProductModal').classList.remove('active');
+            document.getElementById('editProductModal').style.display = 'none';
             currentEditingProductId = null;
             document.getElementById('editProductForm').reset();
         }
@@ -14318,7 +14330,7 @@
         }
 
         function updateProductPrice(id, field, value) {
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
 
             const numValue = parseFloat(value);
@@ -17008,7 +17020,7 @@
         }
 
         function toggleFavourite(id) {
-            const product = products.find(p => p.id === id);
+            const product = products.find(p => String(p.id) === String(id));
             if (product) {
                 product.isFavourite = !product.isFavourite;
                 saveData();
@@ -17038,7 +17050,7 @@
                 const outOfStock = product.stock <= 0;
                 
                 return `
-                    <div class="quick-sale-card" onclick="addQuickSaleItem(${product.id})" style="${outOfStock ? 'opacity: 0.5; filter: grayscale(1);' : ''}">
+                    <div class="quick-sale-card" onclick="addQuickSaleItem('${product.id}')" style="${outOfStock ? 'opacity: 0.5; filter: grayscale(1);' : ''}">
                         <div style="position: absolute; top: 5px; right: 5px; font-size: 14px; z-index: 2;">⭐</div>
                         ${imageHtml}
                         <div class="quick-sale-name" title="${product.name}">${product.name}</div>
@@ -17094,7 +17106,7 @@
             // Visual feedback on card
             const cards = document.querySelectorAll('.quick-sale-card');
             cards.forEach(card => {
-                if(card.getAttribute('onclick').includes(`addQuickSaleItem(${product.id})`)) {
+                if(card.getAttribute('onclick').includes(`addQuickSaleItem('${product.id}')`)) {
                     card.style.transform = 'scale(0.95)';
                     setTimeout(() => card.style.transform = '', 100);
                 }
@@ -17291,16 +17303,16 @@
             const list = document.getElementById('settingsCategoryDiscountsList');
             if (list) {
                 list.innerHTML = categoryDiscounts.map(cd => `
-                    <tr>
+                    <tr style="cursor: pointer;" onclick="if(!event.target.closest('button')) openCategoryDiscountModal('${cd.id}')">
                         <td>${cd.category}</td>
                         <td>${cd.discount}%</td>
                         <td style="text-align: center;">
                             <span class="pc-badge ${cd.active ? 'income' : 'expense'}">${cd.active ? 'Active' : 'Inactive'}</span>
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <button class="btn btn-sm btn-secondary" onclick="openCategoryDiscountModal('${cd.id}')" style="padding: 2px 6px;">✏️</button>
-                            <button class="btn btn-sm ${cd.active ? 'btn-danger' : 'btn-success'}" onclick="toggleCategoryDiscountStatus('${cd.id}')" style="padding: 2px 6px;">${cd.active ? 'Disable' : 'Enable'}</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteCategoryDiscount('${cd.id}')" style="padding: 2px 6px;">🗑️</button>
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openCategoryDiscountModal('${cd.id}')" style="padding: 2px 6px;">✏️</button>
+                            <button class="btn btn-sm ${cd.active ? 'btn-danger' : 'btn-success'}" onclick="event.stopPropagation(); toggleCategoryDiscountStatus('${cd.id}')" style="padding: 2px 6px;">${cd.active ? 'Disable' : 'Enable'}</button>
+                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteCategoryDiscount('${cd.id}')" style="padding: 2px 6px;">🗑️</button>
                         </td>
                     </tr>
                 `).join('');
@@ -17398,6 +17410,7 @@
             catSelect.innerHTML = masterCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
             
             document.getElementById('editingCategoryDiscountId').value = id || '';
+            const deleteBtn = document.getElementById('deleteCategoryDiscountBtn');
             
             if (id) {
                 const cd = categoryDiscounts.find(c => c.id === id);
@@ -17406,14 +17419,24 @@
                     catSelect.value = cd.category;
                     document.getElementById('catDiscPercent').value = cd.discount;
                     document.getElementById('catDiscStatus').value = cd.active ? 'active' : 'inactive';
+                    if (deleteBtn) deleteBtn.style.display = 'block';
                 }
             } else {
                 document.getElementById('categoryDiscountModalTitle').innerText = '➕ Add Category Discount';
                 document.getElementById('catDiscPercent').value = '';
                 document.getElementById('catDiscStatus').value = 'active';
+                if (deleteBtn) deleteBtn.style.display = 'none';
             }
             
             document.getElementById('categoryDiscountModal').style.display = 'flex';
+        }
+
+        function handleDeleteCategoryDiscountFromModal() {
+            const id = document.getElementById('editingCategoryDiscountId').value;
+            if (id) {
+                deleteCategoryDiscount(id);
+                closeCategoryDiscountModal();
+            }
         }
 
         function closeCategoryDiscountModal() {
