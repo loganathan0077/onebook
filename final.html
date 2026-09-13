@@ -4963,7 +4963,7 @@
         checkAuth().then(async user => {
             if (user) {
                 // Display user email
-                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userEmail').textContent = user.username || user.email || 'User';
 
                 // Check if user is admin
                 window.isUserAdmin = await isAdmin();
@@ -5611,7 +5611,10 @@
 
                 // Restore cart and form
                 cart = [...draft.cart];
-                document.getElementById('customerName').value = draft.customerName;
+                const searchInput = document.getElementById('saleCustomerSearch');
+                if (searchInput) {
+                    searchInput.value = draft.customerName === 'Walk-in Customer' ? '' : draft.customerName;
+                }
                 document.getElementById('discountAmount').value = draft.discount;
                 document.getElementById('paymentMethod').value = draft.paymentMethod;
 
@@ -12893,7 +12896,7 @@
             document.getElementById('editProductStock').disabled = !canEditGeneral;
             document.getElementById('editProductMinStock').disabled = !canEditGeneral;
             document.getElementById('editProductSupplier').disabled = !canEditGeneral;
-            document.getElementById('editImgInput').disabled = !canEditGeneral;
+            if (document.getElementById('editProductImage')) document.getElementById('editProductImage').disabled = !canEditGeneral;
 
             document.getElementById('editProductPrice').disabled = !canEditPrice;
 
