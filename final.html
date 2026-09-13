@@ -12935,7 +12935,7 @@
                     return;
                 }
 
-                const product = products.find(p => p.id === currentEditingProductId);
+                const product = products.find(p => String(p.id) === String(currentEditingProductId));
                 if (!product) {
                     showAlert("Error: Product not found!", "❌");
                     return;
