@@ -8591,6 +8591,27 @@
             populatePaymentMethodSelect('');
         }
 
+        // Add blur listener to auto-select if user types but doesn't click
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('paymentMethodSearch');
+            if (searchInput) {
+                searchInput.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        const currentText = searchInput.value.toLowerCase().trim();
+                        const match = paymentMethodsList.find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
+                        if (match) {
+                            onPaymentMethodSelection(match.value, match.text);
+                        } else {
+                            // Revert to current select value if invalid text
+                            const selectElem = document.getElementById('paymentMethod');
+                            const validMatch = paymentMethodsList.find(m => m.value === selectElem.value);
+                            if (validMatch) searchInput.value = validMatch.text;
+                        }
+                    }, 200); // small delay to allow click event on dropdown to fire first
+                });
+            }
+        });
+
         // Unit Combobox State
         let currentProductUnits = [];
         let unitComboboxSelectedIndex = -1;
@@ -10225,11 +10246,11 @@
                         document.getElementById('discountAmount').value = '0'; // Reset Discount
                         document.getElementById('courierCharges').value = '0'; // Reset Courier
                         document.getElementById('paymentMethod').value = 'cash';
+                        document.getElementById('paymentMethodSearch').value = 'Cash Only'; // Update combobox input
                         
                         updateCartDisplay();
                         togglePaymentFields();
                         
-                        document.getElementById('customerAmount').value = '';
                         document.getElementById('changeAmount').value = '';
                         document.getElementById('creditAmountPaid').value = '0';
                         document.getElementById('creditOutstanding').value = '0';
