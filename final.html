@@ -1819,13 +1819,11 @@
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; background: #f8f9fa; padding: 5px 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <span style="font-weight: bold; font-size: 14px;">📷 Scan Mode</span>
-                        <label class="switch" style="margin: 0; transform: scale(0.8);">
-                            <input type="checkbox" id="continuousScanToggle" onchange="toggleContinuousScanMode()">
-                            <span class="slider round"></span>
-                        </label>
-                        <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545; font-size: 14px;">OFF</span>
+                    <div style="display: flex; align-items: center; gap: 10px; background: #e8f5e9; padding: 5px 20px; border-radius: 8px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <span style="font-weight: bold; font-size: 14px; color: #155724; line-height: 1;">Total Amount (₹)</span>
+                            <span id="topRightTotalAmount" style="font-weight: bold; font-size: 28px; color: #28a745; line-height: 1.2;">0.00</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1849,7 +1847,17 @@
                     <div style="display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px;">
                         <!-- Quick Sale with Scanner -->
                         <div class="scanner-container" style="flex: 1; min-width: 300px; padding: 10px 15px; margin-bottom: 0; border-radius: 8px;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Quick Sale with Barcode</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0; font-size: 14px;">Quick Sale with Barcode</h4>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="font-weight: bold; font-size: 12px;">Scan Mode</span>
+                                    <label class="switch" style="margin: 0; transform: scale(0.7);">
+                                        <input type="checkbox" id="continuousScanToggle" onchange="toggleContinuousScanMode()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545; font-size: 12px; min-width: 25px;">OFF</span>
+                                </div>
+                            </div>
                             <div class="barcode-input-group" style="flex-wrap: wrap; display: flex; gap: 10px;">
                                 <div class="combobox-container" style="flex: 1; min-width: 200px;">
                                     <input type="text" id="quickSaleBarcode" class="combobox-input" placeholder="Scan or enter barcode" autocomplete="off" oninput="filterBarcodeSale()" style="padding: 6px 10px; height: 33px;">
@@ -9382,6 +9390,9 @@
 
             document.getElementById('cartSubtotal').value = grandTotal.toFixed(2);
             document.getElementById('cartTotal').value = netGrandTotal.toFixed(2);
+            
+            const elTopRightTotal = document.getElementById('topRightTotalAmount');
+            if (elTopRightTotal) elTopRightTotal.textContent = netGrandTotal.toFixed(2);
 
             const elTaxable = document.getElementById('cartTaxableAmount');
             if (elTaxable) elTaxable.value = finalTaxableValue.toFixed(2);
@@ -13285,6 +13296,8 @@
             let newTotal = subtotal - discount + courier;
             newTotal = Math.max(newTotal, 0);
             document.getElementById('cartTotal').value = newTotal.toFixed(2);
+            const elTopRightTotal = document.getElementById('topRightTotalAmount');
+            if (elTopRightTotal) elTopRightTotal.textContent = newTotal.toFixed(2);
             calculateChange();
         }
 
