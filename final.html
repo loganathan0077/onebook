@@ -2558,12 +2558,13 @@
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="flex: 1; min-width: 250px;">
-                        <input type="text" id="receivablesSearch" placeholder="🔍 Search Customer, Invoice..." class="form-control" oninput="renderReceivablesTable()">
+                    <div style="flex: 1; min-width: 450px; position: relative;">
+                        <input type="text" id="receivablesSearch" placeholder="🔍 Search customer / supplier by name, phone, GSTIN..." class="form-control" style="width: 100%; max-width: 450px; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding-left: 15px;" oninput="renderReceivablesTable(); handleSmartLedgerSearch(event, 'receivables', 'receivablesSmartSearchDropdown')">
+                        <div id="receivablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; max-width: 450px; background:white; border:1px solid #ddd; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; max-height:400px; overflow-y:auto; margin-top:5px;"></div>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <label style="margin:0; font-weight: 500;">Status:</label>
-                        <select id="receivablesStatusFilter" class="form-control" style="width: auto;" onchange="renderReceivablesTable()">
+                        <select id="receivablesStatusFilter" class="form-control" style="width: auto; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding: 0 15px;" onchange="renderReceivablesTable()">
                             <option value="all">All</option>
                             <option value="unpaid" selected>Unpaid / Partial</option>
                             <option value="fully_paid">Fully Paid</option>
@@ -2601,12 +2602,13 @@
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="flex: 1; min-width: 250px;">
-                        <input type="text" id="payablesSearch" placeholder="🔍 Search Supplier, Invoice..." class="form-control" oninput="renderPayablesTable()">
+                    <div style="flex: 1; min-width: 450px; position: relative;">
+                        <input type="text" id="payablesSearch" placeholder="🔍 Search customer / supplier by name, phone, GSTIN..." class="form-control" style="width: 100%; max-width: 450px; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding-left: 15px;" oninput="renderPayablesTable(); handleSmartLedgerSearch(event, 'payables', 'payablesSmartSearchDropdown')">
+                        <div id="payablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; max-width: 450px; background:white; border:1px solid #ddd; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; max-height:400px; overflow-y:auto; margin-top:5px;"></div>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <label style="margin:0; font-weight: 500;">Status:</label>
-                        <select id="payablesStatusFilter" class="form-control" style="width: auto;" onchange="renderPayablesTable()">
+                        <select id="payablesStatusFilter" class="form-control" style="width: auto; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding: 0 15px;" onchange="renderPayablesTable()">
                             <option value="all">All</option>
                             <option value="unpaid" selected>Unpaid / Partial</option>
                             <option value="fully_paid">Fully Paid</option>
@@ -3561,6 +3563,10 @@
                     <div class="form-group">
                         <label>Unit Price (₹)</label>
                         <input type="number" id="editProductPrice" step="0.01" required>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Product Discount (%) — <small style="color:#666; font-weight:normal;">Overrides Category Discount</small></label>
+                        <input type="number" id="editProductDiscount" step="0.1" min="0" max="100" placeholder="e.g. 5 (Leave blank for category default)">
                     </div>
                     <div class="form-group gst-field" style="display:none;">
                         <label>HSN/SAC Code</label>
@@ -8529,6 +8535,19 @@
             }
         }
 
+        function getEffectiveDiscount(product) {
+            if (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") {
+                return parseFloat(product.productDiscount);
+            }
+            if (product.category) {
+                const catDiscount = categoryDiscounts.find(c => c.category === product.category && c.active);
+                if (catDiscount) {
+                    return parseFloat(catDiscount.discount);
+                }
+            }
+            return 0;
+        }
+
         function addItemToCart(event) {
             event.preventDefault();
             const productId = parseInt(document.getElementById('saleProductId').value);
@@ -8596,18 +8615,6 @@
                 cart[existingItemIndex].quantity += quantity;
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
-                let defaultDiscountPercent = 0;
-                
-                // Priority: Product specific discount (if any in future) -> Category default -> 0%
-                if (product.discountPercent !== undefined) {
-                    defaultDiscountPercent = product.discountPercent;
-                } else if (product.category) {
-                    const catDiscount = categoryDiscounts.find(c => c.category === product.category && c.active);
-                    if (catDiscount) {
-                        defaultDiscountPercent = catDiscount.discount;
-                    }
-                }
-
                 cart.push({
                     productId: productId,
                     productName: product.name,
@@ -8616,7 +8623,7 @@
                     price: unitPrice,
                     quantity: quantity,
                     baseQuantity: unitQuantity, // Store multiplier
-                    discountPercent: defaultDiscountPercent,
+                    discountPercent: getEffectiveDiscount(product),
                     total: quantity * unitPrice
                 });
             }
@@ -12373,6 +12380,10 @@
 
             document.getElementById('editProductPrice').value = product.price;
 
+            const editDiscEl = document.getElementById('editProductDiscount');
+            if (editDiscEl) {
+                editDiscEl.value = (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") ? product.productDiscount : '';
+            }
             const editHsnEl = document.getElementById('editProductHSN');
             if (editHsnEl) editHsnEl.value = product.hsn || '';
             
@@ -12448,6 +12459,9 @@
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
                 product.price = parseFloat(document.getElementById('editProductPrice').value);
+                
+                const discVal = document.getElementById('editProductDiscount').value;
+                product.productDiscount = discVal.trim() === "" ? "" : parseFloat(discVal);
                 
                 const hsnEl = document.getElementById('editProductHSN');
                 product.hsn = hsnEl ? hsnEl.value : '';
@@ -16482,7 +16496,8 @@
                     price: unitPrice,
                     quantity: 1,
                     baseQuantity: 1,
-                    total: unitPrice
+                    total: unitPrice,
+                    discountPercent: getEffectiveDiscount(product)
                 });
             }
 
@@ -17479,7 +17494,7 @@
                         <td>${statusBadge}</td>
                         <td>
                             <button class="btn btn-sm btn-primary" onclick="openPaymentModal('sale', '${bill.invoice}')" ${bill.paymentStatus === 'fully_paid' ? 'disabled' : ''}>Pay / View</button>
-                            ${bill.customerId ? `<button class="btn btn-sm btn-secondary" onclick="openPartyLedger('${bill.customerId}', 'customer')">📖 Ledger</button>` : ''}
+                            ${bill.customerId ? `<button class="btn btn-sm btn-secondary" onclick="openPartyLedger('${bill.customerId}', 'customer')">📖 View Ledger</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -17539,7 +17554,7 @@
                         <td>${statusBadge}</td>
                         <td>
                             <button class="btn btn-sm btn-primary" onclick="openPaymentModal('purchase', '${bill.invoiceNumber}')" ${bill.paymentStatus === 'fully_paid' ? 'disabled' : ''}>Pay / View</button>
-                            <button class="btn btn-sm btn-secondary" onclick="openPartyLedgerByName('${bill.supplier}', 'supplier')">📖 Ledger</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openPartyLedgerByName('${bill.supplier}', 'supplier')">📖 View Ledger</button>
                         </td>
                     </tr>
                 `;
@@ -17967,7 +17982,8 @@
 
             if (!currentLedgerParty) return;
 
-            document.getElementById('pl-title').innerText = currentLedgerParty.name + " Ledger";
+            const titlePrefix = type === 'customer' ? 'Customer Account Statement' : 'Supplier Account Statement';
+            document.getElementById('pl-title').innerText = `${titlePrefix} — ${currentLedgerParty.name}`;
             document.getElementById('pl-party-name').innerText = currentLedgerParty.name || 'Unknown';
             document.getElementById('pl-party-phone').innerText = currentLedgerParty.phone || 'No Phone';
             document.getElementById('pl-party-gstin').innerText = currentLedgerParty.gstin || 'No GSTIN';
@@ -17989,6 +18005,152 @@
 
         function closePartyLedgerModal() {
             document.getElementById('partyLedgerModal').style.display = 'none';
+        }
+
+        function calculatePartyLedgerBalance(party, type) {
+            let runningBalance = parseFloat(party.openingBalance) || 0;
+            let totalPaid = 0;
+            
+            if (type === 'customer') {
+                // Sales
+                sales.forEach(s => {
+                    if (s.customerId === party.id || s.customerName === party.name) {
+                        runningBalance += parseFloat(s.total || (s.subtotal + s.totalTax) || 0);
+                        (s.paymentHistory || []).forEach(ph => {
+                            runningBalance -= parseFloat(ph.amount);
+                            totalPaid += parseFloat(ph.amount);
+                        });
+                    }
+                });
+                // Account Payments
+                const partyPayments = JSON.parse(localStorage.getItem('partyPayments')) || [];
+                partyPayments.forEach(pay => {
+                    if (pay.partyId === party.id) {
+                        runningBalance -= parseFloat(pay.amount);
+                        totalPaid += parseFloat(pay.amount);
+                    }
+                });
+            } else {
+                // Purchases
+                purchases.forEach(p => {
+                    if (p.supplier === party.name) {
+                        runningBalance += parseFloat(p.totalAmount || 0);
+                        (p.paymentHistory || []).forEach(ph => {
+                            runningBalance -= parseFloat(ph.amount);
+                            totalPaid += parseFloat(ph.amount);
+                        });
+                    }
+                });
+                // Account Payments
+                const partyPayments = JSON.parse(localStorage.getItem('partyPayments')) || [];
+                partyPayments.forEach(pay => {
+                    if (pay.partyId === party.id) {
+                        runningBalance -= parseFloat(pay.amount);
+                        totalPaid += parseFloat(pay.amount);
+                    }
+                });
+            }
+            
+            return { balance: Math.max(0, runningBalance), paid: totalPaid }; // Floor to 0 for display simplicty if overpaid, though technically it could be negative (advance)
+        }
+
+        function handleSmartLedgerSearch(event, context, dropdownId) {
+            const query = event.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById(dropdownId);
+            
+            if (!query) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            let results = [];
+
+            // Search Customers
+            customers.forEach(c => {
+                const searchStr = `${c.name} ${c.phone} ${c.gstin}`.toLowerCase();
+                if (searchStr.includes(query)) {
+                    results.push({ party: c, type: 'customer' });
+                }
+            });
+
+            // Search Suppliers
+            suppliers.forEach(s => {
+                const searchStr = `${s.name} ${s.phone} ${s.gstin}`.toLowerCase();
+                if (searchStr.includes(query)) {
+                    results.push({ party: s, type: 'supplier' });
+                }
+            });
+
+            if (results.length === 0) {
+                dropdown.innerHTML = `<div style="padding: 10px; color: #666; text-align: center;">No matches found in master data.</div>`;
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            // Sort based on context (prioritize context type)
+            results.sort((a, b) => {
+                if (a.type === context && b.type !== context) return -1;
+                if (a.type !== context && b.type === context) return 1;
+                return 0;
+            });
+
+            let html = '';
+            results.forEach(res => {
+                const { party, type } = res;
+                const stats = calculatePartyLedgerBalance(party, type);
+                
+                const icon = type === 'customer' ? '👤' : '🏢';
+                const typeLabel = type === 'customer' ? 'Customer' : 'Supplier';
+                const balLabel = type === 'customer' ? 'Receivable' : 'Payable';
+                
+                html += `
+                    <div style="padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="font-size: 16px;">${icon} ${party.name}</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 2px;">
+                                    ${typeLabel} ${party.phone ? '• ' + party.phone : ''} ${party.gstin ? '• ' + party.gstin : ''}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: bold; color: ${stats.balance > 0 ? '#c53030' : '#28a745'}">${balLabel}: ₹${stats.balance.toFixed(2)}</div>
+                                <div style="font-size: 11px; color: #666;">Paid: ₹${stats.paid.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${party.id}', '${type}'); document.getElementById('${dropdownId}').style.display='none';">📖 View Ledger</button>
+                            <button class="btn btn-success btn-sm" onclick="openQuickLedgerPayment('${party.id}', '${type}'); document.getElementById('${dropdownId}').style.display='none';">💰 Payment</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#receivablesSearch') && !e.target.closest('#receivablesSmartSearchDropdown')) {
+                const d1 = document.getElementById('receivablesSmartSearchDropdown');
+                if (d1) d1.style.display = 'none';
+            }
+            if (!e.target.closest('#payablesSearch') && !e.target.closest('#payablesSmartSearchDropdown')) {
+                const d2 = document.getElementById('payablesSmartSearchDropdown');
+                if (d2) d2.style.display = 'none';
+            }
+        });
+
+        function openQuickLedgerPayment(partyId, type) {
+            if (type === 'customer') {
+                currentLedgerParty = customers.find(c => c.id === partyId);
+            } else {
+                currentLedgerParty = suppliers.find(s => s.id === partyId);
+            }
+            currentLedgerType = type;
+            if (currentLedgerParty) {
+                openLedgerPaymentModal();
+            }
         }
 
         function generatePartyLedgerData() {
