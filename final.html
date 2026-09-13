@@ -9107,14 +9107,12 @@
 
             updateCartDisplay();
 
-            // Reset fields but do not focus Product Search yet
+            // Reset fields and focus Product Search for sequential entry
             clearSaleProductSelection(true);
             
-            // Go directly to Customer Search
-            const searchCustomerInput = document.getElementById('saleCustomerSearch');
-            if (searchCustomerInput) {
-                searchCustomerInput.focus();
-                searchCustomerInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const searchProductInput = document.getElementById('saleProductSearch');
+            if (searchProductInput) {
+                searchProductInput.focus();
             }
         }
 
@@ -9144,13 +9142,16 @@
             const payMethod = document.getElementById('paymentMethod');
             const custAmount = document.getElementById('customerAmount'); // For Cash
 
-            // 1. Search Input Keydown (Only handle jumping to payment if empty)
+            // 1. Search Input Keydown (Only handle jumping to customer details if empty)
             searchInput.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     if (!searchInput.value.trim()) {
                         e.preventDefault();
-                        discInput.focus();
-                        discInput.select();
+                        const customerSearch = document.getElementById('saleCustomerSearch');
+                        if (customerSearch) {
+                            customerSearch.focus();
+                            customerSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                     }
                 }
             });
