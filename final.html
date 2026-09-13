@@ -889,27 +889,30 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 20px;
         }
 
         .summary-card {
             background: white;
-            padding: 15px;
+            padding: 10px 15px;
             border-radius: 8px;
             border: 1px solid #dee2e6;
         }
 
         .summary-card h4 {
             color: var(--th-accent);
-            margin-bottom: 5px;
+            margin-bottom: 3px;
+            font-size: 13px;
         }
 
         .summary-card p {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #495057;
+            margin: 0;
         }
 
         /* Mobile Responsive Styles */
@@ -2220,10 +2223,12 @@
 
             <!-- Reports Tab -->
             <div id="reports" class="tab-content">
-                <h2 class="section-title">Sales Reports & Analytics</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 class="section-title" style="margin: 0;">Sales Reports & Analytics</h2>
+                </div>
 
                 <!-- NEW UNIFIED FILTER & REPORTS DASHBOARD -->
-                <div class="report-section" style="margin-bottom: 40px; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div class="report-section" style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     
                     <!-- Filters -->
                     <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
@@ -2289,52 +2294,56 @@
 
                     <!-- Tab Contents -->
                     <div id="subTabBillWise" class="report-sub-tab">
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="table">
-                                <thead style="position: sticky; top: 0; background: white; z-index: 10;">
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>Bill No</th>
-                                        <th>Customer</th>
-                                        <th class="gst-field">GSTIN</th>
-                                        <th>Subtotal</th>
-                                        <th>Discount</th>
-                                        <th class="gst-field">Taxable</th>
-                                        <th class="gst-field">CGST</th>
-                                        <th class="gst-field">SGST</th>
-                                        <th class="gst-field">IGST</th>
-                                        <th>Total</th>
-                                        <th>Payment</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="billWiseReportBody"></tbody>
-                            </table>
+                        <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
+                                <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                                    <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
+                                        <tr>
+                                            <th style="width: 12%">Date & Time</th>
+                                            <th style="width: 8%">Bill No</th>
+                                            <th style="width: 12%">Customer</th>
+                                            <th class="gst-field" style="width: 8%">GSTIN</th>
+                                            <th style="width: 8%">Subtotal</th>
+                                            <th style="width: 8%">Discount</th>
+                                            <th class="gst-field" style="width: 8%">Taxable</th>
+                                            <th class="gst-field" style="width: 6%">CGST</th>
+                                            <th class="gst-field" style="width: 6%">SGST</th>
+                                            <th class="gst-field" style="width: 6%">IGST</th>
+                                            <th style="width: 8%">Total</th>
+                                            <th style="width: 8%">Payment</th>
+                                            <th style="width: 8%; text-align: center;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="billWiseReportBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                         <div id="billWiseTotals" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-weight: bold; border: 1px solid #dee2e6;"></div>
                     </div>
 
                     <div id="subTabItemWise" class="report-sub-tab" style="display: none;">
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="table">
-                                <thead style="position: sticky; top: 0; background: white; z-index: 10;">
-                                    <tr>
-                                        <th style="cursor: pointer; color: #007bff;" onclick="sortItemWiseReport('date')">Date ↕️</th>
-                                        <th style="cursor: pointer; color: #007bff;" onclick="sortItemWiseReport('product')">Product ↕️</th>
-                                        <th>Barcode</th>
-                                        <th class="gst-field">HSN</th>
-                                        <th class="gst-field">GST%</th>
-                                        <th>Unit</th>
-                                        <th style="cursor: pointer; color: #007bff;" onclick="sortItemWiseReport('qty')">Qty ↕️</th>
-                                        <th>Unit Price</th>
-                                        <th style="cursor: pointer; color: #007bff;" onclick="sortItemWiseReport('total')">Total Sales ↕️</th>
-                                        <th>Bill No</th>
-                                        <th>Customer</th>
-                                        <th>Payment</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="itemWiseReportBody"></tbody>
-                            </table>
+                        <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
+                                <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                                    <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
+                                        <tr>
+                                            <th style="cursor: pointer; color: #007bff; width: 8%" onclick="sortItemWiseReport('date')">Date ↕️</th>
+                                            <th style="cursor: pointer; color: #007bff; width: 16%" onclick="sortItemWiseReport('product')">Product ↕️</th>
+                                            <th style="width: 10%">Barcode</th>
+                                            <th class="gst-field" style="width: 6%">HSN</th>
+                                            <th class="gst-field" style="width: 6%">GST%</th>
+                                            <th style="width: 6%">Unit</th>
+                                            <th style="cursor: pointer; color: #007bff; width: 6%" onclick="sortItemWiseReport('qty')">Qty ↕️</th>
+                                            <th style="width: 8%">Unit Price</th>
+                                            <th style="cursor: pointer; color: #007bff; width: 10%" onclick="sortItemWiseReport('total')">Total ↕️</th>
+                                            <th style="width: 8%">Bill No</th>
+                                            <th style="width: 12%">Customer</th>
+                                            <th style="width: 8%">Payment</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="itemWiseReportBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                         <div id="itemWiseTotals" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-weight: bold; border: 1px solid #dee2e6;"></div>
                     </div>
@@ -2348,33 +2357,35 @@
                                 <option value="monthly">Monthly</option>
                             </select>
                         </div>
-                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                            <table class="table">
-                                <thead style="position: sticky; top: 0; background: white; z-index: 10;">
-                                    <tr>
-                                        <th>Period</th>
-                                        <th>No. of Bills</th>
-                                        <th>Items Sold</th>
-                                        <th>Subtotal</th>
-                                        <th>Discount</th>
-                                        <th class="gst-field">Taxable</th>
-                                        <th class="gst-field">CGST</th>
-                                        <th class="gst-field">SGST</th>
-                                        <th class="gst-field">IGST</th>
-                                        <th>Total Sales</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="salesSummaryReportBody"></tbody>
-                            </table>
+                        <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
+                                <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                                    <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
+                                        <tr>
+                                            <th style="width: 15%">Period</th>
+                                            <th style="width: 10%">No. of Bills</th>
+                                            <th style="width: 10%">Items Sold</th>
+                                            <th style="width: 10%">Subtotal</th>
+                                            <th style="width: 10%">Discount</th>
+                                            <th class="gst-field" style="width: 10%">Taxable</th>
+                                            <th class="gst-field" style="width: 8%">CGST</th>
+                                            <th class="gst-field" style="width: 8%">SGST</th>
+                                            <th class="gst-field" style="width: 8%">IGST</th>
+                                            <th style="width: 10%">Total Sales</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="salesSummaryReportBody"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
                 </div>
 
                 <!-- View Bill Details Section -->
-                <div class="report-section" style="margin-bottom: 30px;">
-                    <h3>🔍 View Bill Details</h3>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                <div class="report-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-top: 0;">🔍 View Bill Details</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                         <input type="text" id="billSearchInput" placeholder="Enter Bill Number (e.g., 13-112025)"
                             style="flex: 1; max-width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                         <button class="btn btn-primary" onclick="searchBill()">🔍 Search Bill</button>
@@ -2385,20 +2396,24 @@
                     </div>
                 </div>
 
-                <hr style="margin: 30px 0; border: 1px solid #dee2e6;">
+                <hr style="margin: 15px 0; border: 1px solid #dee2e6;">
 
                 <!-- Date Range Reports Section -->
-                <h3>📊 Date Range Reports</h3>
-                <div class="date-filter">
-                    <label>From:</label>
-                    <input type="date" id="reportStartDate">
-                    <label>To:</label>
-                    <input type="date" id="reportEndDate">
-                    <button class="btn btn-primary" onclick="generateCustomReport()">Generate Report</button>
-                </div>
-                <div style="margin-top: 20px; display: flex; gap: 10px;">
-                    <button class="btn btn-primary" onclick="exportReport()">📥 Export Bills (CSV)</button>
-                    <button class="btn btn-info" onclick="exportItemReport()">📥 Export Items (CSV)</button>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="margin: 0 0 10px 0;">📊 Date Range Reports</h3>
+                        <div class="date-filter" style="display: flex; gap: 10px; align-items: center;">
+                            <label style="margin: 0;">From:</label>
+                            <input type="date" id="reportStartDate" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
+                            <label style="margin: 0;">To:</label>
+                            <input type="date" id="reportEndDate" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
+                            <button class="btn btn-primary" onclick="generateCustomReport()">Generate Report</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="exportReport()">📥 Export Bills (CSV)</button>
+                        <button class="btn btn-info" onclick="exportItemReport()">📥 Export Items (CSV)</button>
+                    </div>
                 </div>
 
                 <script>
@@ -2578,15 +2593,15 @@
                     </div>
                 </div>
 
-                <div class="report-section">
-                    <h3>Daily Sales Chart</h3>
+                <div class="report-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-top: 0;">Daily Sales Chart</h3>
                     <div class="date-filter"
-                        style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                        <label>From:</label>
-                        <input type="date" id="chartStartDate">
-                        <label>To:</label>
-                        <input type="date" id="chartEndDate">
-                        <button class="btn btn-primary" onclick="applyChartFilter()">Apply Filter</button>
+                        style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <label style="margin: 0;">From:</label>
+                        <input type="date" id="chartStartDate" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        <label style="margin: 0;">To:</label>
+                        <input type="date" id="chartEndDate" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        <button class="btn btn-primary btn-sm" onclick="applyChartFilter()">Apply Filter</button>
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                             <button class="btn btn-sm btn-info" onclick="setChartFilter('7days')">7 Days</button>
                             <button class="btn btn-sm btn-info" onclick="setChartFilter('monthly')">Monthly</button>
@@ -2597,25 +2612,24 @@
                     </div>
                 </div>
 
-                <div class="report-section">
-                    <h3>Product-wise Sales</h3>
-                    <div
-                        style="max-height: 400px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 4px; display: block;">
-                        <div class="table-responsive">
-                            <table style="margin-bottom: 0;">
-                                <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                <div class="report-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-top: 0;">Product-wise Sales</h3>
+                    <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                        <div class="table-responsive" style="max-height: 40vh; overflow-y: auto; overflow-x: hidden;">
+                            <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                                <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
                                     <tr>
-                                        <th>Product</th>
-                                        <th class="gst-field" style="display:none;">HSN</th>
-                                        <th class="gst-field" style="display:none;">GST%</th>
-                                        <th>Units Sold</th>
-                                        <th class="gst-field" style="display:none;">Taxable Value</th>
-                                        <th class="gst-field" style="display:none;">CGST</th>
-                                        <th class="gst-field" style="display:none;">SGST</th>
-                                        <th class="gst-field" style="display:none;">IGST</th>
-                                        <th>Revenue</th>
-                                        <th>Discount</th>
-                                        <th>% of Total</th>
+                                        <th style="width: 25%">Product</th>
+                                        <th class="gst-field" style="display:none; width: 8%">HSN</th>
+                                        <th class="gst-field" style="display:none; width: 8%">GST%</th>
+                                        <th style="width: 10%">Units Sold</th>
+                                        <th class="gst-field" style="display:none; width: 12%">Taxable Value</th>
+                                        <th class="gst-field" style="display:none; width: 8%">CGST</th>
+                                        <th class="gst-field" style="display:none; width: 8%">SGST</th>
+                                        <th class="gst-field" style="display:none; width: 8%">IGST</th>
+                                        <th style="width: 15%">Revenue</th>
+                                        <th style="width: 10%">Discount</th>
+                                        <th style="width: 10%">% of Total</th>
                                     </tr>
                                 </thead>
                                 <tbody id="productWiseSales"></tbody>
@@ -2623,39 +2637,38 @@
                         </div>
                     </div>
                 </div>
-                <div class="report-section">
-                    <h3>Product-wise Sales Chart</h3>
-                    <div class="date-filter"
-                        style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                        <label>From:</label>
-                        <input type="date" id="productChartStartDate">
-                        <label>To:</label>
-                        <input type="date" id="productChartEndDate">
-                        <button class="btn btn-primary" onclick="applyProductChartFilter()">Apply Filter</button>
-                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                            <button class="btn btn-sm btn-info" onclick="setProductChartFilter('7days')">7 Days</button>
-                            <button class="btn btn-sm btn-info"
-                                onclick="setProductChartFilter('monthly')">Monthly</button>
+                <div class="report-section" style="margin-bottom: 20px;">
+                    <h3 style="margin-top: 0;">Product-wise Sales Chart</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                        <div class="date-filter" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <label style="margin: 0;">From:</label>
+                            <input type="date" id="productChartStartDate" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                            <label style="margin: 0;">To:</label>
+                            <input type="date" id="productChartEndDate" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                            <button class="btn btn-primary btn-sm" onclick="applyProductChartFilter()">Apply Filter</button>
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <button class="btn btn-sm btn-info" onclick="setProductChartFilter('7days')">7 Days</button>
+                                <button class="btn btn-sm btn-info" onclick="setProductChartFilter('monthly')">Monthly</button>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-success btn-sm" onclick="exportProductWiseSales()">📥 Export Product-wise Sales (CSV)</button>
                         </div>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn btn-success" onclick="exportProductWiseSales()">📥 Export Product-wise Sales
-                            (CSV)</button>
-                    </div>
+                    
                     <div class="charts-grid"
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
                         <div class="chart-wrapper"
-                            style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                            <h4 style="text-align: center; margin-bottom: 15px; color: #495057;">Peak Sales Time</h4>
-                            <div style="position: relative; height: 300px; width: 100%;">
+                            style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <h4 style="text-align: center; margin-bottom: 10px; color: #495057; font-size: 14px;">Peak Sales Time</h4>
+                            <div style="position: relative; height: 250px; width: 100%;">
                                 <canvas id="peakSalesChart"></canvas>
                             </div>
                         </div>
                         <div class="chart-wrapper"
-                            style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                            <h4 style="text-align: center; margin-bottom: 15px; color: #495057;">Top 5 Best Selling
-                                Products</h4>
-                            <div style="position: relative; height: 300px; width: 100%;">
+                            style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
+                            <h4 style="text-align: center; margin-bottom: 10px; color: #495057; font-size: 14px;">Top 5 Best Selling Products</h4>
+                            <div style="position: relative; height: 250px; width: 100%;">
                                 <canvas id="topProductsChart"></canvas>
                             </div>
                         </div>
@@ -2663,11 +2676,10 @@
                 </div>
 
                 <!-- Backup and Restore Section -->
-                <div
-                    style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <div style="margin-top: 20px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <h3 style="margin: 0 0 5px 0;">💾 Data Backup & Restore</h3>
+                            <h3 style="margin: 0 0 5px 0; font-size: 16px;">💾 Data Backup & Restore</h3>
                             <p style="margin: 0; color: #6c757d; font-size: 14px;">Download backups for safety or
                                 restore from previous backups</p>
                         </div>
