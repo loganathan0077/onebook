@@ -1893,11 +1893,13 @@
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px;">
+                    <div style="display: flex; gap: 15px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 15px;">
                         <!-- Quick Sale with Scanner -->
-                        <div class="scanner-container" style="flex: 1; min-width: 300px; padding: 10px 15px; margin-bottom: 0; border-radius: 8px;">
+                        <div class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="margin: 0; font-size: 14px;">Quick Sale with Barcode</h4>
+                                <h4 style="margin: 0; font-size: 15px; color: #004085; display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-weight: bold; font-family: monospace; letter-spacing: -1px; font-size: 18px; color: #0056b3;">|||||</span> Quick Sale with Barcode
+                                </h4>
                                 <div style="display: flex; align-items: center; gap: 5px;">
                                     <span style="font-weight: bold; font-size: 12px;">Scan Mode</span>
                                     <label class="switch" style="margin: 0; transform: scale(0.7);">
@@ -1921,8 +1923,10 @@
 
                         <!-- Add Item Form -->
                         <div class="scanner-container"
-                            style="flex: 2; min-width: 400px; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; margin-bottom: 0;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Add Item to Sale</h4>
+                            style="flex: 2; min-width: 400px; background: #eef8ff; border: 1px solid #cce5ff; padding: 15px; border-radius: 8px; margin-bottom: 0;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #004085; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 18px;">🛒</span> Add Item to Sale
+                            </h4>
                             <form id="addItemForm" onsubmit="addItemToCart(event)" style="margin: 0;">
                                 <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
                                     <div class="form-group" style="flex: 2; min-width: 150px; margin-bottom: 0;">
@@ -1958,7 +1962,7 @@
                                         <input type="number" id="salePrice" class="form-control" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="padding: 6px 10px; height: 33px;">
                                     </div>
                                     <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
-                                        <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 33px; padding: 0 15px; white-space: nowrap;">+ Add</button>
+                                        <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 33px; padding: 0 15px; white-space: nowrap;">+ Add Item</button>
                                     </div>
                                 </div>
                             </form>
