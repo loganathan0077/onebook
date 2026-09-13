@@ -790,6 +790,20 @@
             white-space: nowrap;
         }
 
+        .inventory-table th, .inventory-table td {
+            padding: 6px 8px !important;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .inventory-table .btn {
+            padding: 3px 6px !important;
+            font-size: 11px !important;
+            margin-right: 2px;
+        }
+
         table tbody tr:hover {
             background: #f8f9fa;
         }
@@ -1811,31 +1825,22 @@
                         oninput="filterInventoryTable()"
                         style="width: 100%; padding: 12px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none;">
                 </div>
-                <div
-                    style="max-height: 400px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 4px; display: block;">
-                    <div class="table-responsive">
-                        <table style="margin-bottom: 0;">
-                            <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;">
+                        <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
                                 <tr>
-                                    <th onclick="sortInventory('barcode')" style="cursor: pointer;">Barcode <span
-                                            id="sort-barcode"></span></th>
-                                    <th onclick="sortInventory('name')" style="cursor: pointer;">Product Name <span
-                                            id="sort-name"></span></th>
-                                    <th class="gst-field" style="display:none;">HSN</th>
-                                    <th class="gst-field" style="display:none;">GST%</th>
-                                    <th onclick="sortInventory('category')" style="cursor: pointer;">Category <span
-                                            id="sort-category"></span></th>
-                                    <th onclick="sortInventory('stock')" style="cursor: pointer;">Current Stock <span
-                                            id="sort-stock"></span></th>
-                                    <th onclick="sortInventory('price')" style="cursor: pointer;">Unit Price <span
-                                            id="sort-price"></span></th>
-                                    <th onclick="sortInventory('discount')" style="cursor: pointer;">Discount <span
-                                            id="sort-discount"></span></th>
-                                    <th onclick="sortInventory('totalValue')" style="cursor: pointer;">Total Value <span
-                                            id="sort-totalValue"></span></th>
-                                    <th onclick="sortInventory('status')" style="cursor: pointer;">Status <span
-                                            id="sort-status"></span></th>
-                                    <th>Actions</th>
+                                    <th onclick="sortInventory('barcode')" style="cursor: pointer; width: 12%;">Barcode <span id="sort-barcode"></span></th>
+                                    <th onclick="sortInventory('name')" style="cursor: pointer; width: 18%;">Product <span id="sort-name"></span></th>
+                                    <th class="gst-field" style="display:none; width: 6%;">HSN</th>
+                                    <th class="gst-field" style="display:none; width: 6%;">GST%</th>
+                                    <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
+                                    <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
+                                    <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
+                                    <th onclick="sortInventory('discount')" style="cursor: pointer; width: 8%;">Disc <span id="sort-discount"></span></th>
+                                    <th onclick="sortInventory('totalValue')" style="cursor: pointer; width: 8%;">Total <span id="sort-totalValue"></span></th>
+                                    <th onclick="sortInventory('status')" style="cursor: pointer; width: 8%;">Status <span id="sort-status"></span></th>
+                                    <th style="width: 14%; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody"></tbody>
@@ -8315,9 +8320,9 @@
                     <td>₹${totalValue}</td>
                     <td class="${stockStatus}">${statusText}</td>
                     <td>
-                        <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="Add to Purchase Order">PO</button>
-                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')">Refill / Edit</button>` : ''}
-                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')">Delete</button>` : ''}
+                        <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
+                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
+                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
                     </td>
                 </tr>
             `}).join('');
