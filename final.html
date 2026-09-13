@@ -1783,25 +1783,25 @@
                 </div>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
                     <h3 class="section-title" style="margin-top: 0;">Update Stock</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Select Product or Scan Barcode</label>
-                            <div class="barcode-input-group">
-                                <input type="text" id="stockBarcode" placeholder="Scan or enter barcode">
-                                <button class="btn btn-info" onclick="openScannerModal('stock')">📷 Scan
-                                    Barcode</button>
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 2; min-width: 250px; margin-bottom: 0;">
+                            <label>Search product or scan barcode</label>
+                            <div class="barcode-input-group" style="margin-bottom: 0;">
+                                <div class="combobox-container" style="flex: 1; min-width: 200px; display: block;">
+                                    <input type="text" id="stockBarcode" class="combobox-input" placeholder="Search product or scan barcode..." autocomplete="off" oninput="filterStockBarcode()" style="padding: 10px 15px; height: 42px; border: 1px solid #ced4da; border-radius: 8px;">
+                                    <span class="combobox-clear" id="stockBarcodeClear" onclick="clearStockBarcodeSelection()" title="Clear selection" style="display: none; top: 12px;">×</span>
+                                    <div id="stockBarcodeDropdown" class="custom-dropdown" style="display: none;"></div>
+                                </div>
+                                <button class="btn btn-info" onclick="openScannerModal('stock')" style="height: 42px;">📷 Scan Barcode</button>
                             </div>
-                            <select id="updateStockProduct">
-                                <option value="">Or choose product...</option>
-                            </select>
+                            <input type="hidden" id="updateStockProductId">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
                             <label>Add Quantity</label>
-                            <input type="number" id="addStockQuantity" min="1" placeholder="Enter quantity to add">
+                            <input type="number" id="addStockQuantity" min="1" placeholder="Enter quantity to add" style="margin-bottom: 0; height: 42px;">
                         </div>
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <button class="btn btn-primary" onclick="addStock()">Add Stock</button>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <button class="btn btn-primary" onclick="addStock()" style="height: 42px; white-space: nowrap;">Add Stock</button>
                         </div>
                     </div>
                 </div>
@@ -7966,7 +7966,7 @@
                     }
                     selectBarcodeProduct(product);
                 } else if (mode === 'stock') {
-                    document.getElementById('updateStockProduct').value = product.id;
+                    selectStockBarcodeProduct(product);
                 }
             } else {
                 showAlert(`Product with barcode ${barcode} not found. Please add it first.`, '⚠️');
@@ -8009,13 +8009,8 @@
         }
 
 
-        // Barcode input listeners
-        // (quickSaleBarcode logic moved to combobox autocomplete)
-
-        document.getElementById('stockBarcode').addEventListener('change', function () {
-            loadProductByBarcode(this.value, 'stock');
-        });
-
+        // (stockBarcode logic moved to combobox autocomplete)
+        
         function startNewPO() {
             if (poCart.length > 0) {
                 // If items in cart, open modal without clearing
@@ -8418,7 +8413,7 @@
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
-            const productId = parseInt(document.getElementById('updateStockProduct').value);
+            const productId = parseInt(document.getElementById('updateStockProductId').value);
             const quantity = parseInt(document.getElementById('addStockQuantity').value);
 
             if (!productId || !quantity || quantity < 1) {
@@ -8441,11 +8436,11 @@
 
                 saveData();
                 updateInventoryTable();
-                populateProductSelect('updateStockProduct');
 
-                document.getElementById('updateStockProduct').value = '';
+                document.getElementById('updateStockProductId').value = '';
                 document.getElementById('addStockQuantity').value = '';
                 document.getElementById('stockBarcode').value = '';
+                document.getElementById('stockBarcodeClear').style.display = 'none';
 
                 updateInventoryTable();
                 updateDashboard();
@@ -8825,6 +8820,48 @@
                     }
                 });
             }
+
+            const stockBarcodeInput = document.getElementById('stockBarcode');
+            if (stockBarcodeInput) {
+                stockBarcodeInput.addEventListener('keydown', function(e) {
+                    const dropdown = document.getElementById('stockBarcodeDropdown');
+                    if (dropdown.style.display === 'none' && this.value && e.key !== 'Escape') {
+                        dropdown.style.display = 'block';
+                    }
+                    
+                    if (dropdown.style.display === 'none') return;
+                    
+                    const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                    if (items.length === 0) return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        stockBarcodeComboboxSelectedIndex = Math.min(stockBarcodeComboboxSelectedIndex + 1, items.length - 1);
+                        updateStockBarcodeComboboxSelection(items);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        stockBarcodeComboboxSelectedIndex = Math.max(stockBarcodeComboboxSelectedIndex - 1, -1);
+                        updateStockBarcodeComboboxSelection(items);
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (stockBarcodeComboboxSelectedIndex >= 0) {
+                            items[stockBarcodeComboboxSelectedIndex].click();
+                        } else {
+                            if (items.length === 1 && !items[0].hasAttribute('disabled')) {
+                                items[0].click();
+                            }
+                        }
+                    } else if (e.key === 'Escape') {
+                        dropdown.style.display = 'none';
+                    }
+                });
+
+                stockBarcodeInput.addEventListener('focus', function() {
+                    if (this.value) {
+                        populateStockBarcodeSelect(this.value);
+                    }
+                });
+            }
         });
 
         let barcodeComboboxSelectedIndex = -1;
@@ -8908,6 +8945,95 @@
             // Re-use existing Add Item to Sale logic (sets Product, Price, Units, and moves focus to Units/Quantity)
             onSaleProductChange(product.id);
         }
+
+        // --- Stock Barcode Autocomplete ---
+        let stockBarcodeComboboxSelectedIndex = -1;
+
+        function filterStockBarcode() {
+            const searchTerm = document.getElementById('stockBarcode').value;
+            populateStockBarcodeSelect(searchTerm);
+            
+            document.getElementById('stockBarcodeClear').style.display = searchTerm ? 'block' : 'none';
+        }
+
+        function clearStockBarcodeSelection() {
+            const searchInput = document.getElementById('stockBarcode');
+            searchInput.value = '';
+            document.getElementById('updateStockProductId').value = '';
+            document.getElementById('stockBarcodeClear').style.display = 'none';
+            document.getElementById('stockBarcodeDropdown').style.display = 'none';
+            searchInput.focus();
+        }
+
+        function populateStockBarcodeSelect(searchTerm) {
+            const dropdown = document.getElementById('stockBarcodeDropdown');
+            stockBarcodeComboboxSelectedIndex = -1;
+            
+            if (!searchTerm) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const lowerSearch = searchTerm.toLowerCase().trim();
+            // Match by name OR barcode
+            const matchingProducts = products.filter(p => 
+                (p.barcode && p.barcode.toLowerCase().includes(lowerSearch)) ||
+                (p.name && p.name.toLowerCase().includes(lowerSearch))
+            );
+
+            if (matchingProducts.length === 0) {
+                dropdown.innerHTML = '<div class="custom-dropdown-item" disabled style="color: #666; pointer-events: none;">No matching product found</div>';
+                dropdown.style.display = 'block';
+                return;
+            }
+
+            dropdown.innerHTML = '';
+            matchingProducts.forEach((product, index) => {
+                const item = document.createElement('div');
+                item.className = 'custom-dropdown-item';
+                
+                let html = `<div style="display: flex; flex-direction: column;">`;
+                html += `<div style="font-weight: 500;">${product.barcode ? product.barcode + ' - ' : ''}${product.name}</div>`;
+                html += `<div style="font-size: 0.85em; color: #666;">Stock: ${product.stock} | Price: ₹${product.price}</div>`;
+                html += `</div>`;
+                
+                item.innerHTML = html;
+                
+                item.onclick = function() {
+                    selectStockBarcodeProduct(product);
+                    dropdown.style.display = 'none';
+                };
+                
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = 'block';
+        }
+
+        function updateStockBarcodeComboboxSelection(items) {
+            items.forEach(item => item.classList.remove('active'));
+            if (stockBarcodeComboboxSelectedIndex >= 0 && !items[stockBarcodeComboboxSelectedIndex].hasAttribute('disabled')) {
+                const activeItem = items[stockBarcodeComboboxSelectedIndex];
+                activeItem.classList.add('active');
+                activeItem.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function selectStockBarcodeProduct(product) {
+            // Set the value in the input visually
+            document.getElementById('stockBarcode').value = `${product.barcode ? product.barcode + ' - ' : ''}${product.name}`;
+            document.getElementById('stockBarcodeClear').style.display = 'block';
+            
+            // Set the hidden ID
+            document.getElementById('updateStockProductId').value = product.id;
+            
+            // Focus quantity
+            document.getElementById('addStockQuantity').focus();
+        }
+        
+        // Expose functions to global scope since they are called from HTML
+        window.filterStockBarcode = filterStockBarcode;
+        window.clearStockBarcodeSelection = clearStockBarcodeSelection;
 
         function updateUnitComboboxSelection(items) {
             items.forEach(item => item.classList.remove('active'));
