@@ -220,7 +220,7 @@
         }
 
         .btn-confirm {
-            background: #f12711;
+            background: var(--th-btn-confirm);
             color: white;
         }
 
@@ -280,6 +280,27 @@
             color: #ccc;
         }
 
+        /* ============================================================
+           THEME SYSTEM — CSS Custom Properties
+           Override these per-theme via JavaScript applyTheme()
+           ============================================================ */
+        :root {
+            /* Primary gradient (header, body bg, btn-primary) */
+            --th-primary-start: #f5af19;
+            --th-primary-end:   #f12711;
+            /* Solid primary (nav active text/border, input focus, btn-confirm) */
+            --th-primary:       #f12711;
+            /* Accent (bar charts, qty hover, quick-sale-btn.selected, pc-card border-left, summary-card h4) */
+            --th-accent:        #667eea;
+            --th-accent-dark:   #764ba2;
+            /* Surface & structure */
+            --th-surface:       #f8f9fa;
+            --th-border:        #dee2e6;
+            --th-text:          #495057;
+            --th-hover:         #e9ecef;
+            --th-btn-confirm:   #f12711;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -288,7 +309,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            background: linear-gradient(135deg, var(--th-primary-start) 0%, var(--th-primary-end) 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -303,7 +324,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            background: linear-gradient(135deg, var(--th-primary-start) 0%, var(--th-primary-end) 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -352,8 +373,8 @@
 
         .nav-tab.active {
             background: white;
-            color: #f12711;
-            border-bottom: 3px solid #f12711;
+            color: var(--th-primary);
+            border-bottom: 3px solid var(--th-primary);
             font-weight: 600;
         }
 
@@ -602,7 +623,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--th-accent) 0%, var(--th-accent-dark) 100%);
             color: white;
             padding: 25px;
             border-radius: 15px;
@@ -654,7 +675,7 @@
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #f12711;
+            border-color: var(--th-primary);
         }
 
         .btn {
@@ -668,13 +689,13 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            background: linear-gradient(135deg, var(--th-primary-start) 0%, var(--th-primary-end) 100%);
             color: white;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(241, 39, 17, 0.4);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.25);
         }
 
         .btn-success {
@@ -827,7 +848,7 @@
         }
 
         .summary-card h4 {
-            color: #667eea;
+            color: var(--th-accent);
             margin-bottom: 5px;
         }
 
@@ -943,7 +964,7 @@
 
         .bar {
             flex: 1;
-            background: linear-gradient(to top, #667eea, #764ba2);
+            background: linear-gradient(to top, var(--th-accent), var(--th-accent-dark));
             border-radius: 5px 5px 0 0;
             position: relative;
             min-height: 20px;
@@ -992,15 +1013,15 @@
         }
 
         .quick-sale-btn:hover {
-            background: #e9ecef;
-            border-color: #667eea;
+            background: var(--th-hover);
+            border-color: var(--th-accent);
             transform: translateY(-2px);
         }
 
         .quick-sale-btn.selected {
-            background: #667eea;
+            background: var(--th-accent);
             color: white;
-            border-color: #667eea;
+            border-color: var(--th-accent);
         }
 
         .quantity-controls {
@@ -1027,9 +1048,9 @@
         }
 
         .qty-btn:hover {
-            background: #667eea;
+            background: var(--th-accent);
             color: white;
-            border-color: #667eea;
+            border-color: var(--th-accent);
         }
 
         .qty-btn:active {
@@ -1356,10 +1377,10 @@
     
         /* Petty Cash Styles */
         .pc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .pc-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 4px solid #667eea; }
+        .pc-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 4px solid var(--th-accent); }
         .pc-card.cash-card { border-left-color: #28a745; }
         .pc-card.bank-card { border-left-color: #17a2b8; }
-        .pc-card.total-card { border-left-color: #764ba2; background: #f8f9fa; }
+        .pc-card.total-card { border-left-color: var(--th-accent-dark); background: var(--th-surface); }
         .pc-card h4 { margin: 0 0 10px 0; color: #6c757d; font-size: 14px; text-transform: uppercase; }
         .pc-card .amount { font-size: 24px; font-weight: bold; margin: 0; color: #333; }
         .pc-card .amount.negative { color: #dc3545; }
@@ -1520,6 +1541,81 @@
                 text-align: center;
                 margin-bottom: 0;
             }
+        }
+
+        /* ============================================================
+           THEME CARD UI — Settings → Theme pane
+           ============================================================ */
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 14px;
+            margin-top: 10px;
+        }
+        .theme-card {
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #fff;
+            position: relative;
+            text-align: center;
+        }
+        .theme-card:hover {
+            border-color: #adb5bd;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .theme-card.selected {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13,110,253,0.18);
+        }
+        .theme-card-preview {
+            height: 36px;
+            border-radius: 7px;
+            margin-bottom: 10px;
+        }
+        .theme-swatches {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .theme-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .theme-card-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #343a40;
+            line-height: 1.2;
+        }
+        .theme-card-badge {
+            font-size: 10px;
+            color: #6c757d;
+            margin-top: 3px;
+        }
+        .theme-selected-check {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #0d6efd;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            display: none;
+        }
+        .theme-card.selected .theme-selected-check {
+            display: flex;
         }
     </style>
 </head>
@@ -3133,11 +3229,22 @@
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-backup', this)">💾 Backup & Restore</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-license', this)">🔑 License</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-about', this)">ℹ️ About</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-theme', this)">🎨 Theme</button>
                     </div>
 
                     <!-- Content Area -->
                     <div class="settings-content">
                         
+                        <!-- Business Profile -->
+                        <div id="settings-pane-business" class="settings-pane active">
+
+                        <!-- Theme Selector -->
+                        <div id="settings-pane-theme" class="settings-pane">
+                            <h3>🎨 Application Theme</h3>
+                            <p style="color: #6c757d; margin-bottom: 18px;">Choose a professional color theme. Your selection is saved automatically and persists across sessions.</p>
+                            <div class="theme-grid" id="themeGrid"></div>
+                        </div>
+
                         <!-- Business Profile -->
                         <div id="settings-pane-business" class="settings-pane active">
                             <h3>👤 Business Profile</h3>
@@ -15440,6 +15547,12 @@
                 }
             }
 
+            if(paneId === 'settings-pane-theme') {
+                if(typeof renderThemeGrid === 'function') {
+                    renderThemeGrid();
+                }
+            }
+
             // Add active class to clicked button
             if (btnElement) {
                 btnElement.classList.add('active');
@@ -18939,6 +19052,277 @@
             populateUnitDropdowns();
             renderMasterDataSettings();
         });
+    </script>
+
+    <!-- ============================================================
+         THEME ENGINE — 12 Professional Themes
+         Applies CSS variables to :root instantly, persists to localStorage
+         ============================================================ -->
+    <script>
+    (function() {
+
+        // ── Theme Definitions ────────────────────────────────────────────────
+        const THEMES = [
+            {
+                id: 'orange-flame',
+                name: 'Orange Flame',
+                badge: 'Default',
+                swatches: ['#f5af19', '#f12711', '#667eea'],
+                vars: {
+                    '--th-primary-start': '#f5af19',
+                    '--th-primary-end':   '#f12711',
+                    '--th-primary':       '#f12711',
+                    '--th-accent':        '#667eea',
+                    '--th-accent-dark':   '#764ba2',
+                    '--th-surface':       '#f8f9fa',
+                    '--th-border':        '#dee2e6',
+                    '--th-text':          '#495057',
+                    '--th-hover':         '#e9ecef',
+                    '--th-btn-confirm':   '#f12711',
+                }
+            },
+            {
+                id: 'royal-blue',
+                name: 'Royal Blue',
+                badge: '',
+                swatches: ['#4776E6', '#1a1a6e', '#8E54E9'],
+                vars: {
+                    '--th-primary-start': '#4776E6',
+                    '--th-primary-end':   '#1a1a6e',
+                    '--th-primary':       '#2d5be3',
+                    '--th-accent':        '#8E54E9',
+                    '--th-accent-dark':   '#5c1db0',
+                    '--th-surface':       '#f0f4ff',
+                    '--th-border':        '#c9d8f5',
+                    '--th-text':          '#1e2a4a',
+                    '--th-hover':         '#e2ebff',
+                    '--th-btn-confirm':   '#1a1a6e',
+                }
+            },
+            {
+                id: 'emerald-pro',
+                name: 'Emerald Pro',
+                badge: '',
+                swatches: ['#11998e', '#38ef7d', '#0d7377'],
+                vars: {
+                    '--th-primary-start': '#11998e',
+                    '--th-primary-end':   '#38ef7d',
+                    '--th-primary':       '#0d8a80',
+                    '--th-accent':        '#0d7377',
+                    '--th-accent-dark':   '#065f60',
+                    '--th-surface':       '#f0faf9',
+                    '--th-border':        '#b2dfdb',
+                    '--th-text':          '#1a3c3a',
+                    '--th-hover':         '#e0f5f3',
+                    '--th-btn-confirm':   '#0d8a80',
+                }
+            },
+            {
+                id: 'purple-premium',
+                name: 'Purple Premium',
+                badge: '',
+                swatches: ['#7b2ff7', '#c056f5', '#a855f7'],
+                vars: {
+                    '--th-primary-start': '#7b2ff7',
+                    '--th-primary-end':   '#c056f5',
+                    '--th-primary':       '#7b2ff7',
+                    '--th-accent':        '#a855f7',
+                    '--th-accent-dark':   '#7e22ce',
+                    '--th-surface':       '#faf5ff',
+                    '--th-border':        '#e9d5ff',
+                    '--th-text':          '#3b1a6e',
+                    '--th-hover':         '#f3e8ff',
+                    '--th-btn-confirm':   '#7b2ff7',
+                }
+            },
+            {
+                id: 'ocean-blue',
+                name: 'Ocean Blue',
+                badge: '',
+                swatches: ['#1e3c72', '#2a5298', '#00c6ff'],
+                vars: {
+                    '--th-primary-start': '#1e3c72',
+                    '--th-primary-end':   '#2a5298',
+                    '--th-primary':       '#2a5298',
+                    '--th-accent':        '#00c6ff',
+                    '--th-accent-dark':   '#0077b6',
+                    '--th-surface':       '#f0f6ff',
+                    '--th-border':        '#b8d0f0',
+                    '--th-text':          '#1a2d50',
+                    '--th-hover':         '#ddeeff',
+                    '--th-btn-confirm':   '#1e3c72',
+                }
+            },
+            {
+                id: 'sunset',
+                name: 'Sunset',
+                badge: '',
+                swatches: ['#f7971e', '#ff5f6d', '#8e24aa'],
+                vars: {
+                    '--th-primary-start': '#f7971e',
+                    '--th-primary-end':   '#ff5f6d',
+                    '--th-primary':       '#e5661a',
+                    '--th-accent':        '#8e24aa',
+                    '--th-accent-dark':   '#6a0e80',
+                    '--th-surface':       '#fff8f0',
+                    '--th-border':        '#fcd9a8',
+                    '--th-text':          '#4a2008',
+                    '--th-hover':         '#ffecd2',
+                    '--th-btn-confirm':   '#e5661a',
+                }
+            },
+            {
+                id: 'crimson-pro',
+                name: 'Crimson Pro',
+                badge: '',
+                swatches: ['#c62a47', '#8b0033', '#d63060'],
+                vars: {
+                    '--th-primary-start': '#c62a47',
+                    '--th-primary-end':   '#4a0030',
+                    '--th-primary':       '#b01a38',
+                    '--th-accent':        '#9c1735',
+                    '--th-accent-dark':   '#6b0025',
+                    '--th-surface':       '#fff5f7',
+                    '--th-border':        '#ffc8d3',
+                    '--th-text':          '#3d0015',
+                    '--th-hover':         '#ffe4ea',
+                    '--th-btn-confirm':   '#b01a38',
+                }
+            },
+            {
+                id: 'teal-business',
+                name: 'Teal Business',
+                badge: '',
+                swatches: ['#0f766e', '#14b8a6', '#1e3a5f'],
+                vars: {
+                    '--th-primary-start': '#0f766e',
+                    '--th-primary-end':   '#1e3a5f',
+                    '--th-primary':       '#0f766e',
+                    '--th-accent':        '#14b8a6',
+                    '--th-accent-dark':   '#0d9488',
+                    '--th-surface':       '#f0fafa',
+                    '--th-border':        '#99e6e0',
+                    '--th-text':          '#134040',
+                    '--th-hover':         '#ccf5f2',
+                    '--th-btn-confirm':   '#0f766e',
+                }
+            },
+            {
+                id: 'gold-premium',
+                name: 'Gold Premium',
+                badge: '',
+                swatches: ['#b8860b', '#d4a017', '#4a2c00'],
+                vars: {
+                    '--th-primary-start': '#d4a017',
+                    '--th-primary-end':   '#7a4f00',
+                    '--th-primary':       '#b07000',
+                    '--th-accent':        '#d4a017',
+                    '--th-accent-dark':   '#8b6508',
+                    '--th-surface':       '#fffdf0',
+                    '--th-border':        '#f0d88a',
+                    '--th-text':          '#3d2600',
+                    '--th-hover':         '#fdf5c0',
+                    '--th-btn-confirm':   '#b07000',
+                }
+            },
+            {
+                id: 'forest-green',
+                name: 'Forest Green',
+                badge: '',
+                swatches: ['#2d6a4f', '#40916c', '#1b4332'],
+                vars: {
+                    '--th-primary-start': '#2d6a4f',
+                    '--th-primary-end':   '#1b4332',
+                    '--th-primary':       '#2d6a4f',
+                    '--th-accent':        '#40916c',
+                    '--th-accent-dark':   '#2d6a4f',
+                    '--th-surface':       '#f2faf5',
+                    '--th-border':        '#a8d5bc',
+                    '--th-text':          '#0d2b1a',
+                    '--th-hover':         '#d8f0e4',
+                    '--th-btn-confirm':   '#2d6a4f',
+                }
+            },
+            {
+                id: 'rose-premium',
+                name: 'Rose Premium',
+                badge: '',
+                swatches: ['#e91e63', '#f06292', '#7b1fa2'],
+                vars: {
+                    '--th-primary-start': '#e91e63',
+                    '--th-primary-end':   '#7b1fa2',
+                    '--th-primary':       '#c2185b',
+                    '--th-accent':        '#f06292',
+                    '--th-accent-dark':   '#ad1457',
+                    '--th-surface':       '#fff0f6',
+                    '--th-border':        '#f8bbd0',
+                    '--th-text':          '#4a0030',
+                    '--th-hover':         '#fce4ec',
+                    '--th-btn-confirm':   '#c2185b',
+                }
+            },
+            {
+                id: 'midnight-pro',
+                name: 'Midnight Pro',
+                badge: '',
+                swatches: ['#0f2027', '#1565c0', '#29b6f6'],
+                vars: {
+                    '--th-primary-start': '#0f2027',
+                    '--th-primary-end':   '#1565c0',
+                    '--th-primary':       '#1565c0',
+                    '--th-accent':        '#29b6f6',
+                    '--th-accent-dark':   '#0277bd',
+                    '--th-surface':       '#eef4ff',
+                    '--th-border':        '#90caf9',
+                    '--th-text':          '#0d1b2a',
+                    '--th-hover':         '#dbeafe',
+                    '--th-btn-confirm':   '#1565c0',
+                }
+            },
+        ];
+
+        // ── Apply Theme ───────────────────────────────────────────────────────
+        function applyTheme(id) {
+            const theme = THEMES.find(t => t.id === id) || THEMES[0];
+            const root = document.documentElement;
+            Object.entries(theme.vars).forEach(([prop, val]) => {
+                root.style.setProperty(prop, val);
+            });
+            localStorage.setItem('selectedTheme', theme.id);
+            // Update selection UI
+            document.querySelectorAll('.theme-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.themeId === theme.id);
+            });
+        }
+        window.applyTheme = applyTheme;
+
+        // ── Render Theme Grid ─────────────────────────────────────────────────
+        function renderThemeGrid() {
+            const grid = document.getElementById('themeGrid');
+            if (!grid) return;
+            const selected = localStorage.getItem('selectedTheme') || 'orange-flame';
+            grid.innerHTML = THEMES.map(t => `
+                <div class="theme-card ${t.id === selected ? 'selected' : ''}" data-theme-id="${t.id}" onclick="applyTheme('${t.id}')">
+                    <div class="theme-selected-check">✓</div>
+                    <div class="theme-card-preview" style="background: linear-gradient(135deg, ${t.swatches[0]} 0%, ${t.swatches[1]} 100%);"></div>
+                    <div class="theme-swatches">
+                        ${t.swatches.map(c => `<span class="theme-swatch" style="background:${c};"></span>`).join('')}
+                    </div>
+                    <div class="theme-card-name">${t.name}</div>
+                    ${t.badge ? `<div class="theme-card-badge">${t.badge}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        window.renderThemeGrid = renderThemeGrid;
+
+        // ── Init on page load ─────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            const saved = localStorage.getItem('selectedTheme') || 'orange-flame';
+            applyTheme(saved);
+            renderThemeGrid();
+        });
+
+    })();
     </script>
 </body>
 </html>
