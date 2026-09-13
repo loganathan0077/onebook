@@ -2073,10 +2073,10 @@
                             </div>
                             
                             <!-- Action Buttons -->
-                            <div style="display: flex; flex-direction: column; gap: 10px; width: 140px; justify-content: flex-end;">
-                                <button type="button" id="btnCompleteSale" class="btn btn-success" onclick="completeSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="height: 40px;">✅ Complete Sale</button>
-                                <button type="button" class="btn btn-warning" onclick="holdSale()" style="height: 40px; color: #856404; font-weight: bold;">⏸️ Hold Sale</button>
-                                <button type="button" class="btn btn-cart-remove" onclick="clearCart()" style="height: 40px; background-color: #dc3545; color: white;">🗑️ Clear Cart</button>
+                            <div style="display: flex; flex-direction: column; gap: 10px; min-width: 160px; justify-content: flex-end;">
+                                <button type="button" id="btnCompleteSale" class="btn btn-success" onclick="completeSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="height: 40px; white-space: nowrap;">✅ Complete Sale</button>
+                                <button type="button" class="btn btn-warning" onclick="holdSale()" style="height: 40px; color: #856404; font-weight: bold; white-space: nowrap;">⏸️ Hold Sale</button>
+                                <button type="button" class="btn btn-cart-remove" onclick="clearCart()" style="height: 40px; background-color: #dc3545; color: white; white-space: nowrap;">🗑️ Clear Cart</button>
                             </div>
                         </div>
                     </div>
