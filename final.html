@@ -69,15 +69,56 @@
     </script>
 
     <script type="module">
-        import { checkAuth } from './auth.js';
+        import { checkAuth, login, logout, hasPermission, isAdmin } from './auth.js';
+        
+        window.performLogin = async function() {
+            const u = document.getElementById('loginUsername').value.trim();
+            const p = document.getElementById('loginPassword').value.trim();
+            if(!u || !p) return alert("Please enter both username and password.");
+            
+            const res = await login(u, p);
+            if(res.success) {
+                window.location.reload();
+            } else {
+                alert(res.error);
+            }
+        };
+
+        window.handleLogout = async function() {
+            await logout();
+        };
+        
+        window.hasPermission = hasPermission;
+        window.isAdminUser = false;
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 App Initializing...');
-            const user = await checkAuth(true); // Redirect to login if needed
-
+            const user = await checkAuth(false); // don't redirect, just check
+            
             if (user) {
-                console.log('👤 User Logged In:', user.email);
+                console.log('👤 User Logged In:', user.username, user.role);
+                window.isAdminUser = await isAdmin();
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainAppContainer').style.display = 'block';
+                
+                // Hide Settings tab for non-admins
+                if (!window.isAdminUser) {
+                    const settingsBtn = document.querySelector('button[data-tab="settings"]');
+                    if (settingsBtn) settingsBtn.style.display = 'none';
+                }
+
+                if(typeof refreshUI === 'function') {
+                    refreshUI();
+                }
+
+                if (!document.querySelector('.tab-content.active')) {
+                    if (typeof switchTab === 'function') switchTab('dashboard');
+                }
+            } else {
+                // Show login overlay, hide main app
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('mainAppContainer').style.display = 'none';
             }
         });
     </script>
@@ -1484,7 +1525,26 @@
 </head>
 
 <body>
-    <div class="container">
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); z-index: 10000; display: flex; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: #2c3e50; margin-bottom: 5px;">Welcome Back</h2>
+                <p style="color: #6c757d; margin: 0;">Please sign in to continue</p>
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="loginUsername" placeholder="Enter username" class="form-control" onkeypress="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter password" class="form-control" onkeypress="if(event.key==='Enter') performLogin()">
+            </div>
+            <button class="btn btn-primary" onclick="performLogin()" style="width: 100%; padding: 12px; font-size: 16px; margin-top: 10px;">Sign In</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainAppContainer" style="display:none;">
         <div class="header">
             <div class="responsive-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 15px;">
@@ -1547,6 +1607,11 @@
                         <h3>This Month</h3>
                         <div class="value privacy-sensitive" id="monthSalesAmount">₹0</div>
                         <div class="subtitle" id="monthSalesCount">0 transactions</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);">
+                        <h3>Outstanding</h3>
+                        <div class="value privacy-sensitive" id="dashboardOutstandingAmount">₹0</div>
+                        <div class="subtitle">To collect</div>
                     </div>
                     <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                         <h3>Total Products</h3>
@@ -1635,6 +1700,8 @@
                                             id="sort-stock"></span></th>
                                     <th onclick="sortInventory('price')" style="cursor: pointer;">Unit Price <span
                                             id="sort-price"></span></th>
+                                    <th onclick="sortInventory('discount')" style="cursor: pointer;">Discount <span
+                                            id="sort-discount"></span></th>
                                     <th onclick="sortInventory('totalValue')" style="cursor: pointer;">Total Value <span
                                             id="sort-totalValue"></span></th>
                                     <th onclick="sortInventory('status')" style="cursor: pointer;">Status <span
@@ -3226,7 +3293,28 @@
 
                         <!-- Account / Security -->
                         <div id="settings-pane-account" class="settings-pane">
-                            <h3>🔐 Account / Security</h3>
+                            <h3>👥 User Management</h3>
+                            <button class="btn btn-primary" onclick="openAddUserModal()" style="margin-bottom: 15px;">+ Add User</button>
+                            <div class="table-responsive" style="margin-bottom: 30px;">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Username</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="userManagementTableBody">
+                                        <!-- Users loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+                            
+                            <h3>🔐 Change My Password</h3>
                             <div class="form-group">
                                 <label>Current Admin Password</label>
                                 <input type="password" id="settingsCurrentPwd" class="form-control">
@@ -4878,39 +4966,7 @@
             console.log('🔄 ========================================');
         }
 
-        // Start real-time sync when user is authenticated
-        checkAuth().then(async (user) => {
-            if (user) {
-                // Store user ID globally for immediate sync access
-                window.currentUserId = user.uid;
-
-                console.log('🔄 Initializing data sync for:', user.email);
-
-                // STEP 1: Load initial data from Firestore
-                console.log('📥 Loading initial data from cloud...');
-                await loadUserDataFromFirestore(user.uid);
-
-                // STEP 2: Refresh UI with loaded data
-                refreshUI();
-
-                // STEP 3: Ensure a tab is actually visible!
-                // If no tab is active (which happens on refresh sometimes), default to dashboard
-                if (!document.querySelector('.tab-content.active')) {
-                    console.log('🔄 No active tab found on init, switching to Dashboard');
-                    switchTab('dashboard');
-                }
-
-                console.log('✅ Initial data loaded successfully');
-
-                // STEP 4: Start listening for real-time updates
-                realtimeSyncUnsubscribe = startRealtimeSync(user.uid, refreshUI);
-                console.log('✅ Real-time sync activated - changes will appear instantly!');
-            } else {
-                // Not authenticated - Redirect to Login
-                console.warn('❌ No user found. Redirecting to login...');
-                window.location.href = 'login.html';
-            }
-        });
+        // Old auth logic removed
 
         // Stop real-time sync on logout
         // Consolidate logout Logic (Removed duplicate wrapper)
@@ -4918,6 +4974,219 @@
     </script>
 
     <script>
+        // User Management Logic
+        const ALL_PERMISSIONS = [
+            { id: 'dashboard', label: 'Dashboard' },
+            { id: 'inventory', label: 'Inventory' },
+            { id: 'record_sale', label: 'Record Sale' },
+            { id: 'reports', label: 'Reports' },
+            { id: 'products', label: 'Products' },
+            { id: 'petty_cash', label: 'Petty Cash' },
+            { id: 'day_closing', label: 'Day Closing' },
+            { id: 'calculator', label: 'Calculator' },
+            { id: 'product_add_edit', label: 'Add/Edit Product' },
+            { id: 'product_delete', label: 'Delete Product' },
+            { id: 'product_price', label: 'Modify Price' },
+            { id: 'product_gst', label: 'Modify GST' },
+            { id: 'product_discount', label: 'Modify Discount' },
+            { id: 'category_manage', label: 'Manage Categories' },
+            { id: 'unit_manage', label: 'Manage Units' },
+            { id: 'customer_manage', label: 'Manage Customers' },
+            { id: 'customer_delete', label: 'Delete Customers' },
+            { id: 'supplier_manage', label: 'Manage Suppliers' },
+            { id: 'supplier_delete', label: 'Delete Suppliers' },
+            { id: 'customer_ledger', label: 'View Customer Ledger' },
+            { id: 'supplier_ledger', label: 'View Supplier Ledger' },
+            { id: 'purchase_entry', label: 'Purchase Entry' },
+            { id: 'purchase_history', label: 'View Purchase History' }
+        ];
+
+        function renderUserManagementTable() {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const tbody = document.getElementById('userManagementTableBody');
+            if(!tbody) return;
+            
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.name}</td>
+                    <td>${u.username}</td>
+                    <td><span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:white; background:${u.role === 'admin' ? '#007bff' : '#6c757d'}">${u.role.toUpperCase()}</span></td>
+                    <td><span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:white; background:${u.status === 'active' ? '#28a745' : '#dc3545'}">${u.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="openEditUserModal('${u.id}')">✏️ Edit</button>
+                        ${u.id !== 'admin_1' ? `
+                            <button class="btn btn-sm btn-info" onclick="openChangeUserPasswordModal('${u.id}')">🔑 Pwd</button>
+                            <button class="btn btn-sm btn-${u.status==='active' ? 'danger' : 'success'}" onclick="toggleUserStatus('${u.id}')">${u.status==='active' ? '🔴 Disable' : '🟢 Enable'}</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑️ Del</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function togglePermissionsList() {
+            const role = document.getElementById('addUserRole').value;
+            const container = document.getElementById('permissionsGroup');
+            if(role === 'admin') {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'block';
+            }
+        }
+
+        function renderPermissionsChecklist(selected = []) {
+            const list = document.getElementById('permissionsChecklist');
+            list.innerHTML = ALL_PERMISSIONS.map(p => `
+                <label style="display:flex; align-items:center; gap:10px; font-weight:normal; margin:0; cursor:pointer;">
+                    <input type="checkbox" class="user-permission-chk" value="${p.id}" style="width:18px; height:18px; cursor:pointer; flex-shrink:0; margin:0;" ${selected.includes(p.id) ? 'checked' : ''}>
+                    <span style="white-space:normal; line-height:1.2;">${p.label}</span>
+                </label>
+            `).join('');
+        }
+
+        function openAddUserModal() {
+            document.getElementById('addUserModalTitle').innerText = 'Add User';
+            document.getElementById('addUserId').value = '';
+            document.getElementById('addUserName').value = '';
+            document.getElementById('addUserUsername').value = '';
+            document.getElementById('addUserPassword').value = '';
+            document.getElementById('addUserPasswordGroup').style.display = 'block'; // Show for new
+            document.getElementById('addUserRole').value = 'user';
+            document.getElementById('addUserStatus').value = 'active';
+            
+            // Default conservative permissions
+            renderPermissionsChecklist(['dashboard','inventory','record_sale','reports','products','petty_cash','day_closing','calculator','customer_manage','customer_ledger']);
+            togglePermissionsList();
+            
+            document.getElementById('addUserModal').style.display = 'flex';
+        }
+
+        function openEditUserModal(id) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.id === id);
+            if(!user) return;
+            
+            document.getElementById('addUserModalTitle').innerText = 'Edit User';
+            document.getElementById('addUserId').value = user.id;
+            document.getElementById('addUserName').value = user.name;
+            document.getElementById('addUserUsername').value = user.username;
+            document.getElementById('addUserPasswordGroup').style.display = 'none'; // Hide password on edit
+            document.getElementById('addUserRole').value = user.role;
+            document.getElementById('addUserStatus').value = user.status;
+            
+            renderPermissionsChecklist(user.permissions || []);
+            togglePermissionsList();
+            
+            document.getElementById('addUserModal').style.display = 'flex';
+        }
+
+        function saveUser() {
+            const id = document.getElementById('addUserId').value;
+            const name = document.getElementById('addUserName').value.trim();
+            const username = document.getElementById('addUserUsername').value.trim();
+            const password = document.getElementById('addUserPassword').value;
+            const role = document.getElementById('addUserRole').value;
+            const status = document.getElementById('addUserStatus').value;
+            
+            if(!name || !username) return alert('Name and Username are required.');
+            if(!id && !password) return alert('Password is required for new users.');
+            
+            if(role === 'admin' && !confirm('⚠️ This will give the user full administrative access. Continue?')) {
+                return;
+            }
+
+            const perms = [];
+            document.querySelectorAll('.user-permission-chk:checked').forEach(chk => {
+                perms.push(chk.value);
+            });
+
+            let users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // Check username uniqueness
+            if(users.some(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== id)) {
+                return alert('Username already exists!');
+            }
+
+            if(id) {
+                // Update
+                const user = users.find(u => u.id === id);
+                if(user) {
+                    user.name = name;
+                    user.username = username;
+                    user.role = role;
+                    user.status = status;
+                    user.permissions = perms;
+                }
+            } else {
+                // Add
+                users.push({
+                    id: 'usr_' + Date.now(),
+                    name,
+                    username,
+                    password,
+                    role,
+                    status,
+                    permissions: perms
+                });
+            }
+            
+            localStorage.setItem('users', JSON.stringify(users));
+            document.getElementById('addUserModal').style.display = 'none';
+            renderUserManagementTable();
+            showAlert('User saved successfully!', '✅');
+        }
+
+        function toggleUserStatus(id) {
+            if(id === 'admin_1') return alert('Cannot disable primary admin.');
+            let users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.id === id);
+            if(user) {
+                user.status = user.status === 'active' ? 'disabled' : 'active';
+                localStorage.setItem('users', JSON.stringify(users));
+                renderUserManagementTable();
+            }
+        }
+
+        function deleteUser(id) {
+            if(id === 'admin_1') return alert('Cannot delete primary admin.');
+            if(confirm('Are you sure you want to delete this user?')) {
+                let users = JSON.parse(localStorage.getItem('users') || '[]');
+                users = users.filter(u => u.id !== id);
+                localStorage.setItem('users', JSON.stringify(users));
+                renderUserManagementTable();
+            }
+        }
+
+        function openChangeUserPasswordModal(id) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.id === id);
+            if(!user) return;
+            
+            document.getElementById('changePwdUserId').value = id;
+            document.getElementById('changePwdUsername').innerText = user.username;
+            document.getElementById('changePwdNew').value = '';
+            document.getElementById('changePwdConfirm').value = '';
+            document.getElementById('changeUserPasswordModal').style.display = 'flex';
+        }
+
+        function saveUserPassword() {
+            const id = document.getElementById('changePwdUserId').value;
+            const pwd = document.getElementById('changePwdNew').value;
+            const confirmPwd = document.getElementById('changePwdConfirm').value;
+            
+            if(!pwd) return alert('Password cannot be empty.');
+            if(pwd !== confirmPwd) return alert('Passwords do not match.');
+            
+            let users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.id === id);
+            if(user) {
+                user.password = pwd;
+                localStorage.setItem('users', JSON.stringify(users));
+                document.getElementById('changeUserPasswordModal').style.display = 'none';
+                showAlert('Password changed successfully!', '✅');
+            }
+        }
+
         // Settings Module Logic
         function getDefaultSettings() {
             return {
@@ -6054,7 +6323,7 @@
                         <button class="btn btn-info btn-sm" onclick="viewSupplier('${s.id}')" title="View Details">👁️</button>
                         <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${s.id}', 'supplier')" title="View Ledger">📖</button>
                         <button class="btn btn-warning btn-sm" onclick="openAddSupplierModal(null, '${s.id}')" title="Edit">✏️</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')" title="Delete">🗑️</button>
+                        ${window.hasPermission('supplier_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -6063,8 +6332,35 @@
         function viewSupplier(id) {
             const s = suppliers.find(sup => sup.id === id);
             if (!s) return;
-            const details = `Name: ${s.name}\nGSTIN: ${s.gstin || '-'}\nPhone: ${s.phone || '-'}\nAddress: ${s.address || '-'}\nState: ${s.state || '-'}\nCountry: ${s.country || '-'}\nNotes: ${s.notes || '-'}`;
-            showAlert(details, 'ℹ️ Supplier Details');
+            
+            document.getElementById('entityDetailsTitle').textContent = 'Supplier Details';
+            document.getElementById('edName').textContent = s.name;
+            document.getElementById('edGstin').textContent = s.gstin || '-';
+            document.getElementById('edPhone').textContent = s.phone || '-';
+            document.getElementById('edState').textContent = s.state || '-';
+            document.getElementById('edAddress').textContent = s.address || '-';
+            document.getElementById('edNotes').textContent = s.notes || '-';
+            
+            const bal = calculatePartyLedgerBalance(s, 'supplier');
+            document.getElementById('edOutstanding').textContent = '₹' + bal.balance.toFixed(2);
+            
+            // Get recent transactions (purchases)
+            const recentPurchases = purchases.filter(p => p.supplierId === id || p.supplier === s.name)
+                                             .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                             .slice(0, 5);
+                                             
+            const tbody = document.getElementById('edTransactionsBody');
+            tbody.innerHTML = recentPurchases.length === 0 ? '<tr><td colspan="4" style="text-align: center;">No transactions found.</td></tr>' : recentPurchases.map(p => {
+                const totalPaid = (p.paymentHistory || []).reduce((sum, ph) => sum + parseFloat(ph.amount), 0);
+                return `<tr>
+                    <td>${new Date(p.date).toLocaleDateString()}</td>
+                    <td>${p.invoiceNo || p.id}</td>
+                    <td>₹${parseFloat(p.totalAmount || 0).toFixed(2)}</td>
+                    <td>₹${totalPaid.toFixed(2)}</td>
+                </tr>`;
+            }).join('');
+            
+            document.getElementById('entityDetailsModal').style.display = 'flex';
         }
 
         function openAddSupplierModal(initialName = null, editId = null) {
@@ -6120,6 +6416,7 @@
         }
 
         function saveSupplier() {
+            if (!window.hasPermission('supplier_manage')) return showAlert('Unauthorized: You do not have permission to manage suppliers.', 'error');
             const editId = document.getElementById('supplierEditId').value;
             const name = document.getElementById('newSupplierName').value.trim().toUpperCase();
             const gstin = document.getElementById('newSupplierGSTIN').value.trim().toUpperCase();
@@ -6181,6 +6478,7 @@
         }
 
         function deleteSupplier(id) {
+            if (!window.hasPermission('supplier_delete')) return showAlert('Unauthorized: You do not have permission to delete suppliers.', 'error');
             showConfirm('Are you sure you want to delete this supplier?', () => {
                 suppliers = suppliers.filter(s => s.id !== id);
                 saveData();
@@ -6228,8 +6526,35 @@
         function viewCustomer(id) {
             const c = customers.find(cus => cus.id === id);
             if (!c) return;
-            const details = `Name: ${c.name}\nGSTIN: ${c.gstin || '-'}\nPhone: ${c.phone || '-'}\nAddress: ${c.address || '-'}\nState: ${c.state || '-'}\nCountry: ${c.country || '-'}\nNotes: ${c.notes || '-'}`;
-            showAlert(details, 'ℹ️ Customer Details');
+            
+            document.getElementById('entityDetailsTitle').textContent = 'Customer Details';
+            document.getElementById('edName').textContent = c.name;
+            document.getElementById('edGstin').textContent = c.gstin || '-';
+            document.getElementById('edPhone').textContent = c.phone || '-';
+            document.getElementById('edState').textContent = c.state || '-';
+            document.getElementById('edAddress').textContent = c.address || '-';
+            document.getElementById('edNotes').textContent = c.notes || '-';
+            
+            const bal = calculatePartyLedgerBalance(c, 'customer');
+            document.getElementById('edOutstanding').textContent = '₹' + bal.balance.toFixed(2);
+            
+            // Get recent transactions
+            const recentSales = sales.filter(s => s.customerId === id || s.customerName === c.name)
+                                     .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                     .slice(0, 5);
+                                     
+            const tbody = document.getElementById('edTransactionsBody');
+            tbody.innerHTML = recentSales.length === 0 ? '<tr><td colspan="4" style="text-align: center;">No transactions found.</td></tr>' : recentSales.map(s => {
+                const totalPaid = (s.paymentHistory || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                return `<tr>
+                    <td>${new Date(s.date).toLocaleDateString()}</td>
+                    <td>${s.saleId}</td>
+                    <td>₹${parseFloat(s.total || s.subtotal + s.totalTax).toFixed(2)}</td>
+                    <td>₹${totalPaid.toFixed(2)}</td>
+                </tr>`;
+            }).join('');
+            
+            document.getElementById('entityDetailsModal').style.display = 'flex';
         }
 
         function renderCustomerTable() {
@@ -6259,7 +6584,7 @@
                         <button class="btn btn-info btn-sm" onclick="viewCustomer('${c.id}')" title="View Details">👁️</button>
                         <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${c.id}', 'customer')" title="View Ledger">📖</button>
                         <button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, '${c.id}')" title="Edit">✏️</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')" title="Delete">🗑️</button>
+                        ${window.hasPermission('customer_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -6331,6 +6656,7 @@
         }
 
         function saveCustomer() {
+            if (!window.hasPermission('customer_manage')) return showAlert('Unauthorized: You do not have permission to manage customers.', 'error');
             const editId = document.getElementById('customerEditId').value;
             const name = document.getElementById('newCustomerName').value.trim().toUpperCase();
             const gstin = document.getElementById('newCustomerGSTIN').value.trim().toUpperCase();
@@ -6422,6 +6748,7 @@
         }
 
         function deleteCustomer(id) {
+            if (!window.hasPermission('customer_delete')) return showAlert('Unauthorized: You do not have permission to delete customers.', 'error');
             showConfirm('Are you sure you want to delete this customer?', () => {
                 customers = customers.filter(c => c.id !== id);
                 saveData();
@@ -6610,6 +6937,7 @@
 
         // Save Purchase
         function savePurchase() {
+            if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
             const invoice = document.getElementById('purchaseInvoiceNumber').value;
             const supplierName = document.getElementById('purchaseSupplier').value;
             const date = document.getElementById('purchaseDate').value;
@@ -7307,6 +7635,11 @@
         }
 
         function switchTab(tabName, clickedNav = null) {
+            if (tabName === 'settings' && typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) {
+                alert('🔒 Admin Access Required\nThis section is available only to administrators.');
+                return;
+            }
+
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -7588,6 +7921,13 @@
 
             document.getElementById('totalProducts').textContent = products.length;
 
+            let totalOutstanding = 0;
+            customers.forEach(c => {
+                const bal = calculatePartyLedgerBalance(c, 'customer').balance;
+                totalOutstanding += bal;
+            });
+            document.getElementById('dashboardOutstandingAmount').textContent = '₹' + totalOutstanding.toFixed(2);
+
             updateLowStockAlert();
             updateRecentSales();
         }
@@ -7721,6 +8061,10 @@
                         valA = a.price;
                         valB = b.price;
                         break;
+                    case 'discount':
+                        valA = (a.productDiscount !== undefined && a.productDiscount !== null && a.productDiscount !== "") ? parseFloat(a.productDiscount) : -1;
+                        valB = (b.productDiscount !== undefined && b.productDiscount !== null && b.productDiscount !== "") ? parseFloat(b.productDiscount) : -1;
+                        break;
                     case 'totalValue':
                         valA = a.stock * a.price;
                         valB = b.stock * b.price;
@@ -7782,6 +8126,11 @@
                     statusText = 'In Stock';
                 }
 
+                let displayDiscount = '<span style="color:#aaa;">—</span>';
+                if (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") {
+                    displayDiscount = '<strong>' + product.productDiscount + '%</strong>';
+                }
+
                 const totalValue = (product.price * product.stock).toFixed(2);
 
                 return `
@@ -7793,6 +8142,7 @@
                     <td>${product.category || 'Uncategorized'}</td>
                     <td class="${stockStatus}">${product.stock}</td>
                     <td>₹${product.price.toFixed(2)}</td>
+                    <td>${displayDiscount}</td>
                     <td>₹${totalValue}</td>
                     <td class="${stockStatus}">${statusText}</td>
                     <td>
@@ -7852,7 +8202,7 @@
                         <td>
                             <button class="btn btn-info btn-sm" onclick="addToPOFromInventory(${product.id})" title="Add to Purchase Order">PO</button>
                             <button class="btn btn-warning btn-sm" onclick="editInventoryProduct(${product.id})">Edit</button>
-                            <button class="btn btn-danger btn-sm admin-only" onclick="deleteInventoryProduct(${product.id})">Delete</button>
+                            ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct(${product.id})">Delete</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -7860,7 +8210,7 @@
         }
 
         function deleteInventoryProduct(id) {
-            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
+            if (!window.hasPermission('product_delete')) return showAlert('Unauthorized: You do not have permission to delete products.', 'error');
 
             const product = products.find(p => p.id === id);
             if (!product) {
@@ -12414,6 +12764,39 @@
                 });
             }
 
+            // Handle Permissions
+            const canEditGeneral = window.hasPermission('product_add_edit');
+            const canEditPrice = window.hasPermission('product_price');
+            const canEditGst = window.hasPermission('product_gst');
+            const canEditDiscount = window.hasPermission('product_discount');
+
+            document.getElementById('editProductName').disabled = !canEditGeneral;
+            document.getElementById('editProductBarcode').disabled = !canEditGeneral;
+            categorySelect.disabled = !canEditGeneral;
+            if(document.getElementById('editProductUnit')) document.getElementById('editProductUnit').disabled = !canEditGeneral;
+            document.getElementById('editProductStock').disabled = !canEditGeneral;
+            document.getElementById('editProductMinStock').disabled = !canEditGeneral;
+            document.getElementById('editProductSupplier').disabled = !canEditGeneral;
+            document.getElementById('editImgInput').disabled = !canEditGeneral;
+
+            document.getElementById('editProductPrice').disabled = !canEditPrice;
+
+            if (editGstEl) editGstEl.disabled = !canEditGst;
+            if (editCustomGstEl) editCustomGstEl.disabled = !canEditGst;
+            if (editHsnEl) editHsnEl.disabled = !canEditGst;
+
+            if (editDiscEl) editDiscEl.disabled = !canEditDiscount;
+
+            // Hide/Show Save button
+            const saveBtn = document.querySelector('#editProductForm button[type="submit"]');
+            if (saveBtn) {
+                if (!canEditGeneral && !canEditPrice && !canEditGst && !canEditDiscount) {
+                    saveBtn.style.display = 'none';
+                } else {
+                    saveBtn.style.display = 'block';
+                }
+            }
+
             // Show modal
             document.getElementById('editProductModal').classList.add('active');
         }
@@ -14231,6 +14614,7 @@
         }
 
         function saveDayClosing() {
+            if (!window.hasPermission('day_closing')) return showAlert('Unauthorized: You do not have permission for day closing.', 'error');
             let totalCounted = 0;
             const record = {
                 id: document.getElementById('editingDayClosingId').value || Date.now().toString(),
@@ -14693,7 +15077,7 @@
                         e.preventDefault();
                         document.querySelector('button[data-tab="products"]').click();
                         break;
-                    case 'KeyC':
+                    case 'KeyU':
                         e.preventDefault();
                         document.querySelector('button[data-tab="calculator"]').click();
                         break;
@@ -14724,7 +15108,7 @@
                             handleAddInventoryFromInventory();
                         }
                         break;
-                    case 'KeyM': // Add Customer
+                    case 'KeyC': // Add Customer
                         if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
                             openAddCustomerModal();
@@ -14897,6 +15281,92 @@
         </div>
     </div>
 
+    <!-- Entity Details Modal -->
+    <div id="entityDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="entityDetailsTitle">Details</h2>
+                <button class="btn btn-danger" onclick="document.getElementById('entityDetailsModal').style.display='none'">✕</button>
+            </div>
+            <div class="entity-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div><strong>Name:</strong> <span id="edName"></span></div>
+                <div><strong>GSTIN:</strong> <span id="edGstin"></span></div>
+                <div><strong>Phone:</strong> <span id="edPhone"></span></div>
+                <div><strong>State:</strong> <span id="edState"></span></div>
+                <div style="grid-column: span 2;"><strong>Address:</strong> <span id="edAddress"></span></div>
+                <div style="grid-column: span 2;"><strong>Notes:</strong> <span id="edNotes"></span></div>
+            </div>
+            
+            <div class="stat-card" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); margin-bottom: 20px;">
+                <h3>Outstanding Balance</h3>
+                <div class="value privacy-sensitive" id="edOutstanding">₹0</div>
+            </div>
+            
+            <h3 class="section-title">Recent Transactions</h3>
+            <div class="table-responsive">
+                <table id="edTransactionsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>ID</th>
+                            <th>Amount</th>
+                            <th>Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody id="edTransactionsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Modals -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="addUserModalTitle">Add User</h2>
+                <button class="btn btn-danger" onclick="document.getElementById('addUserModal').style.display='none'">✕</button>
+            </div>
+            <div class="form-group"><label>Full Name</label><input type="text" id="addUserName" class="form-control"></div>
+            <div class="form-group"><label>Username</label><input type="text" id="addUserUsername" class="form-control"></div>
+            <div class="form-group" id="addUserPasswordGroup"><label>Password</label><input type="password" id="addUserPassword" class="form-control"></div>
+            <div class="form-group"><label>Role</label>
+                <select id="addUserRole" class="form-control" onchange="togglePermissionsList()">
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Status</label>
+                <select id="addUserStatus" class="form-control">
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </div>
+            <div class="form-group" id="permissionsGroup">
+                <label style="font-weight: bold; margin-bottom: 8px; display: block;">Permissions (User Role Only)</label>
+                <div id="permissionsChecklist" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; background: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px;">
+                    <!-- Checkboxes injected by JS -->
+                </div>
+            </div>
+            <input type="hidden" id="addUserId">
+            <button class="btn btn-success" style="width: 100%;" onclick="saveUser()">Save User</button>
+        </div>
+    </div>
+
+    <div id="changeUserPasswordModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="btn btn-danger" onclick="document.getElementById('changeUserPasswordModal').style.display='none'">✕</button>
+            </div>
+            <p>Changing password for: <strong id="changePwdUsername"></strong></p>
+            <div class="form-group"><label>New Password</label><input type="password" id="changePwdNew" class="form-control"></div>
+            <div class="form-group"><label>Confirm Password</label><input type="password" id="changePwdConfirm" class="form-control"></div>
+            <input type="hidden" id="changePwdUserId">
+            <button class="btn btn-primary" style="width: 100%;" onclick="saveUserPassword()">Change Password</button>
+        </div>
+    </div>
+
     <!-- Shortcuts Modal -->
     <div id="shortcutsModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
@@ -14912,7 +15382,7 @@
                     <div><kbd>Alt</kbd> + <kbd>S</kbd> : Record Sale</div>
                     <div><kbd>Alt</kbd> + <kbd>R</kbd> : Reports</div>
                     <div><kbd>Alt</kbd> + <kbd>P</kbd> : Products</div>
-                    <div><kbd>Alt</kbd> + <kbd>C</kbd> : Calculator</div>
+                    <div><kbd>Alt</kbd> + <kbd>U</kbd> : Calculator</div>
                     <div><kbd>Alt</kbd> + <kbd>N</kbd> : Day Closing</div>
                 </div>
                 
@@ -14930,7 +15400,7 @@
                     <div><kbd>Alt</kbd> + <kbd>B</kbd> : Focus Quick Sale Barcode</div>
                     <div><kbd>Alt</kbd> + <kbd>A</kbd> : Focus Add Item to Sale</div>
                     <div><kbd>Alt</kbd> + <kbd>V</kbd> : Quick Add Inventory</div>
-                    <div><kbd>Alt</kbd> + <kbd>M</kbd> : Add New Customer</div>
+                    <div><kbd>Alt</kbd> + <kbd>C</kbd> : Add New Customer</div>
                     <div><kbd>Enter</kbd> : Move to next logical field / Select Match</div>
                 </div>
                 
@@ -14962,6 +15432,12 @@
             const selectedPane = document.getElementById(paneId);
             if (selectedPane) {
                 selectedPane.classList.add('active');
+            }
+
+            if(paneId === 'settings-pane-account') {
+                if(typeof renderUserManagementTable === 'function') {
+                    renderUserManagementTable();
+                }
             }
 
             // Add active class to clicked button
@@ -15039,6 +15515,7 @@
         }
 
         function saveSettings() {
+            if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) return showAlert('Unauthorized: Only Administrators can change settings.', 'error');
             const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
             const bName = document.getElementById('settingsBusinessName');
@@ -16834,6 +17311,7 @@
         }
 
         function saveCategoryDiscount() {
+            if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) return showAlert('Unauthorized: Only Administrators can modify category discounts.', 'error');
             const id = document.getElementById('editingCategoryDiscountId').value;
             const category = document.getElementById('catDiscCategory').value;
             const discountPercent = parseFloat(document.getElementById('catDiscPercent').value);
