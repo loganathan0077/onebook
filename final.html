@@ -1438,12 +1438,14 @@
     
         /* Petty Cash Styles */
         .pc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .pc-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 4px solid var(--th-accent); }
+        .pc-card { background: white; padding: 12px 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid var(--th-accent); }
         .pc-card.cash-card { border-left-color: #28a745; }
         .pc-card.bank-card { border-left-color: #17a2b8; }
-        .pc-card.total-card { border-left-color: var(--th-accent-dark); background: var(--th-surface); }
-        .pc-card h4 { margin: 0 0 10px 0; color: #6c757d; font-size: 14px; text-transform: uppercase; }
-        .pc-card .amount { font-size: 24px; font-weight: bold; margin: 0; color: #333; }
+        .pc-card.total-card { border-left-color: var(--th-accent-dark); background: var(--th-surface); padding: 15px 20px; }
+        .pc-card h4 { margin: 0 0 4px 0; color: #6c757d; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .pc-card.total-card h4 { font-size: 13px; margin-bottom: 8px; }
+        .pc-card .amount { font-size: 18px; font-weight: bold; margin: 0; color: #333; line-height: 1.2; }
+        .pc-card.total-card .amount { font-size: 26px; color: var(--th-primary-dark); }
         .pc-card .amount.negative { color: #dc3545; }
         
         .pc-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
