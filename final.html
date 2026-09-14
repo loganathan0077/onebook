@@ -10580,15 +10580,6 @@
 
                 // Show receipt
                 showReceipt();
-
-                // Force focus back to Product Search for next sale
-                setTimeout(() => {
-                    const searchInput = document.getElementById('saleProductSearch');
-                    if (searchInput) {
-                        searchInput.focus();
-                        window.scrollTo(0, 0); // scroll to top so they see the input
-                    }
-                }, 100);
             });
         }
 
@@ -11267,9 +11258,10 @@
             const saleReceipt = document.getElementById('saleReceipt');
             if (saleReceipt && saleReceipt.style.display === 'block' && e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 closeReceipt();
             }
-        });
+        }, true); // Use capture phase to intercept before focused elements
 
         function updateTodaysSales() {
             const dateInput = document.getElementById('recordSalesDate');
