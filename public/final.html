@@ -4454,14 +4454,14 @@
     </div>
 
     <!-- Supplier Management Modal -->
-    <div id="supplierManagementModal" class="modal">
-        <div class="modal-content" style="max-width: 900px; width: 90%;">
-            <div class="modal-header">
-                <h2>👤 Supplier Details</h2>
-                <button class="modal-close" onclick="closeSupplierManagementModal()">&times;</button>
+    <div id="supplierManagementModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
+            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">👤 Supplier Details</h2>
+                <button class="modal-close" onclick="closeSupplierManagementModal()" style="font-size: 24px; padding: 0;">&times;</button>
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
                 <input type="text" id="supplierSearchInput" placeholder="🔍 Search supplier..." oninput="renderSupplierTable()" class="form-control" style="flex: 1; min-width: 250px; max-width: 400px; padding: 10px; font-size: 16px;">
                 <div style="display: flex; gap: 10px;">
                     <button class="btn btn-info" style="padding: 10px 15px; font-size: 16px;" onclick="exportSuppliersCSV()">📥 Export Suppliers (CSV)</button>
@@ -4469,9 +4469,9 @@
                 </div>
             </div>
             
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
+            <div class="table-responsive" style="overflow: auto; flex: 1;">
+                <table class="table" style="margin: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10; background: #343a40; color: white;">
                         <tr>
                             <th>Supplier Name</th>
                             <th>GSTIN</th>
@@ -4669,14 +4669,14 @@
     </div>
 
     <!-- Customer Management Modal -->
-    <div id="customerManagementModal" class="modal">
-        <div class="modal-content" style="max-width: 900px; width: 90%;">
-            <div class="modal-header">
-                <h2>👥 Customer Management</h2>
-                <button class="modal-close" onclick="closeCustomerManagementModal()">&times;</button>
+    <div id="customerManagementModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
+            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">👥 Customer Details</h2>
+                <button class="modal-close" onclick="closeCustomerManagementModal()" style="font-size: 24px; padding: 0;">&times;</button>
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
                 <input type="text" id="customerSearchInput" placeholder="🔍 Search customer..." oninput="renderCustomerTable()" class="form-control" style="flex: 1; min-width: 250px; max-width: 400px; padding: 10px; font-size: 16px;">
                 <div style="display: flex; gap: 10px;">
                     <button class="btn btn-info" style="padding: 10px 15px; font-size: 16px;" onclick="exportCustomersCSV()">📥 Export Customers (CSV)</button>
@@ -4684,9 +4684,9 @@
                 </div>
             </div>
             
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
+            <div class="table-responsive" style="overflow: auto; flex: 1;">
+                <table class="table" style="margin: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10; background: #343a40; color: white;">
                         <tr>
                             <th>Customer Name</th>
                             <th>GSTIN</th>
@@ -4779,16 +4779,15 @@
     </div>
 
     <!-- Purchase History Modal (Reverted) -->
-    <div id="purchaseHistoryModal" class="modal">
-        <div class="modal-content" style="max-width: 1000px;">
-            <div class="modal-header">
-                <h2>📜 Purchase History</h2>
-                <button class="modal-close" onclick="closePurchaseHistoryModal()">&times;</button>
+    <div id="purchaseHistoryModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
+        <div class="modal-content" style="max-width: 1000px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
+            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">📜 Purchase History</h2>
+                <button class="modal-close" onclick="closePurchaseHistoryModal()" style="font-size: 24px; padding: 0;">&times;</button>
             </div>
 
             <!-- Filters & Toolbar -->
-            <div
-                style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; gap: 10px; display: flex; flex-wrap: wrap; align-items: center;">
+            <div style="padding: 10px 0; border-bottom: 1px solid #dee2e6; gap: 10px; display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <span style="font-size: 14px; color: #666; font-weight: bold;">Period:</span>
                     <select id="phFilterMonth" onchange="renderPurchaseHistory()"
@@ -4827,9 +4826,9 @@
                 <div style="font-weight: bold; font-size: 16px; margin-left: auto; color: #28a745;">Total: ₹<span
                         id="phTotalAmount">0.00</span></div>
             </div>
-            <div style="overflow-x: auto;">
+            <div style="overflow: auto; flex: 1;">
                 <table class="table">
-                    <thead>
+                    <thead style="position: sticky; top: 0; z-index: 10;">
                         <tr style="background: #343a40; color: white;">
                             <th>Date</th>
                             <th>Invoice No</th>
