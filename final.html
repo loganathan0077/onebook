@@ -15736,8 +15736,11 @@
                             if(pSearch) { pSearch.focus(); pSearch.select(); }
                         }
                         break;
-                    case 'KeyV': // Add Inventory
-                        if (document.getElementById('sales').classList.contains('active')) {
+                    case 'KeyV': // Add Inventory / Add Product
+                        if (document.getElementById('purchaseModal') && document.getElementById('purchaseModal').style.display !== 'none') {
+                            e.preventDefault();
+                            showPurchaseAddNewProductForm();
+                        } else if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
                             handleAddInventoryFromSale();
                         } else if (document.getElementById('inventory').classList.contains('active')) {
