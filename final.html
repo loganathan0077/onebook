@@ -8111,17 +8111,20 @@
                 if (tabName === 'denomination') updateDayClosingDisplay(); // if there is such a func, I will check later, else it does nothing
                 
                 if (tabName === 'sales') {
-                    // Automatically focus the Search Product field when opening Record Sale
-                    // Use requestAnimationFrame + slightly longer timeout to guarantee paint completion
-                    requestAnimationFrame(() => {
-                        setTimeout(() => {
-                            const searchInput = document.getElementById('saleProductSearch');
-                            if (searchInput) {
-                                searchInput.focus();
-                                searchInput.select();
-                            }
-                        }, 200);
-                    });
+                    // Aggressively attempt to focus the Search Product field (solves edge-case race conditions on load/tab switch)
+                    let focusAttempts = 0;
+                    const focusInterval = setInterval(() => {
+                        const searchInput = document.getElementById('saleProductSearch');
+                        if (searchInput) {
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                        focusAttempts++;
+                        // Stop trying if we successfully focused it, or if we've tried 5 times (500ms)
+                        if (focusAttempts >= 5 || (document.activeElement && document.activeElement.id === 'saleProductSearch')) {
+                            clearInterval(focusInterval);
+                        }
+                    }, 100);
                 }
             } else {
                 console.warn(`Tab "${tabName}" not found`);
