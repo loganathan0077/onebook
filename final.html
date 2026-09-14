@@ -2798,6 +2798,8 @@
                     </table>
                 </div>
             </div>
+            <!-- CLOSING DIV FOR PRODUCTS TAB -->
+            </div>
 
             <!-- Purchase & Parties Tab -->
             <div id="purchaseparties" class="tab-content" style="display: none;">
@@ -2845,7 +2847,7 @@
             <div id="receivables" class="tab-content" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="section-title" style="margin-bottom: 0;">📥 Accounts Receivable (Credit Sales)</h2>
-                    <button class="btn btn-secondary" onclick="switchTab('products')">⬅️ Back to Products</button>
+                    <button class="btn btn-secondary" onclick="switchTab('purchaseparties')">⬅️ Back to Purchase & Parties</button>
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -2889,7 +2891,7 @@
             <div id="payables" class="tab-content" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 class="section-title" style="margin-bottom: 0;">📤 Accounts Payable (Credit Purchases)</h2>
-                    <button class="btn btn-secondary" onclick="switchTab('products')">⬅️ Back to Products</button>
+                    <button class="btn btn-secondary" onclick="switchTab('purchaseparties')">⬅️ Back to Purchase & Parties</button>
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -8117,7 +8119,7 @@
                 if (fallbackNav) {
                     fallbackNav.classList.add('active');
                 } else if (tabName === 'receivables' || tabName === 'payables') {
-                    const prodNav = document.querySelector(`.nav-tab[data-tab="products"]`);
+                    const prodNav = document.querySelector(`.nav-tab[data-tab="purchaseparties"]`);
                     if (prodNav) prodNav.classList.add('active');
                 }
             }
