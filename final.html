@@ -8112,12 +8112,16 @@
                 
                 if (tabName === 'sales') {
                     // Automatically focus the Search Product field when opening Record Sale
-                    setTimeout(() => {
-                        const searchInput = document.getElementById('saleProductSearch');
-                        if (searchInput) {
-                            searchInput.focus();
-                        }
-                    }, 50);
+                    // Use requestAnimationFrame + slightly longer timeout to guarantee paint completion
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            const searchInput = document.getElementById('saleProductSearch');
+                            if (searchInput) {
+                                searchInput.focus();
+                                searchInput.select();
+                            }
+                        }, 200);
+                    });
                 }
             } else {
                 console.warn(`Tab "${tabName}" not found`);
