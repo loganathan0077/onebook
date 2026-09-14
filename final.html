@@ -6357,6 +6357,12 @@
             updatePurchaseTable();
             document.getElementById('purchaseSelectedProduct').style.display = 'none';
             selectedPurchaseProduct = null;
+            
+            const searchInput = document.getElementById('purchaseSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                setTimeout(() => searchInput.focus(), 50);
+            }
         }
 
 
