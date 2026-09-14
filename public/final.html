@@ -3854,6 +3854,21 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Quantity Type</label>
+                        <select id="editProductQuantityType" onchange="document.getElementById('editProductDecimalPrecisionContainer').style.display = this.value === 'decimal' ? 'block' : 'none'">
+                            <option value="whole" selected>Whole Number</option>
+                            <option value="decimal">Decimal</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="editProductDecimalPrecisionContainer" style="display: none;">
+                        <label>Decimal Precision</label>
+                        <select id="editProductDecimalPrecision">
+                            <option value="0.1">0.1</option>
+                            <option value="0.01" selected>0.01</option>
+                            <option value="0.001">0.001</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Unit Price (₹)</label>
                         <input type="number" id="editProductPrice" step="0.01" required>
                     </div>
@@ -3970,158 +3985,187 @@
                 </div>
 
                 <!-- New Product Form Container (Hidden by default) -->
-                <div id="purchaseNewProductContainer"
-                    style="display: none; border: 2px solid #28a745; padding: 15px; border-radius: 8px; background: white; margin-bottom: 15px;">
-                    <h4 style="margin-top: 0; color: #28a745; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                        Add New Product for Purchase</h4>
+                <div id="purchaseNewProductContainer" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2050; padding: 20px; align-items: center; justify-content: center;">
+                    <div style="background: white; border: 2px solid #28a745; border-radius: 8px; width: 100%; max-width: 1000px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: auto;">
+                        
+                        <div style="padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; color: #28a745;">Add New Product for Purchase</h4>
+                            <span onclick="hidePurchaseAddNewProductForm()" style="cursor:pointer; font-size: 20px; font-weight: bold; color: #dc3545;">&times;</span>
+                        </div>
+                        
+                        <div style="padding: 15px; overflow-y: auto; flex: 1;">
+                            <style>
+                                #purchaseNewProductContainer .form-group { margin-bottom: 8px; }
+                                #purchaseNewProductContainer label { margin-bottom: 2px; font-size: 13px; font-weight: bold; color: #495057; }
+                                #purchaseNewProductContainer input, #purchaseNewProductContainer select { padding: 4px 8px; height: 32px; font-size: 13px; }
+                                #purchaseNewProductContainer .btn { padding: 4px 12px; font-size: 13px; height: 32px; }
+                                #purchaseNewProductContainer .compact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: end; }
+                            </style>
 
-                    <!-- Barcode field - Full width at top -->
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label>Barcode (Scan or Enter)</label>
-                        <div class="barcode-input-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="newProductBarcode" placeholder="Scan or enter barcode"
-                                style="flex: 1; min-width: 200px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
-                            <button type="button" class="btn btn-info" onclick="openScannerModal('newProduct')"
-                                style="white-space: nowrap;">📷 Scan</button>
-                            <button type="button" class="btn btn-secondary" onclick="generateNewProductBarcode()"
-                                style="white-space: nowrap; background-color: #6c757d; color: white;">⚡
-                                Auto-Generate</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                        <div style="flex: 1;">
-                            <label>Product Image (Optional)</label>
-                            <input type="file" id="newProductImage" accept="image/*" class="form-control" onchange="previewProductImage(this, 'newProductImagePreview', 'newProductImageBase64', 'newProductImageClear')">
-                            <input type="hidden" id="newProductImageBase64">
-                        </div>
-                        <div style="position: relative;">
-                            <img id="newProductImagePreview" src="" alt="Preview" style="display: none; width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
-                            <span id="newProductImageClear" onclick="clearProductImage('newProductImage', 'newProductImagePreview', 'newProductImageBase64', 'newProductImageClear')" style="display: none; position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; cursor: pointer; font-size: 12px; font-weight: bold;">×</span>
-                            <div id="newProductImageInfo" style="display: none; font-size: 10px; color: #666; margin-top: 5px; white-space: nowrap; position: absolute; top: 100%; left: 0; background: white; padding: 2px 4px; border-radius: 4px; border: 1px solid #eee; z-index: 10;"></div>
-                        </div>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Product Name</label>
-                            <input type="text" id="newProductName" required placeholder="e.g., Blue Ballpoint Pen">
-                        </div>
-                        <div class="form-group gst-field" style="display:none;">
-                            <label>HSN/SAC Code</label>
-                            <input type="text" id="newProductHSN" placeholder="e.g. 4820">
-                        </div>
-                        <div class="form-group">
-                            <label>Category</label>
-                            <select id="newProductCategory">
-                                <option value="">Select Category...</option>
-                                <option value="BAGS & TRAVEL ACCESSORIES">BAGS & TRAVEL ACCESSORIES</option>
-                                <option value="BEAUTY & PERSONAL CARE">BEAUTY & PERSONAL CARE</option>
-                                <option value="CLEANING & HYGIENE ITEMS">CLEANING & HYGIENE ITEMS</option>
-                                <option value="ELECTRONICS ACCESSORIES">ELECTRONICS ACCESSORIES</option>
-                                <option value="FANCY ITEMS">FANCY ITEMS</option>
-                                <option value="GIFT PACKS / RETURN GIFTS">GIFT PACKS / RETURN GIFTS</option>
-                                <option value="HARDWARE & TOOLS">HARDWARE & TOOLS</option>
-                                <option value="HOUSEHOLD ITEMS">HOUSEHOLD ITEMS</option>
-                                <option value="KITCHEN ACCESSORIES">KITCHEN ACCESSORIES</option>
-                                <option value="MOBILE ACCESSORIES">MOBILE ACCESSORIES</option>
-                                <option value="PARTY & CELEBRATION ITEMS">PARTY & CELEBRATION ITEMS</option>
-                                <option value="PLASTIC ITEMS">PLASTIC ITEMS</option>
-                                <option value="SNACKS & PACKAGED FOODS">SNACKS & PACKAGED FOODS</option>
-                                <option value="SPORTS ITEMS">SPORTS ITEMS</option>
-                                <option value="STATIONERY ITEM">STATIONERY ITEM</option>
-                                <option value="TOYS & KIDS ITEMS">TOYS & KIDS ITEMS</option>
-                                <option value="Other">Other (Custom...)</option>
-                            </select>
-                            <input type="text" id="newProductCustomCategory" placeholder="Enter custom category"
-                                style="display:none;margin-top:8px; width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;" />
-                        </div>
-                        <div class="form-group">
-                            <label>Base Unit(single item info)</label>
-                            <select id="newProductUnit">
-                                <option value="">Select Unit...</option>
-                                <option value="Piece">Piece</option>
-                                <option value="Pack">Pack</option>
-                                <option value="Box">Box</option>
-                                <option value="Set">Set</option>
-                                <option value="Pair">Pair</option>
-                                <option value="Dozen">Dozen</option>
-                                <option value="Bundle">Bundle</option>
-                                <option value="Carton">Carton</option>
-                                <option value="Roll">Roll</option>
-                                <option value="Bag">Bag</option>
-                                <option value="Packet">Packet</option>
-                                <option value="Kilogram">Kilogram (kg)</option>
-                                <option value="Gram">Gram (g)</option>
-                                <option value="Litre">Litre (L)</option>
-                                <option value="Millilitre">Millilitre (ml)</option>
-                                <option value="Meter">Meter (m)</option>
-                                <option value="Centimeter">Centimeter (cm)</option>
-                                <option value="Inch">Inch</option>
-                                <option value="Feet">Feet</option>
-                                <option value="Bottle">Bottle</option>
-                                <option value="Tin">Tin</option>
-                                <option value="Can">Can</option>
-                                <option value="Tube">Tube</option>
-                                <option value="Tray">Tray</option>
-                                <option value="Cup">Cup</option>
-                                <option value="Unit">Unit</option>
-                                <option value="Sheet">Sheet</option>
-                            </select>
-                        </div>
-                        <div class="form-group gst-field" style="display:none;">
-                            <label>GST Rate (%)</label>
-                            <select id="newProductGSTRate" onchange="document.getElementById('newProductCustomGSTRate').style.display = this.value === 'custom' ? 'block' : 'none'">
-                                <option value="0">0%</option>
-                                <option value="5">5%</option>
-                                <option value="12">12%</option>
-                                <option value="18">18%</option>
-                                <option value="28">28%</option>
-                                <option value="custom">Custom</option>
-                            </select>
-                            <input type="number" id="newProductCustomGSTRate" placeholder="Enter %" style="display:none; margin-top:5px;" min="0" step="0.01">
-                        </div>
-                        <div class="form-group">
-                            <label>Selling Price (₹) — Incl. GST</label>
-                            <input type="number" id="newProductSellingPrice" placeholder="10.00">
-                        </div>
-                        <div class="form-group">
-                            <label>Buying Price (₹)</label>
-                            <input type="number" id="newProductPurchasePrice" placeholder="0.00">
-                        </div>
-
-                        <!-- Pack Sizes Section -->
-                        <div class="form-group"
-                            style="grid-column: 1 / -1; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                            <label style="margin-bottom: 10px; display: block; font-weight: bold;">Pack Sizes (whole
-                                size item
-                                info)</label>
-                            <div id="purchasePackSizesContainer">
-                                <!-- Dynamic pack size inputs will be added here -->
+                            <!-- Row 1: Barcode and Image -->
+                            <div class="compact-grid" style="margin-bottom: 8px;">
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label>Barcode</label>
+                                    <div style="display: flex; gap: 5px;">
+                                        <input type="text" id="newProductBarcode" placeholder="Scan or enter barcode" style="flex: 1;">
+                                        <button type="button" class="btn btn-info" onclick="openScannerModal('newProduct')">📷 Scan</button>
+                                        <button type="button" class="btn btn-secondary" onclick="generateNewProductBarcode()" style="background-color: #6c757d; color: white;">⚡ Auto-Generate</button>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="grid-column: span 2; display: flex; align-items: end; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <label>Product Image (Optional)</label>
+                                        <input type="file" id="newProductImage" accept="image/*" class="form-control" onchange="previewProductImage(this, 'newProductImagePreview', 'newProductImageBase64', 'newProductImageClear')" style="padding: 2px;">
+                                        <input type="hidden" id="newProductImageBase64">
+                                    </div>
+                                    <div style="position: relative; height: 32px; width: 32px; flex-shrink: 0;">
+                                        <img id="newProductImagePreview" src="" alt="Preview" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                        <span id="newProductImageClear" onclick="clearProductImage('newProductImage', 'newProductImagePreview', 'newProductImageBase64', 'newProductImageClear')" style="display: none; position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 14px; cursor: pointer; font-size: 12px; font-weight: bold;">&times;</span>
+                                        <div id="newProductImageInfo" style="display: none;"></div>
+                                    </div>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-info btn-sm"
-                                onclick="addPackSizeInput('', '', '', 'purchasePackSizesContainer')">+ Add Pack
-                                Size</button>
-                        </div>
 
-                        <!-- Initial Stock / Current Stock -->
-                        <div class="form-group">
-                            <label>Current Stock</label>
-                            <input type="number" id="newProductInitialStock" value="0"
-                                oninput="calculateNewProductMinStock()">
+                            <div class="compact-grid">
+                                <div class="form-group">
+                                    <label>Product Name</label>
+                                    <input type="text" id="newProductName" required placeholder="e.g., Blue Ballpoint Pen">
+                                </div>
+                                <div class="form-group gst-field" style="display:none;">
+                                    <label>HSN/SAC Code</label>
+                                    <input type="text" id="newProductHSN" placeholder="e.g. 4820">
+                                </div>
+                                <div class="form-group">
+                                    <label>Category</label>
+                                    <select id="newProductCategory">
+                                        <option value="">Select Category...</option>
+                                        <option value="BAGS & TRAVEL ACCESSORIES">BAGS & TRAVEL ACCESSORIES</option>
+                                        <option value="BEAUTY & PERSONAL CARE">BEAUTY & PERSONAL CARE</option>
+                                        <option value="CLEANING & HYGIENE ITEMS">CLEANING & HYGIENE ITEMS</option>
+                                        <option value="ELECTRONICS ACCESSORIES">ELECTRONICS ACCESSORIES</option>
+                                        <option value="FANCY ITEMS">FANCY ITEMS</option>
+                                        <option value="GIFT PACKS / RETURN GIFTS">GIFT PACKS / RETURN GIFTS</option>
+                                        <option value="HARDWARE & TOOLS">HARDWARE & TOOLS</option>
+                                        <option value="HOUSEHOLD ITEMS">HOUSEHOLD ITEMS</option>
+                                        <option value="KITCHEN ACCESSORIES">KITCHEN ACCESSORIES</option>
+                                        <option value="MOBILE ACCESSORIES">MOBILE ACCESSORIES</option>
+                                        <option value="PARTY & CELEBRATION ITEMS">PARTY & CELEBRATION ITEMS</option>
+                                        <option value="PLASTIC ITEMS">PLASTIC ITEMS</option>
+                                        <option value="SNACKS & PACKAGED FOODS">SNACKS & PACKAGED FOODS</option>
+                                        <option value="SPORTS ITEMS">SPORTS ITEMS</option>
+                                        <option value="STATIONERY ITEM">STATIONERY ITEM</option>
+                                        <option value="TOYS & KIDS ITEMS">TOYS & KIDS ITEMS</option>
+                                        <option value="Other">Other (Custom...)</option>
+                                    </select>
+                                    <input type="text" id="newProductCustomCategory" placeholder="Enter custom category" style="display:none;margin-top:4px; width: 100%;" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Base Unit (single item info)</label>
+                                    <select id="newProductUnit">
+                                        <option value="">Select Unit...</option>
+                                        <option value="Piece">Piece</option>
+                                        <option value="Pack">Pack</option>
+                                        <option value="Box">Box</option>
+                                        <option value="Set">Set</option>
+                                        <option value="Pair">Pair</option>
+                                        <option value="Dozen">Dozen</option>
+                                        <option value="Bundle">Bundle</option>
+                                        <option value="Carton">Carton</option>
+                                        <option value="Roll">Roll</option>
+                                        <option value="Bag">Bag</option>
+                                        <option value="Packet">Packet</option>
+                                        <option value="Kilogram">Kilogram (kg)</option>
+                                        <option value="Gram">Gram (g)</option>
+                                        <option value="Litre">Litre (L)</option>
+                                        <option value="Millilitre">Millilitre (ml)</option>
+                                        <option value="Meter">Meter (m)</option>
+                                        <option value="Centimeter">Centimeter (cm)</option>
+                                        <option value="Inch">Inch</option>
+                                        <option value="Feet">Feet</option>
+                                        <option value="Bottle">Bottle</option>
+                                        <option value="Tin">Tin</option>
+                                        <option value="Can">Can</option>
+                                        <option value="Tube">Tube</option>
+                                        <option value="Tray">Tray</option>
+                                        <option value="Cup">Cup</option>
+                                        <option value="Unit">Unit</option>
+                                        <option value="Sheet">Sheet</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Quantity Type</label>
+                                    <select id="newProductQuantityType" onchange="document.getElementById('newProductDecimalPrecisionContainer').style.display = this.value === 'decimal' ? 'block' : 'none'">
+                                        <option value="whole" selected>Whole Number</option>
+                                        <option value="decimal">Decimal</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="newProductDecimalPrecisionContainer" style="display: none;">
+                                    <label>Decimal Precision</label>
+                                    <select id="newProductDecimalPrecision">
+                                        <option value="0.1">0.1</option>
+                                        <option value="0.01" selected>0.01</option>
+                                        <option value="0.001">0.001</option>
+                                    </select>
+                                </div>
+                                <div class="form-group gst-field" style="display:none;">
+                                    <label>GST Rate (%)</label>
+                                    <select id="newProductGSTRate" onchange="document.getElementById('newProductCustomGSTRate').style.display = this.value === 'custom' ? 'block' : 'none'">
+                                        <option value="0">0%</option>
+                                        <option value="5">5%</option>
+                                        <option value="12">12%</option>
+                                        <option value="18">18%</option>
+                                        <option value="28">28%</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                    <input type="number" id="newProductCustomGSTRate" placeholder="Enter %" style="display:none; margin-top:4px;" min="0" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label>Selling Price (₹)</label>
+                                    <input type="number" id="newProductSellingPrice" placeholder="10.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Buying Price (₹)</label>
+                                    <input type="number" id="newProductPurchasePrice" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <!-- Pack Sizes Section -->
+                            <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-top: 10px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <label style="margin: 0;">Pack Sizes (whole size item info)</label>
+                                    <button type="button" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'purchasePackSizesContainer')">+ Add Pack Size</button>
+                                </div>
+                                <div id="purchasePackSizesContainer">
+                                    <!-- Dynamic pack size inputs will be added here -->
+                                </div>
+                            </div>
+
+                            <!-- Last Row -->
+                            <div class="compact-grid">
+                                <div class="form-group">
+                                    <label>Current Stock</label>
+                                    <input type="number" id="newProductInitialStock" value="0" oninput="calculateNewProductMinStock()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Minimum Stock Level</label>
+                                    <input type="number" id="newProductMinStock" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Supplier</label>
+                                    <input type="text" id="newProductSupplier" placeholder="Optional">
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input type="text" id="newProductDescription" placeholder="Optional product description">
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group"><label>Minimum Stock Level</label><input type="number"
-                                id="newProductMinStock" value="0"></div>
-                        <div class="form-group">
-                            <label>Supplier</label>
-                            <input type="text" id="newProductSupplier" placeholder="Optional">
+                        
+                        <div style="padding: 10px 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; background: #f8f9fa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                            <button class="btn btn-secondary" onclick="hidePurchaseAddNewProductForm()">❌ Cancel</button>
+                            <button class="btn btn-primary" onclick="addNewProductToPurchase()">Add Product</button>
                         </div>
-                        <div class="form-group" style="grid-column: 1 / -1;"><label>Description</label><input
-                                type="text" id="newProductDescription" placeholder="Optional product description"></div>
-                    </div>
-                    <div style="margin-top: 10px; display: flex; gap: 10px;">
-                        <button class="btn btn-primary" onclick="addNewProductToPurchase()">Add Product</button>
-                        <button class="btn btn-secondary" onclick="hidePurchaseAddNewProductForm()">❌
-                            Cancel</button>
                     </div>
                 </div>
 
@@ -6135,12 +6179,27 @@
         // Add to Cart
         function addPurchaseItem() {
             if (!selectedPurchaseProduct) return;
-            const qty = parseInt(document.getElementById('purchaseQty').value);
+            const qty = parseFloat(document.getElementById('purchaseQty').value);
             const price = parseFloat(document.getElementById('purchaseItemPrice').value) || 0;
             const gstEl = document.getElementById('purchaseItemGST');
             const gstRate = gstEl ? (parseFloat(gstEl.value) || 0) : (selectedPurchaseProduct.gstRate || 0);
 
-            if (qty < 1) return;
+            if (isNaN(qty) || qty <= 0) return;
+            
+            // Validate step for decimals
+            if (selectedPurchaseProduct.quantityType === 'decimal') {
+                const prec = selectedPurchaseProduct.decimalPrecision || 0.01;
+                const multiplier = Math.round(1 / prec);
+                if (Math.abs((qty * multiplier) % 1) > 0.001) {
+                    showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                    return;
+                }
+            } else {
+                if (!Number.isInteger(qty)) {
+                    showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    return;
+                }
+            }
 
             const existing = purchaseCart.find(i => i.productId === selectedPurchaseProduct.id);
             if (existing) {
@@ -7295,7 +7354,7 @@
         }
 
         function showPurchaseAddNewProductForm() {
-            document.getElementById('purchaseNewProductContainer').style.display = 'block';
+            document.getElementById('purchaseNewProductContainer').style.display = 'flex';
             populateCategoryDropdowns();
             populateUnitDropdowns();
             document.getElementById('newProductBarcode').value = '';
@@ -8454,16 +8513,30 @@
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
             const productId = parseInt(document.getElementById('updateStockProductId').value);
-            const quantity = parseInt(document.getElementById('addStockQuantity').value);
+            const quantity = parseFloat(document.getElementById('addStockQuantity').value);
 
-            if (!productId || !quantity || quantity < 1) {
+            if (!productId || isNaN(quantity) || quantity <= 0) {
                 showAlert('Please select a product and enter valid quantity', '⚠️');
                 return;
             }
 
             const product = products.find(p => p.id === productId);
             if (product) {
-                product.stock += quantity;
+                if (product.quantityType === 'decimal') {
+                    const prec = product.decimalPrecision || 0.01;
+                    const multiplier = Math.round(1 / prec);
+                    if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                        showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                        return;
+                    }
+                } else {
+                    if (!Number.isInteger(quantity)) {
+                        showAlert(`This product requires a whole number quantity.`, '⚠️');
+                        return;
+                    }
+                }
+
+                product.stock = parseFloat((product.stock + quantity).toFixed(3));
 
                 stockHistory.push({
                     date: new Date().toISOString(),
@@ -8590,6 +8663,27 @@
             searchInput.focus();
             populatePaymentMethodSelect('');
         }
+
+        // Add blur listener to auto-select if user types but doesn't click
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('paymentMethodSearch');
+            if (searchInput) {
+                searchInput.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        const currentText = searchInput.value.toLowerCase().trim();
+                        const match = paymentMethodsList.find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
+                        if (match) {
+                            onPaymentMethodSelection(match.value, match.text);
+                        } else {
+                            // Revert to current select value if invalid text
+                            const selectElem = document.getElementById('paymentMethod');
+                            const validMatch = paymentMethodsList.find(m => m.value === selectElem.value);
+                            if (validMatch) searchInput.value = validMatch.text;
+                        }
+                    }, 200); // small delay to allow click event on dropdown to fire first
+                });
+            }
+        });
 
         // Unit Combobox State
         let currentProductUnits = [];
@@ -9167,6 +9261,20 @@
                     console.error("Selected product not found:", productId);
                     return;
                 }
+                
+                const saleQtyInput = document.getElementById('saleQuantity');
+                if (saleQtyInput) {
+                    if (product.quantityType === 'decimal') {
+                        const prec = product.decimalPrecision || 0.01;
+                        saleQtyInput.step = prec;
+                        saleQtyInput.min = prec;
+                        saleQtyInput.value = prec;
+                    } else {
+                        saleQtyInput.step = '1';
+                        saleQtyInput.min = '1';
+                        saleQtyInput.value = '1';
+                    }
+                }
 
                 if (product.stock <= 0) {
                     if (prompt) prompt.style.display = 'block';
@@ -9241,7 +9349,8 @@
         function addItemToCart(event) {
             event.preventDefault();
             const productId = parseInt(document.getElementById('saleProductId').value);
-            const quantity = parseInt(document.getElementById('saleQuantity').value);
+            const quantityInput = document.getElementById('saleQuantity').value;
+            const quantity = parseFloat(quantityInput);
             const unitSelect = document.getElementById('saleUnit');
 
             // Auto-select base unit if nothing selected and options exist
@@ -9267,8 +9376,8 @@
                 return;
             }
 
-            if (!quantity || quantity < 1) {
-                showAlert('Please enter a valid quantity', '⚠️');
+            if (isNaN(quantity) || quantity <= 0) {
+                showAlert('Please enter a valid quantity greater than 0', '⚠️');
                 return;
             }
 
@@ -9277,6 +9386,24 @@
                 showAlert('Product not available', '❌');
                 return;
             }
+            
+            // Validate step for decimals
+            if (product.quantityType === 'decimal') {
+                const prec = product.decimalPrecision || 0.01;
+                // Avoid floating point modulo issues by using multiplication
+                const multiplier = Math.round(1 / prec);
+                if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                    showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec} ${product.unit || ''}.`, '⚠️');
+                    return;
+                }
+            } else {
+                if (!Number.isInteger(quantity)) {
+                    showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    return;
+                }
+            }
+
+
 
             if (product.stock <= 0) {
                 showAlert('Inventory is 0 — unable to add item to cart', '⚠️');
@@ -9285,7 +9412,7 @@
 
             const unitName = selectedOption.dataset.name || product.unit || 'Piece';
             const unitPrice = parseFloat(selectedOption.dataset.price);
-            const unitQuantity = parseInt(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
+            const unitQuantity = parseFloat(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
             const totalBaseQuantityNeeded = quantity * unitQuantity;
 
             // Check if product already in cart (same product AND same unit)
@@ -9302,7 +9429,7 @@
             }
 
             if (existingItemIndex >= 0) {
-                cart[existingItemIndex].quantity += quantity;
+                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + quantity).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
                 cart.push({
@@ -9449,14 +9576,22 @@
                 return;
             }
 
+            const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
+            const newQty = parseFloat((item.quantity + prec).toFixed(3));
+            
             // Check if we can increase quantity (stock availability)
-            if (item.quantity + 1 > product.stock) {
-                showAlert(`Cannot increase quantity! Available stock: ${product.stock} units`, '⚠️');
+            // Consider baseQuantity multiplier
+            const currentStockInCart = cart
+                .filter(cItem => cItem.productId === product.id && cItem !== item)
+                .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
+                
+            if (currentStockInCart + (newQty * item.baseQuantity) > product.stock) {
+                showAlert(`Cannot increase quantity! Available stock: ${product.stock} ${product.unit || 'units'}`, '⚠️');
                 return;
             }
 
             // Increase quantity
-            item.quantity += 1;
+            item.quantity = newQty;
             item.total = item.quantity * item.price;
 
             updateCartDisplay();
@@ -9466,17 +9601,19 @@
             if (index < 0 || index >= cart.length) return;
 
             const item = cart[index];
+            const product = products.find(p => p.id === item.productId);
+            const prec = (product && product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
 
-            // Check if we can decrease quantity (minimum 1)
-            if (item.quantity <= 1) {
-                popup('Quantity is 1.<br>Do you want to remove this item from cart?', function () {
+            // Check if we can decrease quantity (minimum 1 or prec)
+            if (parseFloat(item.quantity.toFixed(3)) <= prec) {
+                popup(`Quantity is ${prec}.<br>Do you want to remove this item from cart?`, function () {
                     removeFromCart(index);
                 });
                 return;
             }
 
             // Decrease quantity
-            item.quantity -= 1;
+            item.quantity = parseFloat((item.quantity - prec).toFixed(3));
             item.total = item.quantity * item.price;
 
             updateCartDisplay();
@@ -9660,7 +9797,7 @@
                                         <td>
                                             <div class="quantity-controls">
                                                 <button class="qty-btn decrease" onclick="decreaseQuantity(${index})">-</button>
-                                                <span class="qty-value">${item.quantity}</span>
+                                                <span class="qty-value">${item.quantity} ${item.unit || ''}</span>
                                                 <button class="qty-btn increase" onclick="increaseQuantity(${index})">+</button>
                                             </div>
                                         </td>
@@ -10225,11 +10362,11 @@
                         document.getElementById('discountAmount').value = '0'; // Reset Discount
                         document.getElementById('courierCharges').value = '0'; // Reset Courier
                         document.getElementById('paymentMethod').value = 'cash';
+                        document.getElementById('paymentMethodSearch').value = 'Cash Only'; // Update combobox input
                         
                         updateCartDisplay();
                         togglePaymentFields();
                         
-                        document.getElementById('customerAmount').value = '';
                         document.getElementById('changeAmount').value = '';
                         document.getElementById('creditAmountPaid').value = '0';
                         document.getElementById('creditOutstanding').value = '0';
@@ -10394,7 +10531,7 @@
                                 <tr>
                                     <td>${item.productName}</td>
                                     ${showGstOnReceipt ? '' : `<td>${item.unit || 'Piece'}</td>`}
-                                    <td style="text-align: right;">${item.quantity}</td>
+                                    <td style="text-align: right;">${item.quantity} ${item.unit || ''}</td>
                                     <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
                                     ${showGstOnReceipt ? `<td style="text-align: right;">${item.gstRate || 0}%</td>` : ''}
                                     <td style="text-align: right;">₹${item.total.toFixed(2)}</td>
@@ -10591,7 +10728,7 @@
 
             lastSaleData.items.forEach((item, index) => {
                 message += `${index + 1}. ${item.productName} \n`;
-                message += `   ${item.unit || 'Piece'} × ${item.quantity} = ₹${item.total.toFixed(2)} \n`;
+                message += `   ${item.quantity} ${item.unit || ''} × ₹${item.price.toFixed(2)} = ₹${item.total.toFixed(2)} \n`;
             });
 
             message += `━━━━━━━━━━━━━━━━━━━━\n`;
@@ -11301,7 +11438,7 @@
                     <tr style="border-bottom: 1px solid #dee2e6;">
                         <td style="padding: 10px; border: 1px solid #dee2e6;">${item.productName}</td>
                         <td style="padding: 10px; text-align: center; border: 1px solid #dee2e6;">
-                            <input type="number" min="1" value="${item.quantity}" 
+                            <input type="number" min="0" step="any" value="${item.quantity}" 
                                 id="editQty_${index}" 
                                 onchange="updateEditTotal(${index})"
                                 style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
@@ -12805,11 +12942,13 @@
                 name: name,
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
-                unit: document.getElementById('productUnit').value,
+                unit: document.getElementById('newProductUnit').value,
+                quantityType: document.getElementById('newProductQuantityType').value || 'whole',
+                decimalPrecision: document.getElementById('newProductQuantityType').value === 'decimal' ? parseFloat(document.getElementById('newProductDecimalPrecision').value || 0.01) : undefined,
                 packSizes: getPackSizesFromForm('packSizesContainer'),
                 price: parseFloat(document.getElementById('productPrice').value),
-                stock: parseInt(document.getElementById('productStock').value),
-                minStock: parseInt(document.getElementById('productMinStock').value),
+                stock: parseFloat(document.getElementById('productStock').value),
+                minStock: parseFloat(document.getElementById('productMinStock').value),
                 supplier: document.getElementById('productSupplier').value || 'N/A',
                 description: document.getElementById('productDescription').value || ''
             };
@@ -13061,6 +13200,16 @@
             if (document.getElementById('editProductUnit')) {
                 document.getElementById('editProductUnit').value = product.unit || 'Piece';
             }
+            if (document.getElementById('editProductQuantityType')) {
+                const qtyType = product.quantityType || 'whole';
+                document.getElementById('editProductQuantityType').value = qtyType;
+                const container = document.getElementById('editProductDecimalPrecisionContainer');
+                if (container) container.style.display = qtyType === 'decimal' ? 'block' : 'none';
+                
+                if (qtyType === 'decimal' && document.getElementById('editProductDecimalPrecision')) {
+                    document.getElementById('editProductDecimalPrecision').value = product.decimalPrecision || '0.01';
+                }
+            }
 
             document.getElementById('editProductPrice').value = product.price;
 
@@ -13175,6 +13324,18 @@
                 product.name = document.getElementById('editProductName').value;
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
+                
+                const editQtyType = document.getElementById('editProductQuantityType');
+                if (editQtyType) {
+                    product.quantityType = editQtyType.value;
+                    if (product.quantityType === 'decimal') {
+                        const editDecPrec = document.getElementById('editProductDecimalPrecision');
+                        product.decimalPrecision = editDecPrec ? parseFloat(editDecPrec.value || 0.01) : 0.01;
+                    } else {
+                        delete product.decimalPrecision;
+                    }
+                }
+                
                 product.price = parseFloat(document.getElementById('editProductPrice').value);
                 
                 const discVal = document.getElementById('editProductDiscount').value;
@@ -13191,8 +13352,8 @@
                 }
                 product.gstRate = parseFloat(gstRate) || 0;
 
-                product.stock = parseInt(document.getElementById('editProductStock').value);
-                product.minStock = parseInt(document.getElementById('editProductMinStock').value);
+                product.stock = parseFloat(document.getElementById('editProductStock').value);
+                product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
                 product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
 
                 const editImgBase64 = document.getElementById('editProductImageBase64');
@@ -17286,13 +17447,15 @@
         function addQuickSaleItem(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
+            
+            const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
 
             // Calculate total stock used by this product in cart
             const currentStockInCart = cart
                 .filter(item => item.productId === product.id)
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
-            if (currentStockInCart + 1 > product.stock) {
+            if (currentStockInCart + prec > product.stock) {
                 showAlert('⚠️ Insufficient Stock for ' + product.name, 'error');
                 return;
             }
@@ -17304,7 +17467,7 @@
             const existingItemIndex = cart.findIndex(item => item.productId === product.id && item.unit === unitName);
 
             if (existingItemIndex >= 0) {
-                cart[existingItemIndex].quantity += 1;
+                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + prec).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
                 cart.push({
@@ -17313,7 +17476,7 @@
                     barcode: product.barcode,
                     unit: unitName,
                     price: unitPrice,
-                    quantity: 1,
+                    quantity: prec,
                     baseQuantity: 1,
                     total: unitPrice,
                     discountPercent: getEffectiveDiscount(product)
