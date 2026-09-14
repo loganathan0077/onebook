@@ -1738,6 +1738,7 @@
             <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)">💵 Day Closing <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">F7</kbd></button>
             <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)">🧮 Calculator <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">F8</kbd></button>
             <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)">⚙️ Settings <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">F9</kbd></button>
+            <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)">💼 Purchase & Parties <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">F10</kbd></button>
             <div style="margin-top: auto; padding: 20px; color: #64748b; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
                 Application Version: 1.0.0 &bull; Built by Shermon Technology
             </div>
@@ -1802,44 +1803,7 @@
                     </table>
                 </div>
                 
-                <!-- Purchase & Parties Section -->
-                <div style="margin-top: 40px; margin-bottom: 10px;">
-                    <h3 class="section-title" style="margin: 0; margin-bottom: 15px;">💼 Purchase & Parties</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        
-                        <button class="btn btn-primary" onclick="openPurchaseModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">➕</span>
-                            Purchase / Bill Entry
-                        </button>
-                        
-                        <button class="btn btn-warning" onclick="openPurchaseHistoryModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600; background-color: #ffc107; color: #212529; border-color: #ffc107;">
-                            <span style="font-size: 2em; line-height: 1;">🧾</span>
-                            Purchase History
-                        </button>
-                        
-                        <button class="btn btn-secondary" onclick="openSupplierManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">👤</span>
-                            Supplier Details
-                        </button>
-
-                        <button class="btn btn-secondary" onclick="openCustomerManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">👥</span>
-                            Customer Details
-                        </button>
-
-                        <button class="btn" onclick="switchTab('receivables')" style="background: var(--th-primary, #f57c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <span style="font-size: 2em; line-height: 1;">💰</span>
-                            Customer Receivables
-                        </button>
-
-                        <button class="btn" onclick="switchTab('payables')" style="background: var(--th-primary-start, #ef6c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <span style="font-size: 2em; line-height: 1;">💳</span>
-                            Supplier Payables
-                        </button>
-                        
-                    </div>
-                </div>
-            </div>
+                            </div>
 
             <!-- Inventory Management Tab -->
             <div id="inventory" class="tab-content">
@@ -2832,6 +2796,48 @@
                         </thead>
                         <tbody id="productsTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Purchase & Parties Tab -->
+            <div id="purchaseparties" class="tab-content" style="display: none;">
+                <!-- Purchase & Parties Section -->
+                <div style="margin-top: 10px; margin-bottom: 10px;">
+
+                    <h3 class="section-title" style="margin: 0; margin-bottom: 15px;">💼 Purchase & Parties</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        
+                        <button class="btn btn-primary" onclick="openPurchaseModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
+                            <span style="font-size: 2em; line-height: 1;">➕</span>
+                            Purchase / Bill Entry
+                        </button>
+                        
+                        <button class="btn btn-warning" onclick="openPurchaseHistoryModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600; background-color: #ffc107; color: #212529; border-color: #ffc107;">
+                            <span style="font-size: 2em; line-height: 1;">🧾</span>
+                            Purchase History
+                        </button>
+                        
+                        <button class="btn btn-secondary" onclick="openSupplierManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
+                            <span style="font-size: 2em; line-height: 1;">👤</span>
+                            Supplier Details
+                        </button>
+
+                        <button class="btn btn-secondary" onclick="openCustomerManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
+                            <span style="font-size: 2em; line-height: 1;">👥</span>
+                            Customer Details
+                        </button>
+
+                        <button class="btn" onclick="switchTab('receivables')" style="background: var(--th-primary, #f57c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <span style="font-size: 2em; line-height: 1;">💰</span>
+                            Customer Receivables
+                        </button>
+
+                        <button class="btn" onclick="switchTab('payables')" style="background: var(--th-primary-start, #ef6c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <span style="font-size: 2em; line-height: 1;">💳</span>
+                            Supplier Payables
+                        </button>
+                        
+                    
                 </div>
             </div>
 
@@ -15703,7 +15709,8 @@
                     'F6': 'pettycash',
                     'F7': 'denomination',
                     'F8': 'calculator',
-                    'F9': 'settings'
+                    'F9': 'settings',
+                    'F10': 'purchaseparties'
                 };
                 if (tabMap[e.key]) {
                     e.preventDefault();
