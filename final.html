@@ -8109,6 +8109,16 @@
                 if (tabName === 'payables') renderPayablesTable();
                 if (tabName === 'pettycash') initPettyCash();
                 if (tabName === 'denomination') updateDayClosingDisplay(); // if there is such a func, I will check later, else it does nothing
+                
+                if (tabName === 'sales') {
+                    // Automatically focus the Search Product field when opening Record Sale
+                    setTimeout(() => {
+                        const searchInput = document.getElementById('saleProductSearch');
+                        if (searchInput) {
+                            searchInput.focus();
+                        }
+                    }, 50);
+                }
             } else {
                 console.warn(`Tab "${tabName}" not found`);
             }
