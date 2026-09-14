@@ -3936,14 +3936,28 @@
     </div>
 
     <!-- Purchase Modal (Reverted) -->
-    <div id="purchaseModal" class="modal">
-        <div class="modal-content" style="max-width: 1200px; width: 95%;">
-            <div class="modal-header">
-                <h2>🛍️ Purchase / Supplier Bill</h2>
-                <button class="modal-close" onclick="closePurchaseModal()">&times;</button>
+    <div id="purchaseModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
+        <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
+            
+            <style>
+                #purchaseModal .form-group { margin-bottom: 8px; }
+                #purchaseModal label { margin-bottom: 2px; font-size: 13px; font-weight: bold; }
+                #purchaseModal input, #purchaseModal select { padding: 4px 8px; height: 32px; font-size: 13px; }
+                #purchaseModal .btn { padding: 4px 12px; font-size: 13px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+                #purchaseFindProductHeader { margin-bottom: 10px !important; }
+                #purchaseFindProductHeader input { height: 32px !important; }
+                #purchaseModal .table th, #purchaseModal .table td { padding: 6px 10px; font-size: 13px; }
+                #purchasePaymentSection { padding: 10px !important; margin-top: 10px !important; }
+                #purchasePaymentSection h4 { margin-bottom: 10px; font-size: 14px; }
+            </style>
+
+            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">🛍️ Purchase / Supplier Bill</h2>
+                <button class="modal-close" onclick="closePurchaseModal()" style="font-size: 24px; padding: 0;">&times;</button>
             </div>
 
-            <div id="purchaseBillFormGrid" class="form-grid" style="margin-bottom: 20px;">
+            <div style="overflow-y: auto; flex: 1; padding-right: 5px;">
+            <div id="purchaseBillFormGrid" class="form-grid" style="margin-bottom: 15px; gap: 10px; grid-template-columns: repeat(3, 1fr);">
                 <div class="form-group">
                     <label>Bill Date <span style="color: red;">*</span></label>
                     <input type="date" id="purchaseDate">
@@ -3978,9 +3992,9 @@
                             style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; z-index: 1000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         </div>
                     </div>
-                    <button class="btn btn-info" onclick="openScannerModal('purchase')" style="height: 46px;">📷
+                    <button class="btn btn-info" onclick="openScannerModal('purchase')" style="height: 32px;">📷
                         Scan</button>
-                    <button class="btn btn-success" onclick="showPurchaseAddNewProductForm()" style="height: 46px;">➕
+                    <button class="btn btn-success" onclick="showPurchaseAddNewProductForm()" style="height: 32px;">➕
                         New Product</button>
                 </div>
 
@@ -4309,7 +4323,8 @@
                 </div>
             </div>
 
-            <div id="purchaseBillActions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            </div>
+            <div id="purchaseBillActions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; background: white;">
                 <button class="btn btn-warning" onclick="clearPurchaseCart()">🗑️ Clear Form</button>
                 <button class="btn btn-success" onclick="savePurchase()">💾 Save Bill & Update Inventory</button>
             </div>
