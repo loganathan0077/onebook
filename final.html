@@ -11245,12 +11245,14 @@
             document.getElementById('saleReceipt').style.display = 'none';
             lastSaleData = null;
             
-            // Refocus product search when closing receipt
-            const searchInput = document.getElementById('saleProductSearch');
-            if (searchInput) {
-                searchInput.focus();
-                window.scrollTo(0, 0); // scroll to top
-            }
+            // Refocus product search when closing receipt (delayed to prevent event carryover)
+            setTimeout(() => {
+                const searchInput = document.getElementById('saleProductSearch');
+                if (searchInput) {
+                    searchInput.focus();
+                    window.scrollTo(0, 0); // scroll to top
+                }
+            }, 50);
         }
 
         // Allow Enter key to close receipt
