@@ -6139,7 +6139,6 @@
                 'purchaseBillTableArea',
                 'purchaseBillItemCount',
                 'purchaseBillActions',
-                'purchaseSelectedProduct',
                 'purchasePaymentSection'
             ];
             idsToToggle.forEach(id => {
@@ -6154,6 +6153,7 @@
         function openPurchaseModal() {
             window.isAddingFromSale = false;
             document.getElementById('purchaseModal').style.display = 'flex';
+            cancelPurchaseSelection(); // explicitly hide and reset product selection
 
             togglePurchaseBillElements(true);
             const titleEl = document.querySelector('#purchaseModal h2');
