@@ -284,7 +284,7 @@ export async function saveBillToCloud(billItems) {
                 // Optional: Strict Stock Check
                 // if (product.stock < deduction) throw new Error(`Insufficient stock for ${product.name}`);
 
-                product.stock -= deduction;
+                product.stock = parseFloat((product.stock - deduction).toFixed(3));
             });
 
             // Reconstruct products array with updates

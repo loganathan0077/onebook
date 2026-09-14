@@ -1,5 +1,5 @@
 // Service Worker for Progressive Web App - Network First Strategy
-const CACHE_NAME = 'sales-app-v6';
+const CACHE_NAME = 'sales-app-v7';
 
 // Install Service Worker
 self.addEventListener('install', (event) => {

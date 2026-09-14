@@ -3854,6 +3854,21 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Quantity Type</label>
+                        <select id="editProductQuantityType" onchange="document.getElementById('editProductDecimalPrecisionContainer').style.display = this.value === 'decimal' ? 'block' : 'none'">
+                            <option value="whole" selected>Whole Number</option>
+                            <option value="decimal">Decimal</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="editProductDecimalPrecisionContainer" style="display: none;">
+                        <label>Decimal Precision</label>
+                        <select id="editProductDecimalPrecision">
+                            <option value="0.1">0.1</option>
+                            <option value="0.01" selected>0.01</option>
+                            <option value="0.001">0.001</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Unit Price (₹)</label>
                         <input type="number" id="editProductPrice" step="0.01" required>
                     </div>
@@ -4066,6 +4081,21 @@
                                 <option value="Cup">Cup</option>
                                 <option value="Unit">Unit</option>
                                 <option value="Sheet">Sheet</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity Type</label>
+                            <select id="newProductQuantityType" onchange="document.getElementById('newProductDecimalPrecisionContainer').style.display = this.value === 'decimal' ? 'block' : 'none'">
+                                <option value="whole" selected>Whole Number</option>
+                                <option value="decimal">Decimal</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="newProductDecimalPrecisionContainer" style="display: none;">
+                            <label>Decimal Precision</label>
+                            <select id="newProductDecimalPrecision">
+                                <option value="0.1">0.1</option>
+                                <option value="0.01" selected>0.01</option>
+                                <option value="0.001">0.001</option>
                             </select>
                         </div>
                         <div class="form-group gst-field" style="display:none;">
@@ -6135,12 +6165,27 @@
         // Add to Cart
         function addPurchaseItem() {
             if (!selectedPurchaseProduct) return;
-            const qty = parseInt(document.getElementById('purchaseQty').value);
+            const qty = parseFloat(document.getElementById('purchaseQty').value);
             const price = parseFloat(document.getElementById('purchaseItemPrice').value) || 0;
             const gstEl = document.getElementById('purchaseItemGST');
             const gstRate = gstEl ? (parseFloat(gstEl.value) || 0) : (selectedPurchaseProduct.gstRate || 0);
 
-            if (qty < 1) return;
+            if (isNaN(qty) || qty <= 0) return;
+            
+            // Validate step for decimals
+            if (selectedPurchaseProduct.quantityType === 'decimal') {
+                const prec = selectedPurchaseProduct.decimalPrecision || 0.01;
+                const multiplier = Math.round(1 / prec);
+                if (Math.abs((qty * multiplier) % 1) > 0.001) {
+                    showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                    return;
+                }
+            } else {
+                if (!Number.isInteger(qty)) {
+                    showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    return;
+                }
+            }
 
             const existing = purchaseCart.find(i => i.productId === selectedPurchaseProduct.id);
             if (existing) {
@@ -8454,16 +8499,30 @@
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
             const productId = parseInt(document.getElementById('updateStockProductId').value);
-            const quantity = parseInt(document.getElementById('addStockQuantity').value);
+            const quantity = parseFloat(document.getElementById('addStockQuantity').value);
 
-            if (!productId || !quantity || quantity < 1) {
+            if (!productId || isNaN(quantity) || quantity <= 0) {
                 showAlert('Please select a product and enter valid quantity', '⚠️');
                 return;
             }
 
             const product = products.find(p => p.id === productId);
             if (product) {
-                product.stock += quantity;
+                if (product.quantityType === 'decimal') {
+                    const prec = product.decimalPrecision || 0.01;
+                    const multiplier = Math.round(1 / prec);
+                    if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                        showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                        return;
+                    }
+                } else {
+                    if (!Number.isInteger(quantity)) {
+                        showAlert(`This product requires a whole number quantity.`, '⚠️');
+                        return;
+                    }
+                }
+
+                product.stock = parseFloat((product.stock + quantity).toFixed(3));
 
                 stockHistory.push({
                     date: new Date().toISOString(),
@@ -9188,6 +9247,20 @@
                     console.error("Selected product not found:", productId);
                     return;
                 }
+                
+                const saleQtyInput = document.getElementById('saleQuantity');
+                if (saleQtyInput) {
+                    if (product.quantityType === 'decimal') {
+                        const prec = product.decimalPrecision || 0.01;
+                        saleQtyInput.step = prec;
+                        saleQtyInput.min = prec;
+                        saleQtyInput.value = prec;
+                    } else {
+                        saleQtyInput.step = '1';
+                        saleQtyInput.min = '1';
+                        saleQtyInput.value = '1';
+                    }
+                }
 
                 if (product.stock <= 0) {
                     if (prompt) prompt.style.display = 'block';
@@ -9262,7 +9335,8 @@
         function addItemToCart(event) {
             event.preventDefault();
             const productId = parseInt(document.getElementById('saleProductId').value);
-            const quantity = parseInt(document.getElementById('saleQuantity').value);
+            const quantityInput = document.getElementById('saleQuantity').value;
+            const quantity = parseFloat(quantityInput);
             const unitSelect = document.getElementById('saleUnit');
 
             // Auto-select base unit if nothing selected and options exist
@@ -9288,8 +9362,8 @@
                 return;
             }
 
-            if (!quantity || quantity < 1) {
-                showAlert('Please enter a valid quantity', '⚠️');
+            if (isNaN(quantity) || quantity <= 0) {
+                showAlert('Please enter a valid quantity greater than 0', '⚠️');
                 return;
             }
 
@@ -9298,6 +9372,24 @@
                 showAlert('Product not available', '❌');
                 return;
             }
+            
+            // Validate step for decimals
+            if (product.quantityType === 'decimal') {
+                const prec = product.decimalPrecision || 0.01;
+                // Avoid floating point modulo issues by using multiplication
+                const multiplier = Math.round(1 / prec);
+                if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                    showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec} ${product.unit || ''}.`, '⚠️');
+                    return;
+                }
+            } else {
+                if (!Number.isInteger(quantity)) {
+                    showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    return;
+                }
+            }
+
+
 
             if (product.stock <= 0) {
                 showAlert('Inventory is 0 — unable to add item to cart', '⚠️');
@@ -9306,7 +9398,7 @@
 
             const unitName = selectedOption.dataset.name || product.unit || 'Piece';
             const unitPrice = parseFloat(selectedOption.dataset.price);
-            const unitQuantity = parseInt(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
+            const unitQuantity = parseFloat(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
             const totalBaseQuantityNeeded = quantity * unitQuantity;
 
             // Check if product already in cart (same product AND same unit)
@@ -9323,7 +9415,7 @@
             }
 
             if (existingItemIndex >= 0) {
-                cart[existingItemIndex].quantity += quantity;
+                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + quantity).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
                 cart.push({
@@ -9470,14 +9562,22 @@
                 return;
             }
 
+            const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
+            const newQty = parseFloat((item.quantity + prec).toFixed(3));
+            
             // Check if we can increase quantity (stock availability)
-            if (item.quantity + 1 > product.stock) {
-                showAlert(`Cannot increase quantity! Available stock: ${product.stock} units`, '⚠️');
+            // Consider baseQuantity multiplier
+            const currentStockInCart = cart
+                .filter(cItem => cItem.productId === product.id && cItem !== item)
+                .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
+                
+            if (currentStockInCart + (newQty * item.baseQuantity) > product.stock) {
+                showAlert(`Cannot increase quantity! Available stock: ${product.stock} ${product.unit || 'units'}`, '⚠️');
                 return;
             }
 
             // Increase quantity
-            item.quantity += 1;
+            item.quantity = newQty;
             item.total = item.quantity * item.price;
 
             updateCartDisplay();
@@ -9487,17 +9587,19 @@
             if (index < 0 || index >= cart.length) return;
 
             const item = cart[index];
+            const product = products.find(p => p.id === item.productId);
+            const prec = (product && product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
 
-            // Check if we can decrease quantity (minimum 1)
-            if (item.quantity <= 1) {
-                popup('Quantity is 1.<br>Do you want to remove this item from cart?', function () {
+            // Check if we can decrease quantity (minimum 1 or prec)
+            if (parseFloat(item.quantity.toFixed(3)) <= prec) {
+                popup(`Quantity is ${prec}.<br>Do you want to remove this item from cart?`, function () {
                     removeFromCart(index);
                 });
                 return;
             }
 
             // Decrease quantity
-            item.quantity -= 1;
+            item.quantity = parseFloat((item.quantity - prec).toFixed(3));
             item.total = item.quantity * item.price;
 
             updateCartDisplay();
@@ -9681,7 +9783,7 @@
                                         <td>
                                             <div class="quantity-controls">
                                                 <button class="qty-btn decrease" onclick="decreaseQuantity(${index})">-</button>
-                                                <span class="qty-value">${item.quantity}</span>
+                                                <span class="qty-value">${item.quantity} ${item.unit || ''}</span>
                                                 <button class="qty-btn increase" onclick="increaseQuantity(${index})">+</button>
                                             </div>
                                         </td>
@@ -10415,7 +10517,7 @@
                                 <tr>
                                     <td>${item.productName}</td>
                                     ${showGstOnReceipt ? '' : `<td>${item.unit || 'Piece'}</td>`}
-                                    <td style="text-align: right;">${item.quantity}</td>
+                                    <td style="text-align: right;">${item.quantity} ${item.unit || ''}</td>
                                     <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
                                     ${showGstOnReceipt ? `<td style="text-align: right;">${item.gstRate || 0}%</td>` : ''}
                                     <td style="text-align: right;">₹${item.total.toFixed(2)}</td>
@@ -10612,7 +10714,7 @@
 
             lastSaleData.items.forEach((item, index) => {
                 message += `${index + 1}. ${item.productName} \n`;
-                message += `   ${item.unit || 'Piece'} × ${item.quantity} = ₹${item.total.toFixed(2)} \n`;
+                message += `   ${item.quantity} ${item.unit || ''} × ₹${item.price.toFixed(2)} = ₹${item.total.toFixed(2)} \n`;
             });
 
             message += `━━━━━━━━━━━━━━━━━━━━\n`;
@@ -11322,7 +11424,7 @@
                     <tr style="border-bottom: 1px solid #dee2e6;">
                         <td style="padding: 10px; border: 1px solid #dee2e6;">${item.productName}</td>
                         <td style="padding: 10px; text-align: center; border: 1px solid #dee2e6;">
-                            <input type="number" min="1" value="${item.quantity}" 
+                            <input type="number" min="0" step="any" value="${item.quantity}" 
                                 id="editQty_${index}" 
                                 onchange="updateEditTotal(${index})"
                                 style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
@@ -12826,11 +12928,13 @@
                 name: name,
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
-                unit: document.getElementById('productUnit').value,
+                unit: document.getElementById('newProductUnit').value,
+                quantityType: document.getElementById('newProductQuantityType').value || 'whole',
+                decimalPrecision: document.getElementById('newProductQuantityType').value === 'decimal' ? parseFloat(document.getElementById('newProductDecimalPrecision').value || 0.01) : undefined,
                 packSizes: getPackSizesFromForm('packSizesContainer'),
                 price: parseFloat(document.getElementById('productPrice').value),
-                stock: parseInt(document.getElementById('productStock').value),
-                minStock: parseInt(document.getElementById('productMinStock').value),
+                stock: parseFloat(document.getElementById('productStock').value),
+                minStock: parseFloat(document.getElementById('productMinStock').value),
                 supplier: document.getElementById('productSupplier').value || 'N/A',
                 description: document.getElementById('productDescription').value || ''
             };
@@ -13082,6 +13186,16 @@
             if (document.getElementById('editProductUnit')) {
                 document.getElementById('editProductUnit').value = product.unit || 'Piece';
             }
+            if (document.getElementById('editProductQuantityType')) {
+                const qtyType = product.quantityType || 'whole';
+                document.getElementById('editProductQuantityType').value = qtyType;
+                const container = document.getElementById('editProductDecimalPrecisionContainer');
+                if (container) container.style.display = qtyType === 'decimal' ? 'block' : 'none';
+                
+                if (qtyType === 'decimal' && document.getElementById('editProductDecimalPrecision')) {
+                    document.getElementById('editProductDecimalPrecision').value = product.decimalPrecision || '0.01';
+                }
+            }
 
             document.getElementById('editProductPrice').value = product.price;
 
@@ -13196,6 +13310,18 @@
                 product.name = document.getElementById('editProductName').value;
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
+                
+                const editQtyType = document.getElementById('editProductQuantityType');
+                if (editQtyType) {
+                    product.quantityType = editQtyType.value;
+                    if (product.quantityType === 'decimal') {
+                        const editDecPrec = document.getElementById('editProductDecimalPrecision');
+                        product.decimalPrecision = editDecPrec ? parseFloat(editDecPrec.value || 0.01) : 0.01;
+                    } else {
+                        delete product.decimalPrecision;
+                    }
+                }
+                
                 product.price = parseFloat(document.getElementById('editProductPrice').value);
                 
                 const discVal = document.getElementById('editProductDiscount').value;
@@ -13212,8 +13338,8 @@
                 }
                 product.gstRate = parseFloat(gstRate) || 0;
 
-                product.stock = parseInt(document.getElementById('editProductStock').value);
-                product.minStock = parseInt(document.getElementById('editProductMinStock').value);
+                product.stock = parseFloat(document.getElementById('editProductStock').value);
+                product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
                 product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
 
                 const editImgBase64 = document.getElementById('editProductImageBase64');
@@ -17307,13 +17433,15 @@
         function addQuickSaleItem(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
+            
+            const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
 
             // Calculate total stock used by this product in cart
             const currentStockInCart = cart
                 .filter(item => item.productId === product.id)
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
-            if (currentStockInCart + 1 > product.stock) {
+            if (currentStockInCart + prec > product.stock) {
                 showAlert('⚠️ Insufficient Stock for ' + product.name, 'error');
                 return;
             }
@@ -17325,7 +17453,7 @@
             const existingItemIndex = cart.findIndex(item => item.productId === product.id && item.unit === unitName);
 
             if (existingItemIndex >= 0) {
-                cart[existingItemIndex].quantity += 1;
+                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + prec).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
                 cart.push({
@@ -17334,7 +17462,7 @@
                     barcode: product.barcode,
                     unit: unitName,
                     price: unitPrice,
-                    quantity: 1,
+                    quantity: prec,
                     baseQuantity: 1,
                     total: unitPrice,
                     discountPercent: getEffectiveDiscount(product)

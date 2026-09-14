@@ -1,163 +1,97 @@
 // ============================================================
-// auth.js - Offline Version
-// Completely replaces Firebase with local storage logic.
+// auth.js - Offline RBAC Version
 // ============================================================
 
-export function updateSyncStatus(status, message) {
-    const statusEl = document.getElementById('sync-status');
-    const iconEl = document.getElementById('sync-icon');
-    const textEl = document.getElementById('sync-text');
+const DEFAULT_ADMIN = {
+    id: "admin_1",
+    name: "Admin",
+    username: "admin@example.com",
+    password: "Admin@2026",
+    role: "admin",
+    status: "active",
+    permissions: []
+};
 
-    if (!statusEl || !iconEl || !textEl) return;
-
-    iconEl.innerText = '💾';
-    textEl.innerText = 'Saved Locally';
-    statusEl.style.background = 'rgba(241,196,15,0.3)';
-    statusEl.style.borderColor = 'rgba(241,196,15,0.6)';
+export function initializeAuth() {
+    let users = JSON.parse(localStorage.getItem('users'));
+    if (!users || users.length === 0) {
+        users = [];
+        const settings = JSON.parse(localStorage.getItem('settings') || 'null');
+        let initialAdmin = { ...DEFAULT_ADMIN };
+        if (settings && settings.adminPassword) {
+            initialAdmin.password = settings.adminPassword;
+        }
+        users.push(initialAdmin);
+        localStorage.setItem('users', JSON.stringify(users));
+    } else {
+        // Force update existing default admin if they are struggling with login
+        let adminUser = users.find(u => u.id === 'admin_1');
+        if (adminUser && adminUser.username === 'admin') {
+            adminUser.username = 'admin@example.com';
+            adminUser.password = 'Admin@2026';
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+    }
 }
 
-export async function login(email, password, force = false) {
-    if (email === "admin@example.com" && password === "Admin@2026") {
-        sessionStorage.setItem('offline_user', email);
-        return { success: true, user: { email: email, uid: "offline_admin" } };
+export async function login(username, password) {
+    initializeAuth();
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+    
+    if (!user) {
+        return { success: false, error: "Incorrect username or password." };
     }
-    if (email === "user@example.com" && password === "User@123") {
-        sessionStorage.setItem('offline_user', email);
-        return { success: true, user: { email: email, uid: "offline_user" } };
+    if (user.status === 'disabled') {
+        return { success: false, error: "This account has been disabled. Please contact the Administrator." };
     }
-    return { success: false, error: "Incorrect username or password." };
+    
+    sessionStorage.setItem('currentUser', JSON.stringify(user));
+    return { success: true, user: user };
 }
 
 export async function logout() {
-    sessionStorage.removeItem('offline_user');
+    sessionStorage.removeItem('currentUser');
+    window.location.reload();
     return { success: true };
 }
 
 export function checkAuth(redirectToLogin = true) {
     return new Promise((resolve) => {
-        const userEmail = sessionStorage.getItem('offline_user');
-        if (userEmail) {
-            resolve({ email: userEmail, uid: "offline_admin" });
-        } else {
-            if (redirectToLogin && !window.location.pathname.includes('login.html') && window.location.pathname !== '/') {
-                window.location.href = '/';
-            }
-            resolve(null);
-        }
+        initializeAuth();
+        const userStr = sessionStorage.getItem('currentUser');
+        if (userStr) resolve(JSON.parse(userStr));
+        else resolve(null);
     });
 }
 
 export function getCurrentUser() {
-    const userEmail = sessionStorage.getItem('offline_user');
-    return userEmail ? { email: userEmail, uid: "offline_admin" } : null;
+    const userStr = sessionStorage.getItem('currentUser');
+    return userStr ? JSON.parse(userStr) : null;
 }
 
-export async function saveBillToCloud(billItems) {
-    if (!billItems || billItems.length === 0) {
-        return { success: false, error: "Empty bill" };
-    }
-
-    try {
-        let products = JSON.parse(localStorage.getItem('products') || '[]');
-        let sales = JSON.parse(localStorage.getItem('sales') || '[]');
-
-        const productMap = new Map(products.map(p => [String(p.id), { ...p }]));
-
-        for (const item of billItems) {
-            const product = productMap.get(String(item.productId));
-            if (!product) {
-                throw new Error(`Product not found: "${item.productName}".`);
-            }
-            const multiplier = item.baseQuantity || 1;
-            const deduction = item.quantity * multiplier;
-            product.stock = (parseFloat(product.stock) || 0) - deduction;
-            productMap.set(String(item.productId), product);
-        }
-
-        products = Array.from(productMap.values());
-        sales = [...sales, ...billItems];
-
-        localStorage.setItem('products', JSON.stringify(products));
-        localStorage.setItem('sales', JSON.stringify(sales));
-
-        updateSyncStatus('offline', 'Sale Saved Locally');
-        return { success: true };
-    } catch (e) {
-        console.error("❌ Bill save failed:", e);
-        return { success: false, error: e.message };
-    }
+export function hasPermission(action) {
+    const user = getCurrentUser();
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (user.status === 'disabled') return false;
+    return (user.permissions || []).includes(action);
 }
-
-export async function savePurchaseToCloud(purchaseRecord) {
-    if (!purchaseRecord || !purchaseRecord.items || purchaseRecord.items.length === 0) {
-        return { success: false, error: "Empty purchase record" };
-    }
-
-    try {
-        let products = JSON.parse(localStorage.getItem('products') || '[]');
-        let purchases = JSON.parse(localStorage.getItem('purchases') || '[]');
-
-        const productMap = new Map(products.map(p => [String(p.id), { ...p }]));
-
-        purchaseRecord.items.forEach(item => {
-            const product = productMap.get(String(item.productId));
-            if (product) {
-                product.stock = (parseFloat(product.stock) || 0) + (parseFloat(item.qty) || 0);
-                if (item.price > 0) product.costPrice = parseFloat(item.price);
-                if (item.sellingPrice > 0) product.price = parseFloat(item.sellingPrice);
-                productMap.set(String(item.productId), product);
-            }
-        });
-
-        products = Array.from(productMap.values());
-        purchases = [...purchases, purchaseRecord];
-
-        localStorage.setItem('products', JSON.stringify(products));
-        localStorage.setItem('purchases', JSON.stringify(purchases));
-
-        updateSyncStatus('offline', 'Purchase Saved Locally');
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-}
-
-export async function loadUserDataFromFirestore(userId) {
-    // Already in local storage, do nothing
-    return { success: true };
-}
-
-export async function syncDataToFirestore(userId) {
-    // Offline, so syncing is essentially saving locally which is already done
-    return { success: true };
-}
-
-export function startRealtimeSync(userId, onDataUpdate) {
-    // No real-time sync needed for fully offline app
-    return () => {};
-}
-
-export function stopRealtimeSync() {}
-
-export function suppressNextListenerUpdate(durationMs = 5000) {}
-
-export function autoSync() {}
 
 export async function isAdmin() {
-    const userEmail = sessionStorage.getItem('offline_user');
-    return userEmail === "admin@example.com";
+    const user = getCurrentUser();
+    return user && user.role === 'admin';
 }
 
-export async function verifyAdmin(actionName) {
-    return { success: true };
-}
-
-export async function establishSession(userId, email) {
-    return { status: 'active' };
-}
-
-export async function recoverData() {
-    alert('Data recovery is not applicable in offline mode. Data is saved locally.');
-}
-
+export function updateSyncStatus(status, message) {}
+export async function saveBillToCloud(billItems) { return { success: true }; }
+export async function savePurchaseToCloud(purchaseRecord) { return { success: true }; }
+export async function loadUserDataFromFirestore(userId) { return { success: true }; }
+export async function syncDataToFirestore(userId) { return { success: true }; }
+export function startRealtimeSync(userId, onDataUpdate) { return () => {}; }
+export function stopRealtimeSync() {}
+export function autoSync() {}
+export async function verifyAdmin(actionName) { return { success: true }; }
+export async function establishSession(userId, email) { return { status: 'active' }; }
+export async function recoverData() { alert('Data recovery is not applicable in offline mode.'); }
 window.recoverData = recoverData;
