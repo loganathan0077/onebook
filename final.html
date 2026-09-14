@@ -4015,6 +4015,7 @@
             </form>
         </div>
     </div>
+</div>
 
     <!-- Add Item Success Modal -->
     <div id="addItemSuccessModal" class="modal" style="z-index: 1060; display: none; align-items: center; justify-content: center;">
@@ -5201,7 +5202,7 @@
     </div>
 
     <script type="module">
-        import { checkAuth, logout, autoSync, getCurrentUser, loadUserDataFromFirestore, startRealtimeSync, stopRealtimeSync, isAdmin, syncDataToFirestore } from './auth.js';
+        import { checkAuth, logout, getCurrentUser, isAdmin } from './auth.js';
 
         // Global variable to track admin status
         window.isUserAdmin = false;
@@ -5268,7 +5269,7 @@
         };
 
         // Make autoSync available globally
-        window.firebaseAutoSync = autoSync;
+        
         window.syncDataToFirestore = syncDataToFirestore;
 
         // Real-time sync - Instant updates across all devices
@@ -5772,7 +5773,7 @@
 
             draftSales.push(draft);
             localStorage.setItem('draftSales', JSON.stringify(draftSales));
-            if (window.firebaseAutoSync) window.firebaseAutoSync();
+            
 
             // Clear current cart
             cart = [];
@@ -5869,7 +5870,7 @@
                 // Remove from drafts
                 draftSales.splice(index, 1);
                 localStorage.setItem('draftSales', JSON.stringify(draftSales));
-                if (window.firebaseAutoSync) window.firebaseAutoSync();
+                
 
                 updateCartDisplay();
                 updateDraftsDisplay();
@@ -5888,7 +5889,7 @@
             showConfirm('Delete this draft sale?', () => {
                 draftSales.splice(index, 1);
                 localStorage.setItem('draftSales', JSON.stringify(draftSales));
-                if (window.firebaseAutoSync) window.firebaseAutoSync();
+                
                 updateDraftsDisplay();
             });
         }
@@ -6007,10 +6008,7 @@
             // UI Feedback: Immediately show "Saved Locally"
             if (window.updateSyncStatus) window.updateSyncStatus('offline', 'Saved to Device');
 
-            // Auto-sync to Firebase
-            if (window.firebaseAutoSync) {
-                window.firebaseAutoSync();
-            }
+            
         }
 
         // Backup and Restore Functions
@@ -6206,7 +6204,8 @@
             const addrEl = document.getElementById('purchaseSupplierAddress');
             if (addrEl) addrEl.value = '';
 
-            document.getElementById('purchaseNotes').value = '';
+            const notesEl = document.getElementById('purchaseNotes');
+            if (notesEl) notesEl.value = '';
             purchaseCart = [];
             updatePurchaseTable();
 
@@ -7475,48 +7474,50 @@
             };
 
             // Show Blocking Overlay
-            const savingOverlay = document.getElementById('savingOverlay');
-            if (savingOverlay) {
-                savingOverlay.querySelector('.saving-text').innerText = "Saving Purchase...";
-                savingOverlay.classList.add('show');
-            }
+            // LOCAL SAVE
+            
+            // 1. Add to purchases array
+            purchases.push(record);
 
-            // Call Cloud Function
-            window.savePurchaseToCloud(record).then(result => {
-                if (savingOverlay) savingOverlay.classList.remove('show');
-
-                if (result.success) {
-                    showAlert('Purchase Saved to Cloud!', '✅');
-
-                    // Clear Data
-                    purchaseCart = [];
-                    document.getElementById('purchaseDiscount').value = 0;
-                    document.getElementById('purchaseOtherCharges').value = 0;
-                    document.getElementById('purchaseInvoiceNumber').value = '';
-                    document.getElementById('purchaseSupplier').value = '';
-                    if(document.getElementById('purchasePaymentMethod')) document.getElementById('purchasePaymentMethod').value = 'cash';
-                    if(document.getElementById('purchaseCreditAmountPaid')) document.getElementById('purchaseCreditAmountPaid').value = '0';
-                    if(document.getElementById('purchaseCreditOutstanding')) document.getElementById('purchaseCreditOutstanding').value = '0';
-                    if(document.getElementById('purchaseCreditDueDate')) document.getElementById('purchaseCreditDueDate').value = '';
-                    if(typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
-                    selectedSupplierId = null;
-
-                    // Close Modal
-                    closePurchaseModal();
-
-                    // NO LOCAL SAVE. Wait for Realtime Sync to update Tables/Dashboard.
-                } else {
-                    showAlert('❌ Purchase Save Failed: ' + result.error, 'error');
+            // 2. Update stock and stock history
+            record.items.forEach(item => {
+                const productIndex = products.findIndex(p => p.id === item.productId);
+                if (productIndex !== -1) {
+                    products[productIndex].stock += item.quantity;
+                    
+                    stockHistory.push({
+                        date: record.date,
+                        productId: item.productId,
+                        productName: item.productName,
+                        type: 'purchase',
+                        quantity: item.quantity,
+                        details: `Purchased (Invoice: ${record.invoiceNumber})`
+                    });
                 }
-            }).catch(err => {
-                if (savingOverlay) savingOverlay.classList.remove('show');
-                console.error(err);
-                showAlert('❌ Unexpected Error: ' + err.message, 'error');
             });
 
-            updatePurchaseTable(); // Clear table visual (empty cart)
-        } // End savePurchase
+            // 3. Save to localStorage
+            saveData();
 
+            showAlert('Purchase Saved Successfully!', '✅');
+
+            // Clear Data
+            purchaseCart = [];
+            document.getElementById('purchaseDiscount').value = 0;
+            document.getElementById('purchaseOtherCharges').value = 0;
+            document.getElementById('purchaseInvoiceNumber').value = '';
+            document.getElementById('purchaseSupplier').value = '';
+            if(document.getElementById('purchasePaymentMethod')) document.getElementById('purchasePaymentMethod').value = 'cash';
+            if(document.getElementById('purchaseCreditAmountPaid')) document.getElementById('purchaseCreditAmountPaid').value = '0';
+            if(document.getElementById('purchaseCreditOutstanding')) document.getElementById('purchaseCreditOutstanding').value = '0';
+            if(document.getElementById('purchaseCreditDueDate')) document.getElementById('purchaseCreditDueDate').value = '';
+            if(typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
+            selectedSupplierId = null;
+
+            // Close Modal
+            closePurchaseModal();
+
+        }
         // New Product Form Logic (Inline)
         function generateNewProductBarcode() {
             const code = 'DDS-' + Date.now().toString().slice(-6);
@@ -8099,11 +8100,15 @@
             if (activeTab) {
                 activeTab.classList.add('active');
                 activeTab.style.display = 'block'; // Force display to ensure visibility
-
-            if (tabName === 'pettycash') {
-                initPettyCash();
-            }
-
+                
+                // Specific tab initializations
+                if (tabName === 'inventory') updateInventoryTable();
+                if (tabName === 'reports') generateSalesChart();
+                if (tabName === 'products') renderProductTable();
+                if (tabName === 'receivables') renderReceivablesTable();
+                if (tabName === 'payables') renderPayablesTable();
+                if (tabName === 'pettycash') initPettyCash();
+                if (tabName === 'denomination') updateDayClosingDisplay(); // if there is such a func, I will check later, else it does nothing
             } else {
                 console.warn(`Tab "${tabName}" not found`);
             }
@@ -10488,132 +10493,102 @@
                     }
                 });
 
-                // CLOUD SAVE
-                try {
-                    const result = await saveBillToCloud(saleItems);
+                // LOCAL SAVE
+                // Store sale data for receipt
+                lastSaleData = {
+                    saleId: saleId,
+                    receiptNumber: receiptNumber,
+                    date: saleDate,
+                    items: saleItems, // These are just the objects we created
+                    customerName: customerName,
+                    paymentMethod: paymentMethod,
+                    subtotal: subtotal,
+                    discount: discount,
+                    courier: courier,
+                    total: total,
+                    cashAmount: cashAmount,
+                    otherPaymentAmount: otherAmount,
+                    customerAmount: totalReceived,
+                    change: change,
+                    gstApplied: settings.gstEnabled === true
+                };
 
-                    savingOverlay.classList.remove('show');
-
-                    if (result.success) {
-                        // Success! Now we can show receipt.
-                        // But we also need to update our LOCAL view of data.
-                        // Since we are listening to real-time updates (`startRealtimeSync`),
-                        // the data should come back to us automatically!
-                        // However, for immediate feedback ("View Receipt"), we need the `lastSaleData`.
-
-                        // Store sale data for receipt
-                        lastSaleData = {
-                            saleId: saleId,
-                            receiptNumber: receiptNumber,
-                            date: saleDate,
-                            items: saleItems, // These are just the objects we created
-                            customerName: customerName,
-                            paymentMethod: paymentMethod,
-                            subtotal: subtotal,
-                            discount: discount,
-                            courier: courier,
-                            total: total,
-                            cashAmount: cashAmount,
-                            otherPaymentAmount: otherAmount,
-                            customerAmount: totalReceived,
-                            change: change,
-                            gstApplied: settings.gstEnabled === true
-                        };
-
-                        // We do NOT call saveData() locally.
-
-                        // Clear cart and form
-                        cart = [];
-                        document.getElementById('addItemForm').reset();
-                        if(typeof clearCustomerSelection === 'function') clearCustomerSelection();
-                        if(document.getElementById('customerName')) document.getElementById('customerName').value = '';
+                // Deduct stock locally
+                saleItems.forEach(sale => {
+                    const productIndex = products.findIndex(p => p.id === sale.productId);
+                    if (productIndex !== -1) {
+                        products[productIndex].stock -= (sale.quantity * (sale.baseQuantity || 1));
                         
-                        document.getElementById('otherPaymentAmount').value = '0';
-                        document.getElementById('discountAmount').value = '0'; // Reset Discount
-                        document.getElementById('courierCharges').value = '0'; // Reset Courier
-                        document.getElementById('paymentMethod').value = 'cash';
-                        document.getElementById('paymentMethodSearch').value = 'Cash Only'; // Update combobox input
-                        
-                        updateCartDisplay();
-                        togglePaymentFields();
-                        
-                        document.getElementById('changeAmount').value = '';
-                        document.getElementById('creditAmountPaid').value = '0';
-                        document.getElementById('creditOutstanding').value = '0';
-                        document.getElementById('creditPaymentMethod').value = 'cash';
-                        document.getElementById('creditDueDate').value = '';
-
-                        // Show receipt
-                        showReceipt();
-
-                        // Force focus back to Product Search for next sale
-                        setTimeout(() => {
-                            const searchInput = document.getElementById('saleProductSearch');
-                            if (searchInput) {
-                                searchInput.focus();
-                                window.scrollTo(0, 0); // scroll to top so they see the input
-                            }
-                        }, 100);
-
-                        // Force update local view immediately for better UX
-                        if (typeof updateTodaysSales === 'function') {
-                            // Add the new sale to our local 'sales' array temporarily so it shows up before sync
-                            // proper sync will overwrite it later, which is fine.
-                            const newSaleTransaction = {
-                                saleId: lastSaleData.saleId,
-                                receiptNumber: lastSaleData.receiptNumber,
-                                date: lastSaleData.date,
-                                items: lastSaleData.items,
-                                customerName: lastSaleData.customerName,
-                                paymentMethod: lastSaleData.paymentMethod,
-                                subtotal: lastSaleData.subtotal,
-                                discount: lastSaleData.discount,
-                                courier: lastSaleData.courier,
-                                total: lastSaleData.total,
-                                cashAmount: lastSaleData.cashAmount,
-                                otherPaymentAmount: lastSaleData.otherPaymentAmount,
-                                customerAmount: lastSaleData.customerAmount,
-                                change: lastSaleData.change
-                            };
-
-                            // Calculate discount distribution to prevent duplicating the bill discount
-                            let remainingDiscount = lastSaleData.discount;
-                            const totalAmountForDiscount = lastSaleData.subtotal;
-                            
-                            lastSaleData.items.forEach((item, index) => {
-                                let itemDiscount = 0;
-                                if (lastSaleData.discount > 0 && totalAmountForDiscount > 0) {
-                                    if (index === lastSaleData.items.length - 1) {
-                                        // Give any remainder to the last item
-                                        itemDiscount = parseFloat(remainingDiscount.toFixed(2));
-                                    } else {
-                                        // Distribute proportionally based on item total vs bill subtotal
-                                        itemDiscount = parseFloat(((item.total / totalAmountForDiscount) * lastSaleData.discount).toFixed(2));
-                                        remainingDiscount -= itemDiscount;
-                                    }
-                                }
-
-                                sales.push({
-                                    ...newSaleTransaction,
-                                    ...item,
-                                    discount: itemDiscount, // OVERWRITE with proportional item discount
-                                    billDiscount: lastSaleData.discount, // Save total for reference if needed
-                                    items: undefined // Remove nested items provided by spreading
-                                });
-                            });
-
-                            updateTodaysSales();
-                        }
-
-                    } else {
-                        // Clean Failure
-                        showAlert('❌ Cloud Save Failed: ' + result.error + '\n\nPlease check connection.', 'error');
+                        // Add to stock history
+                        stockHistory.push({
+                            date: sale.date,
+                            productId: sale.productId,
+                            productName: sale.productName,
+                            type: 'sale',
+                            quantity: sale.quantity,
+                            details: `Sold (Receipt: ${sale.receiptNumber})`
+                        });
                     }
-                } catch (err) {
-                    savingOverlay.classList.remove('show');
-                    console.error(err);
-                    showAlert('❌ Unexpected Error: ' + err.message, 'error');
-                }
+                });
+
+                // Calculate discount distribution to prevent duplicating the bill discount
+                let remainingDiscount = lastSaleData.discount;
+                const totalAmountForDiscount = lastSaleData.subtotal;
+                
+                saleItems.forEach((sale, index) => {
+                    let itemDiscount = 0;
+                    if (lastSaleData.discount > 0 && totalAmountForDiscount > 0) {
+                        if (index === saleItems.length - 1) {
+                            itemDiscount = parseFloat(remainingDiscount.toFixed(2));
+                        } else {
+                            itemDiscount = parseFloat(((sale.total / totalAmountForDiscount) * lastSaleData.discount).toFixed(2));
+                            remainingDiscount -= itemDiscount;
+                        }
+                    }
+
+                    // Push to master sales array
+                    sales.push({
+                        ...sale,
+                        discount: itemDiscount, // OVERWRITE with proportional item discount
+                        billDiscount: lastSaleData.discount // Save total for reference if needed
+                    });
+                });
+
+                // Save locally
+                saveData();
+
+                // Clear cart and form
+                cart = [];
+                document.getElementById('addItemForm').reset();
+                if(typeof clearCustomerSelection === 'function') clearCustomerSelection();
+                if(document.getElementById('customerName')) document.getElementById('customerName').value = '';
+                
+                document.getElementById('otherPaymentAmount').value = '0';
+                document.getElementById('discountAmount').value = '0'; // Reset Discount
+                document.getElementById('courierCharges').value = '0'; // Reset Courier
+                document.getElementById('paymentMethod').value = 'cash';
+                document.getElementById('paymentMethodSearch').value = 'Cash Only'; // Update combobox input
+                
+                updateCartDisplay();
+                togglePaymentFields();
+                
+                document.getElementById('changeAmount').value = '';
+                document.getElementById('creditAmountPaid').value = '0';
+                document.getElementById('creditOutstanding').value = '0';
+                document.getElementById('creditPaymentMethod').value = 'cash';
+                document.getElementById('creditDueDate').value = '';
+
+                // Show receipt
+                showReceipt();
+
+                // Force focus back to Product Search for next sale
+                setTimeout(() => {
+                    const searchInput = document.getElementById('saleProductSearch');
+                    if (searchInput) {
+                        searchInput.focus();
+                        window.scrollTo(0, 0); // scroll to top so they see the input
+                    }
+                }, 100);
             });
         }
 
@@ -13164,7 +13139,7 @@
                 if (!categories.includes(customValue)) {
                     categories.push(customValue);
                     localStorage.setItem('customCategories', JSON.stringify(categories));
-                    if (window.firebaseAutoSync) window.firebaseAutoSync();
+                    
                 }
 
                 // Add to select if not exists
@@ -15034,19 +15009,8 @@
 
 
 
-    <script type="module">
-        import { auth } from './firebase-config.js';
-        import { saveBillToCloud, savePurchaseToCloud } from './auth.js';
-
-        window.saveBillToCloud = saveBillToCloud;
-        window.savePurchaseToCloud = savePurchaseToCloud;
-    </script>
-    <!-- Saving Overlay -->
-    <div id="savingOverlay" class="saving-overlay">
-        <div class="saving-spinner"></div>
-        <div class="saving-text">Saving to Cloud...</div>
-        <div class="saving-subtext">Please wait. Do not close the app.</div>
-    </div>
+    
+    
     <script>
         // --- Calculator Logic ---
         function appendCalc(val) {

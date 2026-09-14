@@ -83,15 +83,4 @@ export async function isAdmin() {
     return user && user.role === 'admin';
 }
 
-export function updateSyncStatus(status, message) {}
-export async function saveBillToCloud(billItems) { return { success: true }; }
-export async function savePurchaseToCloud(purchaseRecord) { return { success: true }; }
-export async function loadUserDataFromFirestore(userId) { return { success: true }; }
-export async function syncDataToFirestore(userId) { return { success: true }; }
-export function startRealtimeSync(userId, onDataUpdate) { return () => {}; }
-export function stopRealtimeSync() {}
-export function autoSync() {}
 export async function verifyAdmin(actionName) { return { success: true }; }
-export async function establishSession(userId, email) { return { status: 'active' }; }
-export async function recoverData() { alert('Data recovery is not applicable in offline mode.'); }
-window.recoverData = recoverData;
