@@ -1948,7 +1948,7 @@
                                             <span class="combobox-clear" id="saleProductClear" onclick="clearSaleProductSelection()" title="Clear selection">×</span>
                                             <div id="saleProductDropdown" class="custom-dropdown" style="display: none;"></div>
                                         </div>
-                                        <input type="hidden" id="saleProductId" required>
+                                        <input type="hidden" id="saleProductId">
                                         <div id="addInventoryPrompt" style="display: none; margin-top: 5px; padding: 5px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; font-size: 11px;">
                                             <span style="color: #856404; display: block; font-weight: bold;">⚠️ No inventory</span>
                                             <button type="button" class="btn btn-sm btn-warning" style="padding: 2px 5px; font-size: 10px; margin-top: 2px;" onclick="handleAddInventoryFromSale()">+ Add</button>
@@ -8879,9 +8879,11 @@
 
             // Filter products based on search term
             const filteredProducts = products.filter(product => {
-                return product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (product.barcode && product.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                    (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase()));
+                const searchLower = searchTerm.toLowerCase();
+                const nameMatch = product.name && product.name.toLowerCase().includes(searchLower);
+                const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(searchLower);
+                const categoryMatch = product.category && product.category.toLowerCase().includes(searchLower);
+                return nameMatch || barcodeMatch || categoryMatch;
             });
 
             if (filteredProducts.length === 0) {
