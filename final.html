@@ -10477,6 +10477,11 @@
                 document.getElementById('creditPaymentMethod').value = 'cash';
                 document.getElementById('creditDueDate').value = '';
 
+                // Refresh UI immediately
+                updateTodaysSales();
+                updateDashboard();
+                updateInventoryTable();
+
                 // Show receipt
                 showReceipt();
             });
