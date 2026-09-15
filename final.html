@@ -1961,7 +1961,7 @@
                                             <span class="combobox-clear" id="saleUnitClear" onclick="clearSaleUnitSelection()" title="Clear selection">×</span>
                                             <div id="saleUnitDropdown" class="custom-dropdown" style="display: none;"></div>
                                         </div>
-                                        <select id="saleUnit" required onchange="onSaleUnitChange()" style="display: none;">
+                                        <select id="saleUnit" onchange="onSaleUnitChange()" style="display: none;">
                                             <option value="">Select Unit...</option>
                                         </select>
                                     </div>
@@ -8880,10 +8880,11 @@
             // Filter products based on search term
             const filteredProducts = products.filter(product => {
                 const searchLower = searchTerm.toLowerCase();
-                const nameMatch = product.name && product.name.toLowerCase().includes(searchLower);
-                const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(searchLower);
-                const categoryMatch = product.category && product.category.toLowerCase().includes(searchLower);
-                return nameMatch || barcodeMatch || categoryMatch;
+                const nameStr = product.name !== undefined && product.name !== null ? String(product.name).toLowerCase() : '';
+                const barcodeStr = product.barcode !== undefined && product.barcode !== null ? String(product.barcode).toLowerCase() : '';
+                const categoryStr = product.category !== undefined && product.category !== null ? String(product.category).toLowerCase() : '';
+                
+                return nameStr.includes(searchLower) || barcodeStr.includes(searchLower) || categoryStr.includes(searchLower);
             });
 
             if (filteredProducts.length === 0) {
