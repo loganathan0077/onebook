@@ -2213,9 +2213,9 @@
                     <input type="date" id="recordSalesDate" onchange="updateTodaysSales()"
                         style="padding: 8px; border-radius: 5px; border: 1px solid #dee2e6; max-width: 100%;">
                 </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <tr>
                                 <th>Date & Time</th>
                                 <th>Bill No</th>
