@@ -12752,12 +12752,6 @@
         }
 
         function printLabels(printItems) {
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                showAlert('Pop-up blocked! Please allow pop-ups to print.', '⚠️');
-                return;
-            }
-
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
             // Allow override from Label Center if not default
@@ -12845,7 +12839,7 @@
                     // MRP / Price Logic
                     let priceHtml = '';
                     if (settings.labelShowMRP) {
-                        priceHtml = `<div class="price">MRP: ₹${parseFloat(product.price).toFixed(2)}${unitText}</div>`;
+                        priceHtml = `<div class="price">MRP: ₹${parseFloat(product.price).toFixed(2)}</div>`;
                     }
 
                     // Barcode Toggle
@@ -12870,7 +12864,7 @@
                 }
             });
 
-            printWindow.document.write(`
+            const finalHtml = `
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -12978,8 +12972,21 @@
                     <\/script>
                 </body>
                 </html>
-            `);
-            printWindow.document.close();
+            `;
+
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            const blobUrl = URL.createObjectURL(blob);
+            const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            
+            if (!printWindow) {
+                showAlert('Pop-up blocked! Please allow pop-ups to print.', '⚠️');
+                return;
+            }
+            
+            // Clean up the blob URL after a minute to ensure it has time to load
+            setTimeout(() => {
+                URL.revokeObjectURL(blobUrl);
+            }, 60000);
         }
 
         function calculateSimilarity(s1, s2) {
