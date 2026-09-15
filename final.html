@@ -1858,6 +1858,7 @@
                                     <th class="gst-field" style="display:none; width: 6%;">HSN</th>
                                     <th class="gst-field" style="display:none; width: 6%;">GST%</th>
                                     <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
+                                    <th onclick="sortInventory('expiryDays')" style="cursor: pointer; width: 8%;">Exp. Days <span id="sort-expiryDays"></span></th>
                                     <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
                                     <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
                                     <th onclick="sortInventory('discount')" style="cursor: pointer; width: 8%;">Disc <span id="sort-discount"></span></th>
@@ -2787,6 +2788,7 @@
                                 <th style="width: 150px;">Barcode</th>
                                 <th>Product Name</th>
                                 <th>Category</th>
+                                <th id="labelCenterExpDaysHeader" style="text-align: right;">Exp. Days</th>
                                 <th>Stock</th>
                                 <th>Price</th>
                                 <th style="width: 100px; text-align: center;">Labels Qty</th>
@@ -3898,6 +3900,10 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Expiry Days (Optional)</label>
+                        <input type="number" id="editProductExpiryDays" placeholder="e.g. 30" min="0">
+                    </div>
+                    <div class="form-group">
                         <label>Base Unit</label>
                         <select id="editProductUnit" required>
                             <option value="">Select Unit...</option>
@@ -4105,6 +4111,10 @@
                                     <select id="newProductCategory">
                                         <option value="">Select Category...</option>
                                     </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Expiry Days (Optional)</label>
+                                    <input type="number" id="newProductExpiryDays" placeholder="e.g. 30" min="0">
                                 </div>
                                 <div class="form-group">
                                     <label>Base Unit (single item info)</label>
@@ -5488,6 +5498,16 @@
                 labelFontBold: true,
                 labelAlignment: 'center',
                 labelBarcodeSize: 'medium',
+                labelShowBusinessName: true,
+                labelShowMonthCode: false,
+                labelShowMRP: true,
+                labelShowExpiry: false,
+                labelShowMfgDate: false,
+                labelShowBarcode: true,
+                labelMonthCodes: {
+                    0: '@', 1: '!', 2: '$', 3: '^', 4: '&', 5: '*',
+                    6: '#', 7: '%', 8: '+', 9: '=', 10: '~', 11: '?'
+                },
                 // Invoice Numbering Settings
                 invoicePrefix: 'INV',
                 invoiceNextNumber: 1,
@@ -7481,6 +7501,9 @@
                 const categoryEl = document.getElementById('newProductCategory');
                 let category = categoryEl ? categoryEl.value : '';
 
+                const expEl = document.getElementById('newProductExpiryDays');
+                const expiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
+
                 const unitEl = document.getElementById('newProductUnit');
                 const unit = unitEl ? unitEl.value : '';
 
@@ -7576,6 +7599,7 @@
                         newProd.barcode = barcode || newProd.barcode;
                         newProd.category = category;
                         newProd.unit = unit;
+                        newProd.expiryDays = expiryDays;
                         newProd.price = sellingPrice;
                         newProd.costPrice = costPrice;
                         newProd.hsn = hsn;
@@ -7594,6 +7618,7 @@
                             name: name,
                             category: category,
                             unit: unit,
+                            expiryDays: expiryDays,
                             price: sellingPrice,
                             costPrice: costPrice,
                             hsn: hsn,
@@ -8507,6 +8532,7 @@
                     ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
                     ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                     <td>${product.category || 'Uncategorized'}</td>
+                    <td>${product.expiryDays ? product.expiryDays : '—'}</td>
                     <td class="${stockStatus}">${product.stock}</td>
                     <td>₹${product.price.toFixed(2)}</td>
                     <td>${displayDiscount}</td>
@@ -12780,11 +12806,64 @@
                 }
 
                 for(let i = 0; i < qty; i++) {
+                    let productNameDisplay = product.name;
+                    
+                    // Month Code Logic
+                    if (settings.labelShowMonthCode) {
+                        const currentMonthIndex = new Date().getMonth(); // 0 to 11
+                        const mc = (settings.labelMonthCodes && settings.labelMonthCodes[currentMonthIndex]) ? settings.labelMonthCodes[currentMonthIndex] : '';
+                        if (mc) {
+                            productNameDisplay = mc + " " + productNameDisplay;
+                        }
+                    }
+
+                    // Expiry Date Logic
+                    let expiryHtml = '';
+                    if (settings.labelShowExpiry && product.expiryDays) {
+                        const expDate = new Date();
+                        expDate.setDate(expDate.getDate() + parseInt(product.expiryDays));
+                        const formattedExp = String(expDate.getDate()).padStart(2, '0') + '/' + String(expDate.getMonth() + 1).padStart(2, '0') + '/' + String(expDate.getFullYear()).slice(-2);
+                        expiryHtml = `<div class="meta-info">Exp: ${formattedExp}</div>`;
+                    }
+
+                    // Mfg Date Logic
+                    let mfgHtml = '';
+                    if (settings.labelShowMfgDate) {
+                        const today = new Date();
+                        const formattedMfg = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + String(today.getFullYear()).slice(-2);
+                        mfgHtml = `<div class="meta-info">Mfg: ${formattedMfg}</div>`;
+                    }
+
+                    // Business Name Logic
+                    let bNameHtml = '';
+                    if (settings.labelShowBusinessName && settings.businessName) {
+                        bNameHtml = `<div class="business-name">${settings.businessName}</div>`;
+                    }
+                    
+                    // Unit Logic removed as per request
+
+                    // MRP / Price Logic
+                    let priceHtml = '';
+                    if (settings.labelShowMRP) {
+                        priceHtml = `<div class="price">MRP: ₹${parseFloat(product.price).toFixed(2)}${unitText}</div>`;
+                    }
+
+                    // Barcode Toggle
+                    let barcodeHtml = '';
+                    if (settings.labelShowBarcode !== false) {
+                        barcodeHtml = `<svg id="barcode-svg-${labelIndex}" class="barcode-svg" data-value="${barcodeValue}" data-format="${barcodeFormat}"></svg>`;
+                    }
+
                     labelsHtml += `
                         <div class="label" style="text-align: ${align};">
-                            <div class="product-name">${product.name}</div>
-                            <svg id="barcode-svg-${labelIndex}" class="barcode-svg" data-value="${barcodeValue}" data-format="${barcodeFormat}"></svg>
-                            <div class="price">₹${parseFloat(product.price).toFixed(2)}</div>
+                            ${bNameHtml}
+                            <div class="product-name">${productNameDisplay}</div>
+                            ${barcodeHtml}
+                            ${priceHtml}
+                            <div style="display: flex; gap: 5px; justify-content: ${align === 'left' ? 'flex-start' : (align === 'right' ? 'flex-end' : 'center')}; width: 100%;">
+                                ${mfgHtml}
+                                ${expiryHtml}
+                            </div>
                         </div>
                     `;
                     labelIndex++;
@@ -12835,6 +12914,20 @@
                             font-size: ${fontSize + 2}px; 
                             font-weight: bold; 
                             margin-top: 2px; 
+                        }
+                        .business-name {
+                            font-size: ${Math.max(fontSize - 2, 8)}px;
+                            font-weight: bold;
+                            margin-bottom: 2px;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            max-width: 100%;
+                        }
+                        .meta-info {
+                            font-size: ${Math.max(fontSize - 4, 6)}px;
+                            color: #333;
+                            margin-top: 1px;
                         }
                         svg { max-width: 100%; max-height: 50%; }
                         
@@ -12987,6 +13080,7 @@
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
                 unit: document.getElementById('newProductUnit').value,
+                expiryDays: document.getElementById('newProductExpiryDays') && document.getElementById('newProductExpiryDays').value !== '' ? parseInt(document.getElementById('newProductExpiryDays').value) || 0 : 0,
                 quantityType: document.getElementById('newProductQuantityType').value || 'whole',
                 decimalPrecision: document.getElementById('newProductQuantityType').value === 'decimal' ? parseFloat(document.getElementById('newProductDecimalPrecision').value || 0.01) : undefined,
                 packSizes: getPackSizesFromForm('packSizesContainer'),
@@ -13060,6 +13154,15 @@
         // Global Set to track selected product IDs across searches
         const selectedLabelProductIds = new Set();
 
+        function updateProductExpiryDays(id, value) {
+            const product = products.find(p => String(p.id) === String(id));
+            if (product) {
+                const numVal = parseInt(value);
+                product.expiryDays = (numVal && numVal > 0) ? numVal : '';
+                saveData();
+            }
+        }
+
         function toggleProductSelection(id, isChecked) {
             id = parseInt(id);
             if (isChecked) {
@@ -13097,6 +13200,11 @@
 
             const searchInput = document.getElementById('productSearchLabelCenter');
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            const showExpDays = settings.labelShowExpiry === true;
+            const expHeader = document.getElementById('labelCenterExpDaysHeader');
+            if (expHeader) expHeader.style.display = showExpDays ? 'table-cell' : 'none';
 
             console.log('Search Debug:', { searchTerm, totalProducts: products.length });
 
@@ -13151,10 +13259,11 @@
                         ${product.name}
                     </td>
                     <td>${product.category}</td>
+                    ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 70px; text-align: right; margin: 0 0 0 auto; padding: 2px 5px;" placeholder="—"></td>` : ''}
                     <td>${product.stock} ${product.unit || ''}</td>
                     <td>₹${product.price.toFixed(2)}</td>
                     <td style="text-align: center;">
-                        <input type="number" class="form-control main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" style="width: 70px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)">
+                        <input type="number" class="form-control main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" style="width: 70px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)">
                     </td>
                     <td>
                         <button class="btn btn-info btn-sm" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
@@ -13239,6 +13348,11 @@
             }
 
             categorySelect.value = product.category;
+
+            const editExpiryDaysEl = document.getElementById('editProductExpiryDays');
+            if (editExpiryDaysEl) {
+                editExpiryDaysEl.value = product.expiryDays || '';
+            }
 
             // Set unit if available
             if (document.getElementById('editProductUnit')) {
@@ -13368,6 +13482,9 @@
                 product.name = document.getElementById('editProductName').value;
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
+                
+                const expEl = document.getElementById('editProductExpiryDays');
+                product.expiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
                 
                 const editQtyType = document.getElementById('editProductQuantityType');
                 if (editQtyType) {
@@ -15784,6 +15901,52 @@
                     </div>
                 </div>
 
+                <h5 style="margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #495057;">Label Content</h5>
+                <div class="compact-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowBusinessName" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">Business Name</label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowMonthCode" onchange="toggleMonthCodesUI(); saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">Month Code</label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowMRP" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">MRP / Price</label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowExpiry" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">Expiry Date</label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowMfgDate" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">Mfg. Date</label>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="labelShowBarcode" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <label style="margin: 0; display: inline;">Barcode Code</label>
+                    </div>
+                </div>
+
+                <div id="monthCodesContainer" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom: 12px;">
+                    <label style="margin-bottom: 8px;">Month Codes</label>
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;">
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jan</small><input type="text" id="labelMc0" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Feb</small><input type="text" id="labelMc1" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Mar</small><input type="text" id="labelMc2" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Apr</small><input type="text" id="labelMc3" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">May</small><input type="text" id="labelMc4" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jun</small><input type="text" id="labelMc5" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jul</small><input type="text" id="labelMc6" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Aug</small><input type="text" id="labelMc7" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Sep</small><input type="text" id="labelMc8" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Oct</small><input type="text" id="labelMc9" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Nov</small><input type="text" id="labelMc10" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Dec</small><input type="text" id="labelMc11" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
+                    </div>
+                </div>
+
                 <h5 style="margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #495057;">Format</h5>
 
                 <div class="compact-grid">
@@ -16187,6 +16350,14 @@
 
         // --- Label Printing Settings Logic ---
 
+        function toggleMonthCodesUI() {
+            const showMC = document.getElementById('labelShowMonthCode');
+            const container = document.getElementById('monthCodesContainer');
+            if (showMC && container) {
+                container.style.display = showMC.checked ? 'block' : 'none';
+            }
+        }
+
         function loadLabelSettings() {
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
@@ -16207,6 +16378,22 @@
             
             const align = document.getElementById('labelAlignment'); if(align) align.value = settings.labelAlignment || 'center';
             const bs = document.getElementById('labelBarcodeSize'); if(bs) bs.value = settings.labelBarcodeSize || 'medium';
+
+            const sbn = document.getElementById('labelShowBusinessName'); if(sbn) sbn.checked = settings.labelShowBusinessName !== false;
+            const smc = document.getElementById('labelShowMonthCode'); if(smc) smc.checked = settings.labelShowMonthCode === true;
+            const smrp = document.getElementById('labelShowMRP'); if(smrp) smrp.checked = settings.labelShowMRP !== false;
+            const se = document.getElementById('labelShowExpiry'); if(se) se.checked = settings.labelShowExpiry === true;
+            const smfg = document.getElementById('labelShowMfgDate'); if(smfg) smfg.checked = settings.labelShowMfgDate === true;
+            const sbc = document.getElementById('labelShowBarcode'); if(sbc) sbc.checked = settings.labelShowBarcode !== false;
+
+            if(settings.labelMonthCodes) {
+                for (let i = 0; i < 12; i++) {
+                    const el = document.getElementById('labelMc' + i);
+                    if(el) el.value = settings.labelMonthCodes[i] || '';
+                }
+            }
+
+            toggleMonthCodesUI();
         }
 
         function saveLabelSettings() {
@@ -16230,8 +16417,22 @@
             const align = document.getElementById('labelAlignment'); if(align) currentSettings.labelAlignment = align.value;
             const bs = document.getElementById('labelBarcodeSize'); if(bs) currentSettings.labelBarcodeSize = bs.value;
 
+            const sbn = document.getElementById('labelShowBusinessName'); if(sbn) currentSettings.labelShowBusinessName = sbn.checked;
+            const smc = document.getElementById('labelShowMonthCode'); if(smc) currentSettings.labelShowMonthCode = smc.checked;
+            const smrp = document.getElementById('labelShowMRP'); if(smrp) currentSettings.labelShowMRP = smrp.checked;
+            const se = document.getElementById('labelShowExpiry'); if(se) currentSettings.labelShowExpiry = se.checked;
+            const smfg = document.getElementById('labelShowMfgDate'); if(smfg) currentSettings.labelShowMfgDate = smfg.checked;
+            const sbc = document.getElementById('labelShowBarcode'); if(sbc) currentSettings.labelShowBarcode = sbc.checked;
+
+            if(!currentSettings.labelMonthCodes) currentSettings.labelMonthCodes = {};
+            for (let i = 0; i < 12; i++) {
+                const el = document.getElementById('labelMc' + i);
+                if(el) currentSettings.labelMonthCodes[i] = el.value;
+            }
+
             localStorage.setItem('settings', JSON.stringify(currentSettings));
             showAlert('Label settings saved!', '✅');
+            if (typeof updateProductsTable === 'function') updateProductsTable();
         }
 
         function applyLabelPreset() {
@@ -16268,6 +16469,14 @@
             currentSettings.labelFontBold = defaultSet.labelFontBold;
             currentSettings.labelAlignment = defaultSet.labelAlignment;
             currentSettings.labelBarcodeSize = defaultSet.labelBarcodeSize;
+
+            currentSettings.labelShowBusinessName = defaultSet.labelShowBusinessName;
+            currentSettings.labelShowMonthCode = defaultSet.labelShowMonthCode;
+            currentSettings.labelShowMRP = defaultSet.labelShowMRP;
+            currentSettings.labelShowExpiry = defaultSet.labelShowExpiry;
+            currentSettings.labelShowMfgDate = defaultSet.labelShowMfgDate;
+            currentSettings.labelShowBarcode = defaultSet.labelShowBarcode;
+            currentSettings.labelMonthCodes = JSON.parse(JSON.stringify(defaultSet.labelMonthCodes));
 
             localStorage.setItem('settings', JSON.stringify(currentSettings));
             loadLabelSettings();
