@@ -5181,7 +5181,6 @@
 
         // Make autoSync available globally
         
-        window.syncDataToFirestore = syncDataToFirestore;
 
         // Real-time sync - Instant updates across all devices
         let realtimeSyncUnsubscribe = null;
@@ -6038,12 +6037,7 @@
                             if (backupData.pettyCashOpening) localStorage.setItem('pettyCashOpening', JSON.stringify(backupData.pettyCashOpening));
                             if (backupData.pettyCashCategories) localStorage.setItem('pettyCashCategories', JSON.stringify(backupData.pettyCashCategories));
 
-                            // Sync to Firestore
-                            if (window.currentUserId) {
-                                syncDataToFirestore(window.currentUserId).then(() => {
-                                    console.log('✅ Restored data synced to Firestore');
-                                });
-                            }
+                            // Firebase sync removed
 
                             // Refresh all UI
                             updateDashboard();
@@ -8015,13 +8009,13 @@
                 activeTab.style.display = 'block'; // Force display to ensure visibility
                 
                 // Specific tab initializations
-                if (tabName === 'inventory') updateInventoryTable();
-                if (tabName === 'reports') generateSalesChart();
-                if (tabName === 'products') renderProductTable();
-                if (tabName === 'receivables') renderReceivablesTable();
-                if (tabName === 'payables') renderPayablesTable();
-                if (tabName === 'pettycash') initPettyCash();
-                if (tabName === 'denomination') updateDayClosingDisplay(); // if there is such a func, I will check later, else it does nothing
+                if (tabName === 'inventory' && typeof updateInventoryTable === 'function') updateInventoryTable();
+                if (tabName === 'reports' && typeof generateSalesChart === 'function') generateSalesChart();
+                if (tabName === 'products' && typeof renderProductTable === 'function') renderProductTable();
+                if (tabName === 'receivables' && typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                if (tabName === 'payables' && typeof renderPayablesTable === 'function') renderPayablesTable();
+                if (tabName === 'pettycash' && typeof initPettyCash === 'function') initPettyCash();
+                if (tabName === 'denomination' && typeof updateDayClosingDisplay === 'function') updateDayClosingDisplay();
                 
                 if (tabName === 'sales') {
                     // Aggressively attempt to focus the Search Product field (solves edge-case race conditions on load/tab switch)
@@ -11712,12 +11706,7 @@
                 // Save changes
                 saveData();
 
-                // Sync to Firestore
-                if (window.currentUserId && window.syncDataToFirestore) {
-                    window.syncDataToFirestore(window.currentUserId).then(() => {
-                        console.log('✅ Bill edits synced to Firestore');
-                    }).catch(err => console.error("Sync error:", err));
-                }
+                // Firebase sync removed
 
                 // Refresh and show success
                 updateDashboard();
@@ -11761,12 +11750,7 @@
                     // Save changes
                     saveData();
 
-                    // Immediately sync to Firestore
-                    if (window.currentUserId) {
-                        syncDataToFirestore(window.currentUserId).then(() => {
-                            console.log('✅ Bill deletion synced to Firestore');
-                        });
-                    }
+                    // Firebase sync removed
 
                     // Close bill details and refresh
                     closeBillDetails();
@@ -12036,12 +12020,7 @@
                         updateTodaysSales(); // Refresh today's sales table
                         updateDashboard(); // Refresh dashboard
 
-                        // Immediately sync to Firestore (don't wait for debounce)
-                        if (window.currentUserId) {
-                            syncDataToFirestore(window.currentUserId).then(() => {
-                                console.log('✅ Deletion synced to Firestore immediately');
-                            });
-                        }
+                        // Firebase sync removed
 
                         // Show success message
                         console.log('About to show success alert...');
