@@ -2282,6 +2282,19 @@
                             </div>
                             <input type="hidden" id="globalReportCustomerId" value="">
                         </div>
+                        
+                        <!-- View Bill Search -->
+                        <div style="flex: 1; min-width: 250px;">
+                            <label style="font-weight: bold; color: #495057;">🔍 View Bill</label>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                <input type="text" id="billSearchInput" class="form-control" placeholder="Bill No. (e.g., 13-112025)" style="flex: 1; max-width: 250px; padding: 10px; font-size: 16px; height: 44px; box-sizing: border-box;">
+                                <button class="btn btn-primary" onclick="searchBill()" style="height: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; white-space: nowrap;">🔍 Search</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="billDetailsContainer" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
+                        <!-- Bill details will be displayed here -->
                     </div>
 
                     <!-- Customer Stats (Only visible if customer selected) -->
@@ -2395,37 +2408,23 @@
 
                 </div>
 
-                <!-- View Bill Details Section -->
-                <div class="report-section" style="margin-bottom: 20px;">
-                    <h3 style="margin-top: 0;">🔍 View Bill Details</h3>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                        <input type="text" id="billSearchInput" placeholder="Enter Bill Number (e.g., 13-112025)"
-                            style="flex: 1; max-width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                        <button class="btn btn-primary" onclick="searchBill()">🔍 Search Bill</button>
-                    </div>
-                    <div id="billDetailsContainer"
-                        style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <!-- Bill details will be displayed here -->
-                    </div>
-                </div>
-
-                <hr style="margin: 15px 0; border: 1px solid #dee2e6;">
-
                 <!-- Date Range Reports Section -->
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 15px;">
-                    <div>
-                        <h3 style="margin: 0 0 10px 0;">📊 Date Range Reports</h3>
-                        <div class="date-filter" style="display: flex; gap: 10px; align-items: center;">
-                            <label style="margin: 0;">From:</label>
-                            <input type="date" id="reportStartDate" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
-                            <label style="margin: 0;">To:</label>
-                            <input type="date" id="reportEndDate" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
-                            <button class="btn btn-primary" onclick="generateCustomReport()">Generate Report</button>
+                <div class="report-section" style="margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <h3 style="margin: 0 0 15px 0;">📊 Date Range Reports</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label style="margin: 0; font-weight: bold; color: #495057;">From:</label>
+                            <input type="date" id="reportStartDate" class="form-control" style="padding: 8px 12px; height: 38px; box-sizing: border-box;">
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary" onclick="exportReport()">📥 Export Bills (CSV)</button>
-                        <button class="btn btn-info" onclick="exportItemReport()">📥 Export Items (CSV)</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label style="margin: 0; font-weight: bold; color: #495057;">To:</label>
+                            <input type="date" id="reportEndDate" class="form-control" style="padding: 8px 12px; height: 38px; box-sizing: border-box;">
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <button class="btn btn-primary" onclick="generateCustomReport()" style="height: 38px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 15px; white-space: nowrap;">Generate Report</button>
+                            <button class="btn btn-primary" onclick="exportReport()" style="height: 38px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 15px; white-space: nowrap;">📥 Export Bills (CSV)</button>
+                            <button class="btn btn-info" onclick="exportItemReport()" style="height: 38px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 15px; white-space: nowrap;">📥 Export Items (CSV)</button>
+                        </div>
                     </div>
                 </div>
 
