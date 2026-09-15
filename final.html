@@ -10149,30 +10149,6 @@
         }
 
         function completeSale() {
-            // Safety Check: Prevent trade if critical sync error
-            const syncTextEl = document.getElementById('sync-text');
-            if (syncTextEl) {
-                const statusText = syncTextEl.innerText;
-                // Allow "Saved to Device" or "All Data Secured"
-                // Block if "Checking..." or "Sync Failed"
-                if (statusText.includes('Checking') || statusText.includes('Failed') || statusText.includes('Error')) {
-                    // Double check online status
-                    if (!navigator.onLine) {
-                        // Offline is OKAY now because we have robust merge. 
-                        // But if user specifically requested blocking on server problem:
-                        // They said "if server problem... I should not entry the trade".
-                        // However, blocking offline sales ruins the "Offline First" feature.
-                        // I will Block ONLY if it is a Sync Error (Server Busy), but allow Offline if explicit.
-                        // Actually, "Checking..." forever is the problem.
-                        showAlert('⚠️ Connection Uncertain: \nPlease wait for Sync Status to confirm safety.', 'warning');
-                        return;
-                    } else {
-                        // Online but failing to sync?
-                        showAlert('⚠️ Server Busy or Sync Error! \nData might not save. Please wait.', 'error');
-                        return;
-                    }
-                }
-            }
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
@@ -10329,10 +10305,6 @@
                 const saleId = Date.now();
                 const saleDate = new Date().toISOString();
                 const saleItems = [];
-
-                // Show Blocking Overlay
-                const savingOverlay = document.getElementById('savingOverlay');
-                savingOverlay.classList.add('show');
 
                 // Calculate payment details
                 let cashAmount = 0;
