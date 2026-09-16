@@ -60,14 +60,33 @@ export function checkAuth(redirectToLogin = true) {
     return new Promise((resolve) => {
         initializeAuth();
         const userStr = sessionStorage.getItem('currentUser');
-        if (userStr) resolve(JSON.parse(userStr));
-        else resolve(null);
+        if (userStr) {
+            const sessionUser = JSON.parse(userStr);
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const updatedUser = users.find(u => u.id === sessionUser.id);
+            if (updatedUser) {
+                sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                resolve(updatedUser);
+            } else {
+                resolve(sessionUser);
+            }
+        } else {
+            resolve(null);
+        }
     });
 }
 
 export function getCurrentUser() {
     const userStr = sessionStorage.getItem('currentUser');
-    return userStr ? JSON.parse(userStr) : null;
+    if (!userStr) return null;
+    const sessionUser = JSON.parse(userStr);
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUser = users.find(u => u.id === sessionUser.id);
+    if (updatedUser) {
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        return updatedUser;
+    }
+    return sessionUser;
 }
 
 export function hasPermission(action) {

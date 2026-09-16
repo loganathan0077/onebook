@@ -46,7 +46,7 @@
                 // Override localStorage
                 const originalSetItem = localStorage.setItem;
                 const originalGetItem = localStorage.getItem;
-                const trackedKeys = ['products', 'sales', 'stockHistory', 'purchaseOrders', 'purchases', 'calculatorHistory', 'dayClosings', 'negativeChangeCount', 'draftSales', 'settings'];
+                const trackedKeys = ['products', 'sales', 'stockHistory', 'purchaseOrders', 'purchases', 'calculatorHistory', 'dayClosings', 'negativeChangeCount', 'draftSales', 'settings', 'customers', 'suppliers', 'users', 'partyPayments', 'masterCategories', 'masterUnits', 'customCategories', 'categoryDiscounts', 'receiptCounters', 'pettyCashCategories', 'pettyCashOpening', 'pettyCashTransactions'];
 
                 localStorage.getItem = function(key) {
                     const f = originalGetItem.call(localStorage, 'database_folder');
@@ -1842,11 +1842,19 @@
                         </div>
                     </div>
                 </div>
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; display: flex; gap: 10px;">
                     <input type="text" id="inventorySearch"
                         placeholder="🔍 Search products by name, barcode, or category..."
                         oninput="filterInventoryTable()"
-                        style="width: 100%; padding: 12px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none;">
+                        style="flex: 1; padding: 12px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none;">
+                    <select id="expiryFilter" onchange="filterInventoryTable()" style="padding: 12px 15px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none; background: white; cursor: pointer;">
+                        <option value="all">Expiry Filter: All</option>
+                        <option value="expired">Expired</option>
+                        <option value="today">Expires Today</option>
+                        <option value="7days">Expiring Within 7 Days</option>
+                        <option value="30days">Expiring Within 30 Days</option>
+                        <option value="no_expiry">No Expiry</option>
+                    </select>
                 </div>
                 <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
                     <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;">
@@ -1858,7 +1866,7 @@
                                     <th class="gst-field" style="display:none; width: 6%;">HSN</th>
                                     <th class="gst-field" style="display:none; width: 6%;">GST%</th>
                                     <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
-                                    <th onclick="sortInventory('expiryDays')" style="cursor: pointer; width: 8%;">Exp. Days <span id="sort-expiryDays"></span></th>
+                                    <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 10%;">Expiry Date <span id="sort-expiryDate"></span></th>
                                     <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
                                     <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
                                     <th onclick="sortInventory('discount')" style="cursor: pointer; width: 8%;">Disc <span id="sort-discount"></span></th>
@@ -1895,6 +1903,7 @@
                     <div id="continuous-scanner-region" style="width: 100%; max-width: 500px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 8px;"></div>
                     <p style="color: #6c757d; font-size: 14px;">Point the camera at the product barcode, or use a USB scanner.</p>
                     <button class="btn btn-secondary" onclick="document.getElementById('manualAddContainer').style.display='block';">⌨️ Add Product Manually</button>
+                    <button class="btn btn-danger" onclick="document.getElementById('continuousScanToggle').checked=false; toggleContinuousScanMode();" style="margin-left: 10px;">❌ Close Scanner</button>
                 </div>
 
                 <div id="manualAddContainer">
@@ -2328,14 +2337,15 @@
                                         <tr>
                                             <th style="width: 12%">Date & Time</th>
                                             <th style="width: 8%">Bill No</th>
+                                            <th style="width: 8%">Counter</th>
                                             <th style="width: 12%">Customer</th>
-                                            <th class="gst-field" style="width: 8%">GSTIN</th>
+                                            <th style="width: 8%">GSTIN</th>
                                             <th style="width: 8%">Subtotal</th>
                                             <th style="width: 8%">Discount</th>
-                                            <th class="gst-field" style="width: 8%">Taxable</th>
-                                            <th class="gst-field" style="width: 6%">CGST</th>
-                                            <th class="gst-field" style="width: 6%">SGST</th>
-                                            <th class="gst-field" style="width: 6%">IGST</th>
+                                            <th style="width: 8%">Taxable</th>
+                                            <th style="width: 6%">CGST</th>
+                                            <th style="width: 6%">SGST</th>
+                                            <th style="width: 6%">IGST</th>
                                             <th style="width: 8%">Total</th>
                                             <th style="width: 8%">Payment</th>
                                             <th style="width: 8%; text-align: center;">Actions</th>
@@ -2357,13 +2367,14 @@
                                             <th style="cursor: pointer; color: #007bff; width: 8%" onclick="sortItemWiseReport('date')">Date ↕️</th>
                                             <th style="cursor: pointer; color: #007bff; width: 16%" onclick="sortItemWiseReport('product')">Product ↕️</th>
                                             <th style="width: 10%">Barcode</th>
-                                            <th class="gst-field" style="width: 6%">HSN</th>
-                                            <th class="gst-field" style="width: 6%">GST%</th>
+                                            <th style="width: 6%">HSN</th>
+                                            <th style="width: 6%">GST%</th>
                                             <th style="width: 6%">Unit</th>
                                             <th style="cursor: pointer; color: #007bff; width: 6%" onclick="sortItemWiseReport('qty')">Qty ↕️</th>
                                             <th style="width: 8%">Unit Price</th>
                                             <th style="cursor: pointer; color: #007bff; width: 10%" onclick="sortItemWiseReport('total')">Total ↕️</th>
                                             <th style="width: 8%">Bill No</th>
+                                            <th style="width: 8%">Counter</th>
                                             <th style="width: 12%">Customer</th>
                                             <th style="width: 8%">Payment</th>
                                         </tr>
@@ -2383,6 +2394,10 @@
                                 <option value="weekly">Weekly</option>
                                 <option value="monthly">Monthly</option>
                             </select>
+                            <label style="font-weight: bold; margin-left: 20px;">
+                                <input type="checkbox" id="summaryCounterWise" onchange="generateOnScreenReports()" style="margin-right: 5px;">
+                                Counter-Wise
+                            </label>
                         </div>
                         <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
                             <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
@@ -2394,10 +2409,10 @@
                                             <th style="width: 10%">Items Sold</th>
                                             <th style="width: 10%">Subtotal</th>
                                             <th style="width: 10%">Discount</th>
-                                            <th class="gst-field" style="width: 10%">Taxable</th>
-                                            <th class="gst-field" style="width: 8%">CGST</th>
-                                            <th class="gst-field" style="width: 8%">SGST</th>
-                                            <th class="gst-field" style="width: 8%">IGST</th>
+                                            <th style="width: 10%">Taxable</th>
+                                            <th style="width: 8%">CGST</th>
+                                            <th style="width: 8%">SGST</th>
+                                            <th style="width: 8%">IGST</th>
                                             <th style="width: 10%">Total Sales</th>
                                         </tr>
                                     </thead>
@@ -2405,6 +2420,7 @@
                                 </table>
                             </div>
                         </div>
+                        <div id="salesSummaryPaymentTotals" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-weight: bold; border: 1px solid #dee2e6;"></div>
                     </div>
 
                 </div>
@@ -3334,6 +3350,49 @@
                 </div>
             </div>
             
+    <!-- Database Location Preview Modal -->
+    <div id="dbPreviewModal" class="modal" style="z-index: 99999;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="margin: 0; font-size: 20px;">🗄️ Database Preview</h2>
+                <span class="close" onclick="document.getElementById('dbPreviewModal').style.display='none'">&times;</span>
+            </div>
+            <div style="padding: 15px 0 0 0;">
+                <p style="margin: 0 0 5px 0;"><strong>Database Folder:</strong> <span id="dbPreviewName"></span></p>
+                <p style="word-break: break-all; color: #666; font-size: 13px; margin: 0 0 15px 0;"><strong>Location:</strong> <span id="dbPreviewPath"></span></p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 15px 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;"><strong>Products:</strong> <br><span id="dbPreviewProducts" style="font-size: 18px; color: #0d6efd;">0</span></div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;"><strong>Customers:</strong> <br><span id="dbPreviewCustomers" style="font-size: 18px; color: #0d6efd;">0</span></div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;"><strong>Sales:</strong> <br><span id="dbPreviewSales" style="font-size: 18px; color: #0d6efd;">0</span></div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;"><strong>Purchases:</strong> <br><span id="dbPreviewPurchases" style="font-size: 18px; color: #0d6efd;">0</span></div>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('dbPreviewModal').style.display='none'">Cancel</button>
+                    <button class="btn btn-primary" onclick="confirmDatabaseSwitch()">Use This Database</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Prompt Modal -->
+    <div id="dbBackupPromptModal" class="modal" style="z-index: 100000;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="margin: 0; font-size: 20px;">⚠️ Backup Current Database?</h2>
+                <span class="close" onclick="document.getElementById('dbBackupPromptModal').style.display='none'">&times;</span>
+            </div>
+            <div style="padding: 15px 0 0 0;">
+                <p>Would you like to backup your current database before switching to the new location?</p>
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('dbBackupPromptModal').style.display='none'">Cancel</button>
+                    <button class="btn btn-danger" onclick="proceedWithDatabaseSwitch()">Continue (No Backup)</button>
+                    <button class="btn btn-primary" onclick="backupAndProceedSwitch()">Backup & Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
             <!-- Opening Balance Modal -->
             <div id="pcOpeningModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
@@ -3594,6 +3653,7 @@
                                         <tr>
                                             <th>Name</th>
                                             <th>Username</th>
+                                            <th>User Code</th>
                                             <th>Role</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -3691,11 +3751,27 @@
                         <!-- Backup & Restore -->
                         <div id="settings-pane-backup" class="settings-pane">
                             <h3>💾 Backup & Restore</h3>
-                            <button class="btn btn-primary" onclick="createBackup()" style="margin-bottom: 10px; width: 100%;">Backup Now</button>
-                            <p style="font-size: 0.9em; color: #666;" id="lastBackupLabel">Last Backup: Never</p>
-                            <hr>
-                            <input type="file" id="restoreFileBtn" style="display: none;" accept=".json" onchange="handleRestoreBackup(event)">
-                            <button class="btn btn-danger" onclick="document.getElementById('restoreFileBtn').click()" style="width: 100%;">Restore Backup</button>
+
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
+                                    <span>🗄️ Database Location</span>
+                                </h4>
+                                <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Current Database:</strong> <span id="currentDatabaseName">Local Database</span></p>
+                                <p style="margin: 0 0 15px 0; font-size: 12px; color: #666; word-break: break-all;"><strong>Location:</strong> <span id="currentDatabasePath">Not specified</span></p>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-secondary" onclick="handleChangeDatabaseLocation()" style="flex: 1;">📁 Change Database Location</button>
+                                    <button class="btn btn-primary" onclick="createBackup()" style="flex: 1;">💾 Backup Current Database</button>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                                <h4 style="margin: 0 0 10px 0;">📦 Manual Backup / Restore</h4>
+                                <button class="btn btn-primary" onclick="createBackup()" style="margin-bottom: 10px; width: 100%;">Create Backup File</button>
+                                <p style="font-size: 0.9em; color: #666;" id="lastBackupLabel">Last Backup: Never</p>
+                                <hr style="border: none; border-top: 1px solid #eee; margin: 15px 0;">
+                                <input type="file" id="restoreFileBtn" style="display: none;" accept=".json" onchange="handleRestoreBackup(event)">
+                                <button class="btn btn-danger" onclick="document.getElementById('restoreFileBtn').click()" style="width: 100%;">Restore from Backup File</button>
+                            </div>
                         </div>
 
                         <!-- License -->
@@ -3716,7 +3792,16 @@
                         <!-- General Settings -->
                         <div id="settings-pane-general" class="settings-pane">
                             <h3>⚙️ General Settings</h3>
-                            <p style="color: #666;">There are currently no additional general settings to configure.</p>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;">🔌 USB Scanner</h4>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Enable physical USB/Bluetooth barcode scanner globally</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="globalUsbScannerToggle" onchange="toggleUsbScanner(this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
 
                         <!-- Product Configuration (Master Data) -->
@@ -3828,7 +3913,7 @@
         </div>
     </div>
 
-    <div id="scannerModal" class="modal">
+    <div id="scannerModal" class="modal" style="z-index: 99999 !important; background-color: rgba(0,0,0,0.85);">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Barcode Scanner</h2>
@@ -5123,10 +5208,11 @@
     </div>
 
     <script type="module">
-        import { checkAuth, logout, getCurrentUser, isAdmin } from './auth.js';
+        import { checkAuth, logout, getCurrentUser, isAdmin, hasPermission } from './auth.js';
 
         // Global variable to track admin status
         window.isUserAdmin = false;
+        window.hasPermission = hasPermission;
 
         // Check authentication on page load
         checkAuth().then(async user => {
@@ -5257,21 +5343,9 @@
             { id: 'petty_cash', label: 'Petty Cash' },
             { id: 'day_closing', label: 'Day Closing' },
             { id: 'calculator', label: 'Calculator' },
-            { id: 'product_add_edit', label: 'Add/Edit Product' },
-            { id: 'product_delete', label: 'Delete Product' },
-            { id: 'product_price', label: 'Modify Price' },
-            { id: 'product_gst', label: 'Modify GST' },
-            { id: 'product_discount', label: 'Modify Discount' },
-            { id: 'category_manage', label: 'Manage Categories' },
-            { id: 'unit_manage', label: 'Manage Units' },
-            { id: 'customer_manage', label: 'Manage Customers' },
-            { id: 'customer_delete', label: 'Delete Customers' },
-            { id: 'supplier_manage', label: 'Manage Suppliers' },
-            { id: 'supplier_delete', label: 'Delete Suppliers' },
-            { id: 'customer_ledger', label: 'View Customer Ledger' },
-            { id: 'supplier_ledger', label: 'View Supplier Ledger' },
-            { id: 'purchase_entry', label: 'Purchase Entry' },
-            { id: 'purchase_history', label: 'View Purchase History' }
+            { id: 'purchase_entry', label: 'Purchase & Parties' },
+            { id: 'product_add_edit', label: 'Add / Edit Product' },
+            { id: 'delete', label: 'Delete' }
         ];
 
         function renderUserManagementTable() {
@@ -5283,6 +5357,7 @@
                 <tr>
                     <td>${u.name}</td>
                     <td>${u.username}</td>
+                    <td>${u.userCode || '-'}</td>
                     <td><span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:white; background:${u.role === 'admin' ? '#007bff' : '#6c757d'}">${u.role.toUpperCase()}</span></td>
                     <td><span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:white; background:${u.status === 'active' ? '#28a745' : '#dc3545'}">${u.status.toUpperCase()}</span></td>
                     <td>
@@ -5322,6 +5397,7 @@
             document.getElementById('addUserId').value = '';
             document.getElementById('addUserName').value = '';
             document.getElementById('addUserUsername').value = '';
+            document.getElementById('addUserCode').value = '';
             document.getElementById('addUserPassword').value = '';
             document.getElementById('addUserPasswordGroup').style.display = 'block'; // Show for new
             document.getElementById('addUserRole').value = 'user';
@@ -5343,6 +5419,7 @@
             document.getElementById('addUserId').value = user.id;
             document.getElementById('addUserName').value = user.name;
             document.getElementById('addUserUsername').value = user.username;
+            document.getElementById('addUserCode').value = user.userCode || '';
             document.getElementById('addUserPasswordGroup').style.display = 'none'; // Hide password on edit
             document.getElementById('addUserRole').value = user.role;
             document.getElementById('addUserStatus').value = user.status;
@@ -5357,6 +5434,7 @@
             const id = document.getElementById('addUserId').value;
             const name = document.getElementById('addUserName').value.trim();
             const username = document.getElementById('addUserUsername').value.trim();
+            const userCode = document.getElementById('addUserCode').value.trim();
             const password = document.getElementById('addUserPassword').value;
             const role = document.getElementById('addUserRole').value;
             const status = document.getElementById('addUserStatus').value;
@@ -5386,6 +5464,7 @@
                 if(user) {
                     user.name = name;
                     user.username = username;
+                    user.userCode = userCode;
                     user.role = role;
                     user.status = status;
                     user.permissions = perms;
@@ -5396,6 +5475,7 @@
                     id: 'usr_' + Date.now(),
                     name,
                     username,
+                    userCode,
                     password,
                     role,
                     status,
@@ -5482,6 +5562,7 @@
                 taxPricingMode: 'exclusive',
                 defaultTaxType: 'auto',
                 showGST: false,
+                usbScannerEnabled: false,
                 showBarcode: false,
                 adminPassword: 'Admin@2026',
                 // Label Printing Settings
@@ -5671,6 +5752,44 @@
             } else {
                 console.log('👤 Sales user - hiding admin buttons');
                 document.body.classList.add('sales-user');
+            }
+
+            // Hide unauthorized sidebar tabs
+            const tabPermissionMap = {
+                'dashboard': 'dashboard',
+                'inventory': 'inventory',
+                'sales': 'record_sale',
+                'reports': 'reports',
+                'products': 'products',
+                'pettycash': 'petty_cash',
+                'denomination': 'day_closing',
+                'calculator': 'calculator',
+                'purchaseparties': 'purchase_entry' // Assuming purchase_entry implies access
+            };
+
+            let firstAllowedTab = null;
+            document.querySelectorAll('.nav-tab').forEach(nav => {
+                const tabId = nav.dataset.tab;
+                
+                if (tabId === 'settings') {
+                    nav.style.display = window.isUserAdmin ? 'block' : 'none';
+                    if (window.isUserAdmin && !firstAllowedTab) firstAllowedTab = tabId;
+                    return;
+                }
+                
+                const requiredPerm = tabPermissionMap[tabId];
+                if (requiredPerm && window.hasPermission && !window.hasPermission(requiredPerm) && !window.isUserAdmin) {
+                    nav.style.display = 'none';
+                } else {
+                    nav.style.display = 'block';
+                    if (!firstAllowedTab) firstAllowedTab = tabId;
+                }
+            });
+
+            // Enforce current tab
+            const activeTab = document.querySelector('.nav-tab.active');
+            if (activeTab && activeTab.style.display === 'none' && firstAllowedTab) {
+                switchTab(firstAllowedTab);
             }
         }
         // Track count of negative changes
@@ -5961,6 +6080,10 @@
                 receiptCounters: JSON.parse(localStorage.getItem('receiptCounters')) || {},
                 negativeChangeCount: negativeChangeCount,
                 settings: JSON.parse(localStorage.getItem('settings')) || null,
+                users: JSON.parse(localStorage.getItem('users')) || [],
+                partyPayments: JSON.parse(localStorage.getItem('partyPayments')) || [],
+                masterCategories: JSON.parse(localStorage.getItem('masterCategories')) || [],
+                masterUnits: JSON.parse(localStorage.getItem('masterUnits')) || [],
                 pettyCashTransactions: JSON.parse(localStorage.getItem('pettyCashTransactions') || '[]'),
                 pettyCashOpening: JSON.parse(localStorage.getItem('pettyCashOpening') || '{"cash":0,"bank":0}'),
                 pettyCashCategories: JSON.parse(localStorage.getItem('pettyCashCategories') || 'null')
@@ -6690,7 +6813,7 @@
                         <button class="btn btn-info btn-sm" onclick="viewSupplier('${s.id}')" title="View Details">👁️</button>
                         <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${s.id}', 'supplier')" title="View Ledger">📖</button>
                         <button class="btn btn-warning btn-sm" onclick="openAddSupplierModal(null, '${s.id}')" title="Edit">✏️</button>
-                        ${window.hasPermission('supplier_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')" title="Delete">🗑️</button>` : ''}
+                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -6783,7 +6906,7 @@
         }
 
         function saveSupplier() {
-            if (!window.hasPermission('supplier_manage')) return showAlert('Unauthorized: You do not have permission to manage suppliers.', 'error');
+            if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to manage suppliers.', 'error');
             const editId = document.getElementById('supplierEditId').value;
             const name = document.getElementById('newSupplierName').value.trim().toUpperCase();
             const gstin = document.getElementById('newSupplierGSTIN').value.trim().toUpperCase();
@@ -6845,7 +6968,7 @@
         }
 
         function deleteSupplier(id) {
-            if (!window.hasPermission('supplier_delete')) return showAlert('Unauthorized: You do not have permission to delete suppliers.', 'error');
+            if (!window.hasPermission('delete')) return showAlert('Unauthorized: You do not have permission to delete suppliers.', 'error');
             showConfirm('Are you sure you want to delete this supplier?', () => {
                 suppliers = suppliers.filter(s => s.id !== id);
                 saveData();
@@ -6951,7 +7074,7 @@
                         <button class="btn btn-info btn-sm" onclick="viewCustomer('${c.id}')" title="View Details">👁️</button>
                         <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${c.id}', 'customer')" title="View Ledger">📖</button>
                         <button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, '${c.id}')" title="Edit">✏️</button>
-                        ${window.hasPermission('customer_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')" title="Delete">🗑️</button>` : ''}
+                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -7023,7 +7146,7 @@
         }
 
         function saveCustomer() {
-            if (!window.hasPermission('customer_manage')) return showAlert('Unauthorized: You do not have permission to manage customers.', 'error');
+            if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to manage customers.', 'error');
             const editId = document.getElementById('customerEditId').value;
             const name = document.getElementById('newCustomerName').value.trim().toUpperCase();
             const gstin = document.getElementById('newCustomerGSTIN').value.trim().toUpperCase();
@@ -7115,7 +7238,7 @@
         }
 
         function deleteCustomer(id) {
-            if (!window.hasPermission('customer_delete')) return showAlert('Unauthorized: You do not have permission to delete customers.', 'error');
+            if (!window.hasPermission('delete')) return showAlert('Unauthorized: You do not have permission to delete customers.', 'error');
             showConfirm('Are you sure you want to delete this customer?', () => {
                 customers = customers.filter(c => c.id !== id);
                 saveData();
@@ -7503,6 +7626,12 @@
 
                 const expEl = document.getElementById('newProductExpiryDays');
                 const expiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
+                let expiryDate = null;
+                if (expiryDays > 0) {
+                    let d = new Date();
+                    d.setDate(d.getDate() + expiryDays);
+                    expiryDate = d.toISOString().split('T')[0];
+                }
 
                 const unitEl = document.getElementById('newProductUnit');
                 const unit = unitEl ? unitEl.value : '';
@@ -7599,7 +7728,10 @@
                         newProd.barcode = barcode || newProd.barcode;
                         newProd.category = category;
                         newProd.unit = unit;
-                        newProd.expiryDays = expiryDays;
+                        if (newProd.expiryDays !== expiryDays) {
+                            newProd.expiryDays = expiryDays;
+                            newProd.expiryDate = expiryDate;
+                        }
                         newProd.price = sellingPrice;
                         newProd.costPrice = costPrice;
                         newProd.hsn = hsn;
@@ -7619,6 +7751,7 @@
                             category: category,
                             unit: unit,
                             expiryDays: expiryDays,
+                            expiryDate: expiryDate,
                             price: sellingPrice,
                             costPrice: costPrice,
                             hsn: hsn,
@@ -8011,8 +8144,41 @@
         }
 
         function switchTab(tabName, clickedNav = null) {
-            if (tabName === 'settings' && typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) {
-                alert('🔒 Admin Access Required\nThis section is available only to administrators.');
+            if (tabName === 'settings' && typeof window.isUserAdmin !== 'undefined' && !window.isUserAdmin) {
+                alert('🔒 Access Denied\nYou do not have permission to access this module.');
+                return;
+            }
+
+            const tabPermissionMap = {
+                'dashboard': 'dashboard',
+                'inventory': 'inventory',
+                'sales': 'record_sale',
+                'reports': 'reports',
+                'products': 'products',
+                'pettycash': 'petty_cash',
+                'denomination': 'day_closing',
+                'calculator': 'calculator',
+                'purchaseparties': 'purchase_entry'
+            };
+
+            const requiredPerm = tabPermissionMap[tabName];
+            if (tabName !== 'settings' && requiredPerm && window.hasPermission && !window.hasPermission(requiredPerm) && !window.isUserAdmin) {
+                alert('🔒 Access Denied\nYou do not have permission to access this module.');
+                
+                // Find first allowed tab
+                let firstAllowed = null;
+                document.querySelectorAll('.nav-tab').forEach(nav => {
+                    const id = nav.dataset.tab;
+                    if (id === 'settings' && window.isUserAdmin && !firstAllowed) firstAllowed = id;
+                    const req = tabPermissionMap[id];
+                    if (req && (window.isUserAdmin || window.hasPermission(req))) {
+                        if (!firstAllowed) firstAllowed = id;
+                    }
+                });
+                
+                if (firstAllowed && firstAllowed !== tabName) {
+                    switchTab(firstAllowed);
+                }
                 return;
             }
 
@@ -8107,6 +8273,7 @@
         // Scanner Functions (Modal only - used in other tabs)
 
         function openScannerModal(mode) {
+            if (modalScanner) return; // Prevent multiple instances
             currentScanMode = mode;
             document.getElementById('scannerModal').classList.add('active');
 
@@ -8172,6 +8339,11 @@
             } else if (currentScanMode === 'stock') {
                 document.getElementById('stockBarcode').value = barcode;
                 loadProductByBarcode(barcode, 'stock');
+            } else if (currentScanMode === 'newProduct') {
+                document.getElementById('newProductBarcode').value = barcode;
+            } else if (currentScanMode === 'purchase') {
+                document.getElementById('purchaseSearchInput').value = barcode;
+                searchPurchaseProduct(barcode);
             }
 
             closeScannerModal();
@@ -8445,6 +8617,10 @@
                         valA = (a.category || '').toLowerCase();
                         valB = (b.category || '').toLowerCase();
                         break;
+                    case 'expiryDate':
+                        valA = a.expiryDate ? new Date(a.expiryDate).getTime() : 9999999999999;
+                        valB = b.expiryDate ? new Date(b.expiryDate).getTime() : 9999999999999;
+                        break;
                     case 'stock':
                         valA = a.stock;
                         valB = b.stock;
@@ -8487,12 +8663,39 @@
             // Note: Category and Stock filters are not currently in the UI for this section, 
             // so we default to showing all matching the search term.
 
+            const expiryFilterEl = document.getElementById('expiryFilter');
+            const expiryFilter = expiryFilterEl ? expiryFilterEl.value : 'all';
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const next7 = new Date(today);
+            next7.setDate(today.getDate() + 7);
+            const next30 = new Date(today);
+            next30.setDate(today.getDate() + 30);
+
             // Filter Logic
             const filteredProducts = products.filter(product => {
                 const matchesSearch = (product.name && product.name.toLowerCase().includes(searchTerm)) ||
                     (product.barcode && product.barcode.includes(searchTerm)) ||
                     (product.category && product.category.toLowerCase().includes(searchTerm));
-                return matchesSearch;
+                
+                if (!matchesSearch) return false;
+
+                if (expiryFilter === 'all') return true;
+
+                if (expiryFilter === 'no_expiry') return !product.expiryDate;
+
+                if (!product.expiryDate) return false; // Other filters require expiryDate
+
+                const exp = new Date(product.expiryDate);
+                exp.setHours(0,0,0,0);
+
+                if (expiryFilter === 'expired') return exp < today;
+                if (expiryFilter === 'today') return exp.getTime() === today.getTime();
+                if (expiryFilter === '7days') return exp >= today && exp <= next7;
+                if (expiryFilter === '30days') return exp >= today && exp <= next30;
+
+                return true;
             });
 
             if (filteredProducts.length === 0) {
@@ -8509,18 +8712,26 @@
                 let statusText = '';
                 if (product.stock <= 0) {
                     stockStatus = 'stock-low';
-                    statusText = 'Out of Stock';
+                    statusText = '🔴 Out of Stock';
                 } else if (product.stock <= product.minStock) {
                     stockStatus = 'stock-low';
-                    statusText = 'Low Stock';
+                    statusText = '🟡 Low Stock';
                 } else {
                     stockStatus = 'stock-ok';
-                    statusText = 'In Stock';
+                    statusText = '🟢 In Stock';
                 }
 
                 let displayDiscount = '<span style="color:#aaa;">—</span>';
                 if (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") {
                     displayDiscount = '<strong>' + product.productDiscount + '%</strong>';
+                }
+
+                let expiryDisplay = '—';
+                if (product.expiryDate) {
+                    const exp = new Date(product.expiryDate);
+                    exp.setHours(0,0,0,0);
+                    const formattedDate = String(exp.getDate()).padStart(2, '0') + '/' + String(exp.getMonth() + 1).padStart(2, '0') + '/' + exp.getFullYear();
+                    expiryDisplay = `${formattedDate}`;
                 }
 
                 const totalValue = (product.price * product.stock).toFixed(2);
@@ -8532,7 +8743,7 @@
                     ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
                     ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                     <td>${product.category || 'Uncategorized'}</td>
-                    <td>${product.expiryDays ? product.expiryDays : '—'}</td>
+                    <td>${expiryDisplay}</td>
                     <td class="${stockStatus}">${product.stock}</td>
                     <td>₹${product.price.toFixed(2)}</td>
                     <td>${displayDiscount}</td>
@@ -8540,8 +8751,8 @@
                     <td class="${stockStatus}">${statusText}</td>
                     <td>
                         <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
-                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
-                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
+                        ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
+                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
                     </td>
                 </tr>
             `}).join('');
@@ -8594,8 +8805,8 @@
                         <td class="${stockStatus}">${statusText}</td>
                         <td>
                             <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="Add to Purchase Order">PO</button>
-                            ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')">Edit</button>` : ''}
-                            ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')">Delete</button>` : ''}
+                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')">Edit</button>` : ''}
+                            ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')">Delete</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -8603,7 +8814,7 @@
         }
 
         function deleteInventoryProduct(id) {
-            if (!window.hasPermission('product_delete')) return showAlert('Unauthorized: You do not have permission to delete products.', 'error');
+            if (!window.hasPermission('delete')) return showAlert('Unauthorized: You do not have permission to delete products.', 'error');
 
             const product = products.find(p => String(p.id) === String(id));
             if (!product) {
@@ -10357,10 +10568,16 @@
                         // But to keep UI snappy, we might want to?
                         // "i dont want local data saving" -> User wants strict cloud truth.
 
+                        const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null') || {};
+
                         const sale = {
                             id: saleId + saleItems.length,
                             saleId: saleId, // Group items from same sale
                             receiptNumber: receiptNumber, // Receipt number in format
+                            userId: currentUser.id || '',
+                            username: currentUser.username || currentUser.name || '',
+                            userCode: currentUser.userCode || '-',
+                            counterCode: currentUser.userCode || '-',
                             date: saleDate,
                             productId: item.productId,
                             productName: item.productName,
@@ -10419,11 +10636,13 @@
                 });
 
                 // LOCAL SAVE
+                const currentUserObj = JSON.parse(sessionStorage.getItem('currentUser') || 'null') || {};
                 // Store sale data for receipt
                 lastSaleData = {
                     saleId: saleId,
                     receiptNumber: receiptNumber,
                     date: saleDate,
+                    counterCode: currentUserObj.userCode || '-',
                     items: saleItems, // These are just the objects we created
                     customerName: customerName,
                     paymentMethod: paymentMethod,
@@ -10579,6 +10798,10 @@
                     <p><strong>Date:</strong> ${date.toLocaleDateString()}</p>
                     <p><strong>Time:</strong> ${date.toLocaleTimeString()}</p>
                     <p><strong>Receipt #:</strong> ${lastSaleData.receiptNumber}</p>
+                    <p><strong>Counter:</strong> ${lastSaleData.counterCode || '-'}</p>
+                    <div style="text-align: center; margin: 10px 0;">
+                        <svg id="receiptBarcode"></svg>
+                    </div>
                     ${customerStr}
                     <hr>
                     <table style="width: 100%; margin: 10px 0;">
@@ -10689,6 +10912,15 @@
                     ${footerStr}
             </div>
         `;
+
+            try {
+                JsBarcode("#receiptBarcode", lastSaleData.receiptNumber, {
+                    format: "CODE128",
+                    width: 1.5,
+                    height: 40,
+                    displayValue: false
+                });
+            } catch(e) {}
 
             document.getElementById('saleReceipt').style.display = 'block';
             document.getElementById('saleReceipt').scrollIntoView({ behavior: 'smooth' });
@@ -11044,6 +11276,9 @@
                                     Amount in Words:<br>
                                     <span style="font-weight: normal;">${numberToWords(grandTotal)}</span>
                                 </div>
+                                <div style="margin-top: 15px; text-align: center;">
+                                    <svg class="invoiceBarcode" data-value="${saleData.receiptNumber}"></svg>
+                                </div>
                                 <div style="margin-top: 20px; text-align: right; border-top: 1px solid #ccc; padding-top: 3px; font-size: 10px;">
                                     <strong>For ${bName}</strong><br><br>
                                     Authorised Signatory
@@ -11063,6 +11298,7 @@
 
             const invoiceHtml = generateTAXInvoiceHTML(lastSaleData);
             document.getElementById('gstInvoicePrintArea').innerHTML = invoiceHtml;
+            try { JsBarcode(".invoiceBarcode").init(); } catch(e) {}
             document.getElementById('gstInvoiceModal').style.display = 'block';
         }
 
@@ -11426,11 +11662,44 @@
 
                 <div style="margin-top: 20px; text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="btn btn-primary" onclick="printBillDetails('${billNumber}')">🖨️ Print Bill</button>
+                    <button class="btn btn-primary" onclick="printReceiptFromBill('${billNumber}')">🧾 Print Receipt</button>
                     <button class="btn btn-warning" onclick="editBillSales('${billNumber}')" style="background-color: #ffc107; color: #000;">✏️ Edit Sales</button>
                     <button class="btn btn-danger" onclick="deleteBillFromView('${billNumber}')">🗑️ Delete Bill</button>
                     <button class="btn" style="background-color: #6c757d; color: white;" onclick="closeBillDetails()">✖️ Close</button>
                 </div>
             `;
+            try { JsBarcode(".invoiceBarcode").init(); } catch(e) {}
+        }
+
+        function printReceiptFromBill(billNumber) {
+            const billItems = sales.filter(sale => sale.receiptNumber === billNumber);
+            if (billItems.length === 0) return;
+            const saleData = {
+                receiptNumber: billNumber,
+                date: billItems[0].date,
+                customerName: billItems[0].customerName,
+                customerGSTIN: billItems[0].customerGSTIN,
+                customerAddress: billItems[0].customerAddress,
+                customerState: billItems[0].customerState,
+                subtotal: billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                discount: billItems[0].discount || 0,
+                total: billItems[0].total,
+                cashAmount: billItems[0].cashAmount || 0,
+                otherPaymentAmount: billItems[0].otherPaymentAmount || 0,
+                customerAmount: billItems[0].customerAmount || 0,
+                change: billItems[0].change || 0,
+                paymentMethod: billItems[0].paymentMethod || 'cash',
+                gstApplied: billItems[0].gstApplied,
+                counterCode: billItems[0].counterCode || '-',
+                items: billItems
+            };
+            const tempLastSale = lastSaleData;
+            lastSaleData = saleData;
+            showReceipt();
+            setTimeout(() => {
+                printReceipt();
+                lastSaleData = tempLastSale;
+            }, 300);
         }
 
         function printBillDetails(billNumber) {
@@ -11463,15 +11732,23 @@
                             body { margin: 0; padding: 0; }
                         }
                     </style>
+                    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
                 </head>
-                <body>${printContent}</body>
+                <body>
+                    ${printContent}
+                    <script>
+                        window.onload = function() {
+                            try { JsBarcode(".invoiceBarcode").init(); } catch(e) {}
+                            setTimeout(() => {
+                                window.print();
+                            }, 500);
+                        };
+                    <\/script>
+                </body>
             </html>
             `);
             printWindow.document.close();
             printWindow.focus();
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
         }
 
         function closeBillDetails() {
@@ -13080,6 +13357,14 @@
 
             console.log(`🔎 Similarity Check for "${name}": Max Score = ${maxSimilarity.toFixed(2)} with "${similarProduct ? similarProduct.name : 'None'}"`);
 
+            const expDaysVal = document.getElementById('newProductExpiryDays') && document.getElementById('newProductExpiryDays').value !== '' ? parseInt(document.getElementById('newProductExpiryDays').value) || 0 : 0;
+            let expDateVal = null;
+            if (expDaysVal > 0) {
+                let d = new Date();
+                d.setDate(d.getDate() + expDaysVal);
+                expDateVal = d.toISOString().split('T')[0];
+            }
+            
             // Prepare product object
             const productData = {
                 id: Date.now(),
@@ -13088,7 +13373,8 @@
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
                 unit: document.getElementById('newProductUnit').value,
-                expiryDays: document.getElementById('newProductExpiryDays') && document.getElementById('newProductExpiryDays').value !== '' ? parseInt(document.getElementById('newProductExpiryDays').value) || 0 : 0,
+                expiryDays: expDaysVal,
+                expiryDate: expDateVal,
                 quantityType: document.getElementById('newProductQuantityType').value || 'whole',
                 decimalPrecision: document.getElementById('newProductQuantityType').value === 'decimal' ? parseFloat(document.getElementById('newProductDecimalPrecision').value || 0.01) : undefined,
                 packSizes: getPackSizesFromForm('packSizesContainer'),
@@ -13166,8 +13452,19 @@
             const product = products.find(p => String(p.id) === String(id));
             if (product) {
                 const numVal = parseInt(value);
-                product.expiryDays = (numVal && numVal > 0) ? numVal : '';
-                saveData();
+                const newExpiryDays = (numVal && numVal > 0) ? numVal : 0;
+                
+                if (newExpiryDays !== (product.expiryDays || 0)) {
+                    product.expiryDays = newExpiryDays > 0 ? newExpiryDays : '';
+                    if (newExpiryDays > 0) {
+                        let d = new Date();
+                        d.setDate(d.getDate() + newExpiryDays);
+                        product.expiryDate = d.toISOString().split('T')[0];
+                    } else {
+                        product.expiryDate = null;
+                    }
+                    saveData();
+                }
             }
         }
 
@@ -13275,8 +13572,8 @@
                     </td>
                     <td>
                         <button class="btn btn-info btn-sm" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
-                        ${window.hasPermission('product_edit') ? `<button class="btn btn-warning btn-sm" onclick="editProduct('${product.id}')" title="Edit">✏️</button>` : ''}
-                        ${window.hasPermission('product_delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')" title="Delete">🗑️</button>` : ''}
+                        ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editProduct('${product.id}')" title="Edit">✏️</button>` : ''}
+                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')" title="Delete">🗑️</button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -13415,9 +13712,9 @@
 
             // Handle Permissions
             const canEditGeneral = window.hasPermission('product_add_edit');
-            const canEditPrice = window.hasPermission('product_price');
-            const canEditGst = window.hasPermission('product_gst');
-            const canEditDiscount = window.hasPermission('product_discount');
+            const canEditPrice = window.hasPermission('product_add_edit');
+            const canEditGst = window.hasPermission('product_add_edit');
+            const canEditDiscount = window.hasPermission('product_add_edit');
 
             document.getElementById('editProductName').disabled = !canEditGeneral;
             document.getElementById('editProductBarcode').disabled = !canEditGeneral;
@@ -13492,7 +13789,17 @@
                 product.unit = document.getElementById('editProductUnit').value;
                 
                 const expEl = document.getElementById('editProductExpiryDays');
-                product.expiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
+                const newExpiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
+                if (newExpiryDays !== (product.expiryDays || 0)) {
+                    product.expiryDays = newExpiryDays;
+                    if (newExpiryDays > 0) {
+                        let d = new Date();
+                        d.setDate(d.getDate() + newExpiryDays);
+                        product.expiryDate = d.toISOString().split('T')[0];
+                    } else {
+                        product.expiryDate = null;
+                    }
+                }
                 
                 const editQtyType = document.getElementById('editProductQuantityType');
                 if (editQtyType) {
@@ -15683,116 +15990,116 @@
             }
         }
 
+        let globalUsbScannerBuffer = '';
+        let globalUsbLastScanTime = 0;
+
         // Global POS Keyboard Shortcuts
         document.addEventListener('keydown', function(e) {
+            // Global USB Scanner Logic (HID mode)
+            if (window.isGlobalUsbScannerActive) {
+                // Ignore modifier keys
+                if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    const currentTime = new Date().getTime();
+                    // Typical barcode scanners type very fast (< 50ms between characters)
+                    if (currentTime - globalUsbLastScanTime > 50) {
+                        globalUsbScannerBuffer = ''; // Reset if typing too slow (human)
+                    }
+                    globalUsbScannerBuffer += e.key;
+                    globalUsbLastScanTime = currentTime;
+                } else if (e.key === 'Enter' && globalUsbScannerBuffer.length > 3) {
+                    const currentTime = new Date().getTime();
+                    // Ensure the Enter key also came in fast
+                    if (currentTime - globalUsbLastScanTime < 50) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const barcode = globalUsbScannerBuffer;
+                        globalUsbScannerBuffer = '';
+                        
+                        // Context-Aware Routing
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            document.getElementById('quickSaleBarcode').value = barcode;
+                            if (typeof loadProductByBarcode === 'function') loadProductByBarcode(barcode, 'sale');
+                        } else if (document.getElementById('inventory').classList.contains('active')) {
+                            document.getElementById('searchInput').value = barcode;
+                            if (typeof filterInventory === 'function') filterInventory();
+                        } else if (document.getElementById('products').classList.contains('active')) {
+                            document.getElementById('inventorySearchInput').value = barcode;
+                            if (typeof filterInventoryProducts === 'function') filterInventoryProducts();
+                        } else if (document.getElementById('reports').classList.contains('active')) {
+                            const billInput = document.getElementById('billSearchInput');
+                            if (billInput) {
+                                billInput.value = barcode;
+                                if (typeof searchBill === 'function') searchBill();
+                            }
+                        } else if (document.getElementById('purchaseparties') && document.getElementById('purchaseparties').classList.contains('active')) {
+                            const purchaseInput = document.getElementById('purchaseSearchInput');
+                            if (purchaseInput) {
+                                purchaseInput.value = barcode;
+                                if (typeof searchPurchaseProduct === 'function') searchPurchaseProduct(barcode);
+                            }
+                        }
+                        
+                        return; // Stop processing to prevent submitting forms
+                    }
+                    globalUsbScannerBuffer = '';
+                } else if (e.key === 'Enter') {
+                    globalUsbScannerBuffer = '';
+                }
+            }
+
+            // Global Ctrl+Shift+B Shortcut for USB Scanner Toggle
+            if (e.ctrlKey && e.shiftKey && e.code === 'KeyB') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof toggleUsbScanner === 'function') {
+                    toggleUsbScanner(!window.isGlobalUsbScannerActive);
+                }
+                return;
+            }
+
             // Function keys (F1-F9) navigation
             if (!e.altKey && !e.ctrlKey && !e.shiftKey && e.key && e.key.startsWith('F')) {
                 const tabMap = {
-                    'F1': 'dashboard',
-                    'F2': 'inventory',
-                    'F3': 'sales',
-                    'F4': 'reports',
-                    'F5': 'products',
-                    'F6': 'pettycash',
-                    'F7': 'denomination',
-                    'F8': 'calculator',
-                    'F9': 'settings',
-                    'F10': 'purchaseparties'
+                    'F1': 'dashboard', 'F2': 'inventory', 'F3': 'sales', 'F4': 'reports',
+                    'F5': 'products', 'F6': 'pettycash', 'F7': 'denomination', 'F8': 'calculator',
+                    'F9': 'settings', 'F10': 'purchaseparties'
                 };
                 if (tabMap[e.key]) {
                     e.preventDefault();
+                    e.stopPropagation();
                     const btn = document.querySelector(`button[data-tab="${tabMap[e.key]}"]`);
                     if(btn) btn.click();
                     return;
                 }
             }
             
-            // Do not trigger shortcuts if user is typing inside an input/textarea (unless it's Alt/Ctrl based)
-            const isInputFocus = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
-            
-            // Alt Navigation
+            // Alt Actions
             if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-                switch(e.code) {
-                    case 'KeyD':
+                if (e.code === 'KeyX') {
+                    // Alt + X → Clear / Reset Form
+                    if (document.getElementById('sales').classList.contains('active')) {
                         e.preventDefault();
-                        document.querySelector('button[data-tab="dashboard"]').click();
-                        break;
-                    case 'KeyI':
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to clear the current sale?')) clearCart();
+                    } else if (document.getElementById('calculator').classList.contains('active')) {
                         e.preventDefault();
-                        document.querySelector('button[data-tab="inventory"]').click();
-                        break;
-                    case 'KeyS':
+                        e.stopPropagation();
+                        clearAllCalcHistory();
+                    } else if (document.getElementById('denomination').classList.contains('active')) {
                         e.preventDefault();
-                        document.querySelector('button[data-tab="sales"]').click();
-                        break;
-                    case 'KeyR':
-                        e.preventDefault();
-                        document.querySelector('button[data-tab="reports"]').click();
-                        break;
-                    case 'KeyP':
-                        e.preventDefault();
-                        document.querySelector('button[data-tab="products"]').click();
-                        break;
-                    case 'KeyU':
-                        e.preventDefault();
-                        document.querySelector('button[data-tab="calculator"]').click();
-                        break;
-                    case 'KeyN':
-                        e.preventDefault();
-                        document.querySelector('button[data-tab="denomination"]').click();
-                        break;
-                    case 'KeyB': // Focus Barcode in Sales
-                        if (document.getElementById('sales').classList.contains('active')) {
-                            e.preventDefault();
-                            const qc = document.getElementById('quickSaleBarcode');
-                            if(qc) { qc.focus(); qc.select(); }
-                        }
-                        break;
-                    case 'KeyA': // Focus Add Item in Sales
-                        if (document.getElementById('sales').classList.contains('active')) {
-                            e.preventDefault();
-                            const pSearch = document.getElementById('saleProductSearch');
-                            if(pSearch) { pSearch.focus(); pSearch.select(); }
-                        }
-                        break;
-                    case 'KeyV': // Add Inventory / Add Product
-                        if (document.getElementById('purchaseModal') && document.getElementById('purchaseModal').style.display !== 'none') {
-                            e.preventDefault();
-                            showPurchaseAddNewProductForm();
-                        } else if (document.getElementById('sales').classList.contains('active')) {
-                            e.preventDefault();
-                            handleAddInventoryFromSale();
-                        } else if (document.getElementById('inventory').classList.contains('active')) {
-                            e.preventDefault();
-                            handleAddInventoryFromInventory();
-                        }
-                        break;
-                    case 'KeyC': // Add Customer
-                        if (document.getElementById('sales').classList.contains('active')) {
-                            e.preventDefault();
-                            openAddCustomerModal();
-                        }
-                        break;
-                    case 'KeyX': // Clear shortcut
-                        if (document.getElementById('sales').classList.contains('active')) {
-                            e.preventDefault();
-                            clearCart();
-                        } else if (document.getElementById('calculator').classList.contains('active')) {
-                            e.preventDefault();
-                            clearAllCalcHistory();
-                        } else if (document.getElementById('denomination').classList.contains('active')) {
-                            e.preventDefault();
-                            resetDayClosingForm();
-                        }
-                        break;
+                        e.stopPropagation();
+                        resetDayClosingForm();
+                    }
                 }
+                return;
             }
             
             // Ctrl Actions
             if (e.ctrlKey && !e.altKey && !e.shiftKey) {
                 switch(e.code) {
-                    case 'KeyS': // Save Record
+                    case 'KeyS': // Ctrl + S → Save Record
                         e.preventDefault();
+                        e.stopPropagation();
                         if (document.getElementById('denomination').classList.contains('active')) {
                             saveDayClosing();
                         } else if (document.getElementById('sales').classList.contains('active')) {
@@ -15805,10 +16112,13 @@
                             if (document.getElementById('newProductModal').style.display === 'block') {
                                 document.getElementById('newProductForm').requestSubmit();
                             }
+                        } else if (document.getElementById('addCustomerModal') && document.getElementById('addCustomerModal').style.display === 'block') {
+                            document.getElementById('addCustomerForm').requestSubmit();
                         }
                         break;
-                    case 'KeyF': // Search/Focus
+                    case 'KeyF': // Ctrl + F → Search / Focus
                         e.preventDefault();
+                        e.stopPropagation();
                         if (document.getElementById('inventory').classList.contains('active')) {
                             document.getElementById('searchInput').focus();
                         } else if (document.getElementById('products').classList.contains('active')) {
@@ -15817,16 +16127,123 @@
                             document.getElementById('saleProductSearch').focus();
                         }
                         break;
-                    case 'Delete':
-                    case 'Backspace': // Some keyboards map Ctrl+Delete as Ctrl+Backspace
-                        if (document.getElementById('denomination').classList.contains('active') && document.getElementById('editingDayClosingId').value) {
+                    case 'KeyH': // Ctrl + H → Hold Sale
+                        if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
-                            deleteDayClosing(document.getElementById('editingDayClosingId').value);
+                            e.stopPropagation();
+                            holdSale();
+                        }
+                        break;
+                    case 'KeyC': // Ctrl + C → Clear Cart
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (typeof cart !== 'undefined' && cart.length > 0) {
+                                if (confirm('Are you sure you want to clear the cart?')) {
+                                    clearCart();
+                                }
+                            } else {
+                                clearCart();
+                            }
+                        }
+                        break;
+                    case 'KeyI': // Ctrl + I → Add New Inventory / Product
+                        if (document.getElementById('purchaseModal') && document.getElementById('purchaseModal').style.display === 'flex') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            showPurchaseAddNewProductForm();
+                        } else if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddInventoryFromSale();
+                        } else if (document.getElementById('inventory').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddInventoryFromInventory();
+                        } else if (document.getElementById('purchaseparties') && document.getElementById('purchaseparties').classList.contains('active')) {
+                            // If they are on the Purchase & Parties tab directly but not in the modal
+                            // Perhaps open the purchase modal first or trigger add inventory?
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openPurchaseModal(); 
+                        }
+                        break;
+                    case 'KeyB': // Ctrl + B → Barcode Scan
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openScannerModal('sale');
+                        }
+                        break;
+                    case 'KeyE': // Ctrl + E → Edit
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (document.getElementById('selectedCustomerDisplay').textContent && document.getElementById('selectedCustomerDisplay').textContent !== 'Walk-in Customer') {
+                                alert("Editing selected record is not fully supported here yet.");
+                            } else {
+                                alert("Please select a record to edit.");
+                            }
+                        }
+                        break;
+                    case 'KeyN': // Ctrl + N → Add New Customer
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openAddCustomerModal();
+                        }
+                        break;
+                    case 'Delete':
+                    case 'Backspace': // Ctrl + Del → Delete Editing Record
+                        if (e.code === 'Delete') {
+                            if (document.getElementById('denomination').classList.contains('active') && document.getElementById('editingDayClosingId').value) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteDayClosing(document.getElementById('editingDayClosingId').value);
+                            }
                         }
                         break;
                 }
             }
-        });
+            
+            // Enter Action
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+                const isInputFocus = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
+                if (!isInputFocus) {
+                    const scanContainer = document.getElementById('continuousScannerContainer');
+                    if (scanContainer && scanContainer.style.display !== 'none' && document.getElementById('sales').classList.contains('active')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Turn off scanner
+                        const toggleBtn = document.getElementById('continuousScanToggle');
+                        if (toggleBtn) {
+                            toggleBtn.checked = false;
+                            toggleContinuousScanMode();
+                        }
+                        // Move to next logical field -> Customer Search
+                        const custSearch = document.getElementById('saleCustomerSearch');
+                        if (custSearch) {
+                            custSearch.focus();
+                        }
+                    }
+                }
+            }
+            
+            // Esc Action -> Cancel / Close Modal
+            if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+                const modals = document.querySelectorAll('.modal');
+                modals.forEach(m => {
+                    if (m.style.display === 'block' || m.style.display === 'flex') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if(m.id === 'addCustomerModal' && typeof closeAddCustomerModal === 'function') closeAddCustomerModal();
+                        else if(m.id === 'newProductModal' && typeof closeNewProductModal === 'function') closeNewProductModal();
+                        else if(m.id === 'editProductModal' && typeof closeEditProductModal === 'function') closeEditProductModal();
+                        else m.style.display = 'none';
+                    }
+                });
+            }
+        }, true);
 
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
@@ -16045,6 +16462,7 @@
             </div>
             <div class="form-group"><label>Full Name</label><input type="text" id="addUserName" class="form-control"></div>
             <div class="form-group"><label>Username</label><input type="text" id="addUserUsername" class="form-control"></div>
+            <div class="form-group"><label>User Code (Counter Code)</label><input type="text" id="addUserCode" class="form-control" placeholder="e.g. EXAM01, C1"></div>
             <div class="form-group" id="addUserPasswordGroup"><label>Password</label><input type="password" id="addUserPassword" class="form-control"></div>
             <div class="form-group"><label>Role</label>
                 <select id="addUserRole" class="form-control" onchange="togglePermissionsList()">
@@ -16091,18 +16509,7 @@
                 <button class="modal-close" onclick="document.getElementById('shortcutsModal').style.display='none'">&times;</button>
             </div>
             <div style="margin-top: 15px; font-size: 15px;">
-                <h4 style="margin-bottom: 5px;">Navigation (Global)</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div><kbd>Alt</kbd> + <kbd>D</kbd> : Dashboard</div>
-                    <div><kbd>Alt</kbd> + <kbd>I</kbd> : Inventory</div>
-                    <div><kbd>Alt</kbd> + <kbd>S</kbd> : Record Sale</div>
-                    <div><kbd>Alt</kbd> + <kbd>R</kbd> : Reports</div>
-                    <div><kbd>Alt</kbd> + <kbd>P</kbd> : Products</div>
-                    <div><kbd>Alt</kbd> + <kbd>U</kbd> : Calculator</div>
-                    <div><kbd>Alt</kbd> + <kbd>N</kbd> : Day Closing</div>
-                </div>
-                
-                <h4 style="margin-bottom: 5px;">Actions (Global)</h4>
+                <h4 style="margin-bottom: 5px;">Global Actions</h4>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                     <div><kbd>Ctrl</kbd> + <kbd>S</kbd> : Save Record</div>
                     <div><kbd>Ctrl</kbd> + <kbd>F</kbd> : Search / Focus</div>
@@ -16112,12 +16519,16 @@
                 </div>
                 
                 <h4 style="margin-bottom: 5px;">Record Sale</h4>
-                <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div><kbd>Alt</kbd> + <kbd>B</kbd> : Focus Quick Sale Barcode</div>
-                    <div><kbd>Alt</kbd> + <kbd>A</kbd> : Focus Add Item to Sale</div>
-                    <div><kbd>Alt</kbd> + <kbd>V</kbd> : Quick Add Inventory</div>
-                    <div><kbd>Alt</kbd> + <kbd>C</kbd> : Add New Customer</div>
-                    <div><kbd>Enter</kbd> : Move to next logical field / Select Match</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div><kbd>F3</kbd> : Product Search</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>F</kbd> : Search / Focus</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>B</kbd> : Barcode Scan</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>H</kbd> : Hold Sale</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>C</kbd> : Clear Cart</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>I</kbd> : Add New Inventory</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>E</kbd> : Edit</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>N</kbd> : Add New Customer</div>
+                    <div style="grid-column: 1 / -1;"><kbd>Enter</kbd> : Move to next logical field / Select Match</div>
                 </div>
                 
                 <h4 style="margin-bottom: 5px;">Calculator & Denomination</h4>
@@ -16176,6 +16587,20 @@
             if (businessNameInput) businessNameInput.value = settings.businessName || '';
             const taglineInput = document.getElementById('settingsTagline');
             if (taglineInput) taglineInput.value = settings.tagline || '';
+
+            const dbNameSpan = document.getElementById('currentDatabaseName');
+            const dbPathSpan = document.getElementById('currentDatabasePath');
+            if (dbNameSpan && dbPathSpan) {
+                const f = localStorage.getItem('database_folder');
+                if (f) {
+                    dbPathSpan.innerText = f;
+                    const parts = f.replace(/\\/g, '/').split('/');
+                    dbNameSpan.innerText = parts[parts.length - 1] || 'Database Folder';
+                } else {
+                    dbPathSpan.innerText = 'Default App Storage (Local Storage)';
+                    dbNameSpan.innerText = 'Local Database';
+                }
+            }
             
             const logoPreview = document.getElementById('settingsLogoPreview');
             const removeLogoBtn = document.getElementById('settingsRemoveLogoBtn');
@@ -16229,6 +16654,13 @@
 
             const defaultTaxTypeInput = document.getElementById('settingsDefaultTaxType');
             if (defaultTaxTypeInput) defaultTaxTypeInput.value = settings.defaultTaxType || 'auto';
+
+            const globalUsbScannerToggle = document.getElementById('globalUsbScannerToggle');
+            if (globalUsbScannerToggle) {
+                globalUsbScannerToggle.checked = !!settings.usbScannerEnabled;
+            }
+            window.isGlobalUsbScannerActive = !!settings.usbScannerEnabled;
+            if (typeof updateUsbScannerBadge === 'function') updateUsbScannerBadge();
 
             // Update UI dynamically
             applySettingsToUI(settings);
@@ -16656,31 +17088,79 @@
             document.getElementById('settingsConfirmPwd').value = '';
         }
 
-        function createBackup() {
+        let pendingDatabaseFolder = null;
+
+        function handleChangeDatabaseLocation() {
             if (!window.electronAPI) {
-                showAlert('Backup is only supported in the desktop app.', '⚠️');
+                showAlert('Database Location can only be changed in the Desktop app.', '⚠️');
                 return;
             }
-            
-            const folder = localStorage.getItem('database_folder');
-            if (!folder) {
-                showAlert('Database folder not selected.', '⚠️');
-                return;
+            const folder = window.electronAPI.selectDirectorySync();
+            if (folder) {
+                validateDatabaseFolder(folder);
             }
+        }
 
-            const data = JSON.stringify(localStorage);
-            const date = new Date().toISOString().replace(/[:.]/g, '-');
-            const result = window.electronAPI.createBackupSync({
-                folder: folder,
-                filename: `shermon_backup_${date}.json`,
-                data: data
-            });
+        function validateDatabaseFolder(folder) {
+            try {
+                // Fetch data to validate
+                const productsData = window.electronAPI.loadDataSync({ folder, key: 'products' });
+                const customersData = window.electronAPI.loadDataSync({ folder, key: 'customers' });
+                const salesData = window.electronAPI.loadDataSync({ folder, key: 'sales' });
+                const purchasesData = window.electronAPI.loadDataSync({ folder, key: 'purchases' });
 
-            if (result.success) {
-                showAlert('Backup created successfully!', '✅');
-                document.getElementById('lastBackupLabel').innerText = 'Last Backup: ' + new Date().toLocaleString();
+                const parseCount = (str) => {
+                    if (!str) return 0;
+                    try { const arr = JSON.parse(str); return Array.isArray(arr) ? arr.length : 0; } catch(e) { return 0; }
+                };
+
+                const pCount = parseCount(productsData);
+                const cCount = parseCount(customersData);
+                const sCount = parseCount(salesData);
+                const purCount = parseCount(purchasesData);
+
+                const parts = folder.replace(/\\/g, '/').split('/');
+                const folderName = parts[parts.length - 1] || 'Database Folder';
+
+                document.getElementById('dbPreviewName').innerText = folderName;
+                document.getElementById('dbPreviewPath').innerText = folder;
+                document.getElementById('dbPreviewProducts').innerText = pCount;
+                document.getElementById('dbPreviewCustomers').innerText = cCount;
+                document.getElementById('dbPreviewSales').innerText = sCount;
+                document.getElementById('dbPreviewPurchases').innerText = purCount;
+
+                pendingDatabaseFolder = folder;
+                document.getElementById('dbPreviewModal').style.display = 'block';
+            } catch (err) {
+                showAlert('Failed to read selected database folder. It may not be accessible.', '❌');
+            }
+        }
+
+        function confirmDatabaseSwitch() {
+            document.getElementById('dbPreviewModal').style.display = 'none';
+            document.getElementById('dbBackupPromptModal').style.display = 'block';
+        }
+
+        function proceedWithDatabaseSwitch() {
+            if (pendingDatabaseFolder) {
+                localStorage.setItem('database_folder', pendingDatabaseFolder);
+                window.location.reload();
+            }
+        }
+
+        function backupAndProceedSwitch() {
+            createBackup();
+            setTimeout(() => {
+                proceedWithDatabaseSwitch();
+            }, 1000);
+        }
+
+        function createBackup() {
+            // Forward to the robust backup method that captures full state instead of just localStorage
+            if (typeof backupData === 'function') {
+                backupData();
             } else {
-                showAlert('Failed to create backup: ' + result.error, '❌');
+                showAlert('Backup system error.', '❌');
             }
         }
 
@@ -18389,6 +18869,7 @@
                     billMap[sale.receiptNumber] = {
                         date: sale.date,
                         billNo: sale.receiptNumber,
+                        counterCode: sale.counterCode || '-',
                         customer: sale.customerName || 'Walk-in Customer',
                         gstin: sale.customerGSTIN || '-',
                         subtotal: 0,
@@ -18441,14 +18922,15 @@
                 return `<tr>
                     <td>${new Date(b.date).toLocaleString()}</td>
                     <td>${b.billNo}</td>
+                    <td>${b.counterCode}</td>
                     <td>${b.customer}</td>
-                    <td class="gst-field">${b.gstin}</td>
+                    <td>${b.gstin}</td>
                     <td>₹${b.subtotal.toFixed(2)}</td>
                     <td>₹${b.discount.toFixed(2)}</td>
-                    <td class="gst-field">₹${(b.total - b.cgst - b.sgst - b.igst).toFixed(2)}</td>
-                    <td class="gst-field">₹${b.cgst.toFixed(2)}</td>
-                    <td class="gst-field">₹${b.sgst.toFixed(2)}</td>
-                    <td class="gst-field">₹${b.igst.toFixed(2)}</td>
+                    <td>₹${(b.total - b.cgst - b.sgst - b.igst).toFixed(2)}</td>
+                    <td>₹${b.cgst.toFixed(2)}</td>
+                    <td>₹${b.sgst.toFixed(2)}</td>
+                    <td>₹${b.igst.toFixed(2)}</td>
                     <td>₹${b.total.toFixed(2)}</td>
                     <td>${b.payment}</td>
                     <td><button class="btn btn-sm btn-info" onclick="document.getElementById('billSearchInput').value='${b.billNo}'; searchBill(); document.getElementById('billSearchInput').scrollIntoView();">👁️ View</button></td>
@@ -18466,12 +18948,11 @@
                 <div>Total Bills: ${totBills}</div>
                 <div>Gross Amount: ₹${totSub.toFixed(2)}</div>
                 <div style="color:red;">Total Discount: ₹${totDisc.toFixed(2)}</div>
-                <div class="gst-field">CGST: ₹${totCGST.toFixed(2)}</div>
-                <div class="gst-field">SGST: ₹${totSGST.toFixed(2)}</div>
-                <div class="gst-field">IGST: ₹${totIGST.toFixed(2)}</div>
+                <div>CGST: ₹${totCGST.toFixed(2)}</div>
+                <div>SGST: ₹${totSGST.toFixed(2)}</div>
+                <div>IGST: ₹${totIGST.toFixed(2)}</div>
                 <div style="color:green; font-size:1.1em;">Total Sales: ₹${totTotal.toFixed(2)}</div>
             `;
-            if(typeof updateGstVisibility === 'function') updateGstVisibility();
         }
 
         function sortItemWiseReport(col) {
@@ -18516,13 +18997,14 @@
                     <td>${new Date(i.date).toLocaleString()}</td>
                     <td>${i.productName}</td>
                     <td>${i.barcode || '-'}</td>
-                    <td class="gst-field">${i.hsn || '-'}</td>
-                    <td class="gst-field">${i.gstRate || '0'}%</td>
+                    <td>${i.hsn || '-'}</td>
+                    <td>${i.gstRate || '0'}%</td>
                     <td>${i.unit || 'Piece'}</td>
                     <td>${i.quantity}</td>
                     <td>₹${i.price.toFixed(2)}</td>
                     <td>₹${i.total.toFixed(2)}</td>
                     <td>${i.receiptNumber}</td>
+                    <td>${i.counterCode || '-'}</td>
                     <td>${i.customerName || 'Walk-in'}</td>
                     <td>${i.paymentMethod}</td>
                 </tr>`;
@@ -18533,12 +19015,12 @@
                 <div>Total Quantity Sold: ${totQty}</div>
                 <div style="color:green; font-size:1.1em;">Gross Item Sales: ₹${totSales.toFixed(2)}</div>
             `;
-            if(typeof updateGstVisibility === 'function') updateGstVisibility();
         }
 
         function renderSalesSummaryReport() {
             const tbody = document.getElementById('salesSummaryReportBody');
             const period = document.getElementById('summaryPeriodSelector').value;
+            const counterWise = document.getElementById('summaryCounterWise') ? document.getElementById('summaryCounterWise').checked : false;
             
             const summaryMap = {};
             
@@ -18546,16 +19028,20 @@
                 const d = new Date(sale.date);
                 let key = '';
                 if (period === 'daily') {
-                    key = d.toLocaleDateString();
+                    key = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 } else if (period === 'weekly') {
                     const day = d.getDay();
                     const start = new Date(d);
                     start.setDate(d.getDate() - day + (day == 0 ? -6 : 1));
                     const end = new Date(start);
                     end.setDate(start.getDate() + 6);
-                    key = `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+                    key = `${start.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${end.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
                 } else if (period === 'monthly') {
                     key = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+                }
+                
+                if (counterWise) {
+                    key += ` | Counter: ${sale.counterCode || '-'}`;
                 }
                 
                 if (!summaryMap[key]) {
@@ -18589,15 +19075,20 @@
             Object.keys(globalBillDiscMap).forEach(billNo => {
                 const d = new Date(globalBillDiscMap[billNo].date);
                 let key = '';
-                if (period === 'daily') key = d.toLocaleDateString();
+                if (period === 'daily') key = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 else if (period === 'weekly') {
                     const day = d.getDay();
                     const start = new Date(d);
                     start.setDate(d.getDate() - day + (day == 0 ? -6 : 1));
                     const end = new Date(start);
                     end.setDate(start.getDate() + 6);
-                    key = `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+                    key = `${start.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${end.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
                 } else if (period === 'monthly') key = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+                
+                if (counterWise) {
+                    const sampleSale = globalFilteredSales.find(s => s.receiptNumber === billNo);
+                    if (sampleSale) key += ` | Counter: ${sampleSale.counterCode || '-'}`;
+                }
                 
                 if(summaryMap[key]) summaryMap[key].discount += globalBillDiscMap[billNo].disc;
             });
@@ -18606,6 +19097,7 @@
             
             if (arr.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" class="text-center">No data available.</td></tr>`;
+                document.getElementById('salesSummaryPaymentTotals').innerHTML = '';
                 return;
             }
 
@@ -18616,14 +19108,66 @@
                     <td>${s.items}</td>
                     <td>₹${s.subtotal.toFixed(2)}</td>
                     <td>₹${s.discount.toFixed(2)}</td>
-                    <td class="gst-field">₹${(s.total - s.cgst - s.sgst - s.igst).toFixed(2)}</td>
-                    <td class="gst-field">₹${s.cgst.toFixed(2)}</td>
-                    <td class="gst-field">₹${s.sgst.toFixed(2)}</td>
-                    <td class="gst-field">₹${s.igst.toFixed(2)}</td>
+                    <td>₹${(s.total - s.cgst - s.sgst - s.igst).toFixed(2)}</td>
+                    <td>₹${s.cgst.toFixed(2)}</td>
+                    <td>₹${s.sgst.toFixed(2)}</td>
+                    <td>₹${s.igst.toFixed(2)}</td>
                     <td><strong>₹${s.total.toFixed(2)}</strong></td>
                 </tr>
             `).join('');
-            if(typeof updateGstVisibility === 'function') updateGstVisibility();
+
+            const paymentTotals = {
+                'cash': 0,
+                'card': 0,
+                'upi': 0,
+                'bank': 0,
+                'credit sales': 0
+            };
+            const uniqueBillsForPayment = {};
+            globalFilteredSales.forEach(sale => {
+                if (!uniqueBillsForPayment[sale.receiptNumber]) {
+                    uniqueBillsForPayment[sale.receiptNumber] = {
+                        paymentMethod: (sale.paymentMethod || 'cash').toLowerCase().trim(),
+                        total: 0
+                    };
+                }
+                uniqueBillsForPayment[sale.receiptNumber].total += sale.total;
+            });
+
+            let grandTotalSales = 0;
+            Object.values(uniqueBillsForPayment).forEach(bill => {
+                let method = bill.paymentMethod;
+                if (method.includes('cash')) method = 'cash';
+                else if (method.includes('card')) method = 'card';
+                else if (method.includes('upi')) method = 'upi';
+                else if (method.includes('bank')) method = 'bank';
+                else if (method.includes('credit')) method = 'credit sales';
+                else method = 'cash';
+
+                if (paymentTotals[method] !== undefined) {
+                    paymentTotals[method] += bill.total;
+                } else {
+                    paymentTotals['cash'] += bill.total;
+                }
+                grandTotalSales += bill.total;
+            });
+
+            document.getElementById('salesSummaryPaymentTotals').innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 1.1em; color: #495057;">Payment Summary</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                    <div>💵 Cash: ₹${paymentTotals['cash'].toFixed(2)}</div>
+                    <div style="color: #ccc;">|</div>
+                    <div>💳 Card: ₹${paymentTotals['card'].toFixed(2)}</div>
+                    <div style="color: #ccc;">|</div>
+                    <div>📱 UPI: ₹${paymentTotals['upi'].toFixed(2)}</div>
+                    <div style="color: #ccc;">|</div>
+                    <div>🏦 Bank: ₹${paymentTotals['bank'].toFixed(2)}</div>
+                    <div style="color: #ccc;">|</div>
+                    <div>🧾 Credit Sales: ₹${paymentTotals['credit sales'].toFixed(2)}</div>
+                    <div style="color: #ccc;">|</div>
+                    <div style="color: green; font-size: 1.1em;">💰 Total Sales: ₹${grandTotalSales.toFixed(2)}</div>
+                </div>
+            `;
         }
 
         function exportFilteredReport(type) {
@@ -18645,17 +19189,17 @@
                     billMap[sale.receiptNumber].total += sale.total;
                 });
                 
-                let csv = 'Date,Time,Bill No,Customer,Subtotal,Discount,Total,Payment Method\\n';
+                let csv = 'Date,Time,Bill No,Counter,Customer,Subtotal,Discount,Total,Payment Method\\n';
                 Object.values(billMap).forEach(b => {
                     const d = new Date(b.date);
-                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${b.billNo},"${b.customer}",${b.subtotal.toFixed(2)},${b.discount.toFixed(2)},${b.total.toFixed(2)},${b.payment}\\n`;
+                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${b.billNo},${b.counterCode},"${b.customer}",${b.subtotal.toFixed(2)},${b.discount.toFixed(2)},${b.total.toFixed(2)},${b.payment}\\n`;
                 });
                 triggerCSVDownload(csv, 'bill_wise_sales');
             } else if (type === 'items') {
-                let csv = 'Date,Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Customer,Payment Method\\n';
+                let csv = 'Date,Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Counter,Customer,Payment Method\\n';
                 globalFilteredSales.forEach(sale => {
                     const d = new Date(sale.date);
-                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
+                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},${sale.counterCode || '-'},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
                 });
                 triggerCSVDownload(csv, 'item_wise_sales');
             }
@@ -19991,6 +20535,33 @@
         });
 
     })();
+    </script>
+    <!-- Global USB Scanner Status Badge -->
+    <div id="usbScannerBadge" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; font-size: 12px; z-index: 9999; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events: none; transition: opacity 0.3s; display: flex; align-items: center; gap: 8px;">
+        BAR CODE <span id="usbScannerBadgeIcon">⚪</span>
+    </div>
+
+    <script>
+        function toggleUsbScanner(enabled) {
+            window.isGlobalUsbScannerActive = enabled;
+            const toggle = document.getElementById('globalUsbScannerToggle');
+            if (toggle && toggle.checked !== enabled) {
+                toggle.checked = enabled;
+            }
+            if (typeof updateUsbScannerBadge === 'function') updateUsbScannerBadge();
+            
+            // Save to settings
+            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {});
+            settings.usbScannerEnabled = enabled;
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+
+        function updateUsbScannerBadge() {
+            const icon = document.getElementById('usbScannerBadgeIcon');
+            if (icon) {
+                icon.textContent = window.isGlobalUsbScannerActive ? '🟢' : '⚪';
+            }
+        }
     </script>
 </body>
 </html>
