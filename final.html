@@ -3812,7 +3812,8 @@
                                         <p style="color: #666; margin: 0; font-size: 13px;">Enable expiry dates and tracking for products.</p>
                                     </div>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="settingsExpiryTracking">
+                                        <input type="checkbox" id="settingsExpiryTracking" onchange="toggleSetting('expiryTracking', this.checked)">
+                                        <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                                 
@@ -3822,7 +3823,8 @@
                                         <p style="color: #666; margin: 0; font-size: 13px;">Show buying prices in product and inventory views. (Always visible in Purchases).</p>
                                     </div>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="settingsBuyingPriceTracking">
+                                        <input type="checkbox" id="settingsBuyingPriceTracking" onchange="toggleSetting('buyingPriceTracking', this.checked)">
+                                        <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                             </div>
