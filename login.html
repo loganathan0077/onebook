@@ -397,64 +397,7 @@
             .features-grid { display: none; }
         }
         
-        /* Modal Styles */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
 
-        .modal-overlay.show { display: flex; }
-
-        .modal-card {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            animation: slideIn 0.3s ease;
-        }
-
-        .modal-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #1e293b;
-        }
-
-        .modal-text {
-            color: #64748b;
-            margin-bottom: 25px;
-            line-height: 1.5;
-            font-size: 14px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .btn-modal {
-            padding: 12px 20px;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            flex: 1;
-        }
-
-        .btn-confirm { background: var(--primary); color: white; }
     </style>
 </head>
 
@@ -563,20 +506,7 @@
         </span>
     </div>
 
-    <!-- Session Blocked Modal -->
-    <div id="conflictModal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-title">⛔ Login Blocked</div>
-            <div class="modal-text" id="conflictText">
-                This account is currently active on another device.<br><br>
-                To prevent data loss (e.g. interrupting a sale), <b>you cannot login</b> until the other device logs out
-                or is idle for 5 minutes.
-            </div>
-            <div class="modal-buttons">
-                <button class="btn-modal btn-confirm" id="btnLoginAnyway">Check Again</button>
-            </div>
-        </div>
-    </div>
+
 
     <script type="module">
         import { login, checkAuth } from './auth.js';
@@ -633,9 +563,6 @@
                 if (result.success) {
                     // Login successful, redirect to main app
                     window.location.href = 'final.html';
-                } else if (result.requiresConfirmation) {
-                    setLoading(false);
-                    showConflictModal(email, password, result.otherDevice);
                 } else {
                     // Show error message
                     showError(result.error);
@@ -679,55 +606,7 @@
             });
         }
 
-        // --- Conflict Modal Logic ---
-        const conflictModal = document.getElementById('conflictModal');
-        const conflictText = document.getElementById('conflictText');
-        const btnLoginAnyway = document.getElementById('btnLoginAnyway'); // Acts as "Retry" now
 
-        // Store credentials briefly to retry login
-        let storedEmail = '';
-        let storedPassword = '';
-
-        window.closeConflictModal = () => {
-            conflictModal.classList.remove('show');
-            storedEmail = '';
-            storedPassword = '';
-        };
-
-        function showConflictModal(email, password, otherDevice) {
-            storedEmail = email;
-            storedPassword = password;
-            conflictText.innerHTML = `Account is active on <b>${otherDevice}</b>.<br><br>Please logout from that device before logging in here.<br><small>(Auto-unlocks in ~5 mins if idle)</small>`;
-            conflictModal.classList.add('show');
-        }
-
-        btnLoginAnyway.addEventListener('click', async () => {
-             if(!storedEmail || !storedPassword) return;
-             
-             conflictModal.classList.remove('show');
-             setLoading(true);
-             
-             try {
-                 // Retry WITHOUT Force (Just Check Again)
-                 // If the user logged out or timed out, this will succeed.
-                 // If still active, it will show the modal again.
-                 const result = await login(storedEmail, storedPassword, false);
-                 
-                 if (result.success) {
-                      window.location.href = 'final.html';
-                 } else if (result.requiresConfirmation) {
-                      // Still blocked
-                      setLoading(false);
-                      showConflictModal(storedEmail, storedPassword, result.otherDevice);
-                 } else {
-                      showError(result.error);
-                      setLoading(false);
-                 }
-             } catch (e) {
-                 showError(e.message);
-                 setLoading(false);
-             }
-        });
     </script>
 </body>
 
