@@ -1,5 +1,6 @@
 {
-    "name": "shermon-sales-app",
+    "name": "onebook",
+    "productName": "OneBook",
     "version": "1.0.0",
     "description": "Desktop Application for Shermon Sales",
     "main": "main.js",
@@ -25,7 +26,7 @@
                     ]
                 }
             ],
-            "icon": "icon-512.png"
+            "icon": "onebooklogo.png"
         },
         "nsis": {
             "oneClick": false,
@@ -34,7 +35,7 @@
         },
         "mac": {
             "target": "dmg",
-            "icon": "icon-512.png"
+            "icon": "onebooklogo.png"
         }
     },
     "dependencies": {
