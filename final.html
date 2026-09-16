@@ -2763,13 +2763,13 @@
                                         Product ↕</th>
                                     <th style="padding: 10px; cursor: pointer;" onclick="sortPriceManager('category')">
                                         Category ↕</th>
-                                    <th style="padding: 10px; cursor: pointer;" onclick="sortPriceManager('costPrice')">
+                                    <th style="padding: 10px; cursor: pointer;" class="admin-only buying-price-feature" onclick="sortPriceManager('costPrice')">
                                         Cost Price (₹) ↕</th>
                                     <th style="padding: 10px; cursor: pointer;" onclick="sortPriceManager('price')">
                                         Selling Price (₹) ↕</th>
-                                    <th style="padding: 10px; cursor: pointer;" onclick="sortPriceManager('margin')">
+                                    <th style="padding: 10px; cursor: pointer;" class="admin-only buying-price-feature" onclick="sortPriceManager('margin')">
                                         Margin % ↕</th>
-                                    <th style="padding: 10px; cursor: pointer;" onclick="sortPriceManager('markup')">
+                                    <th style="padding: 10px; cursor: pointer;" class="admin-only buying-price-feature" onclick="sortPriceManager('markup')">
                                         Markup % ↕</th>
                                 </tr>
                             </thead>
@@ -3803,6 +3803,30 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px;">
+                                <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">📦 Product Features</h4>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5;">
+                                    <div>
+                                        <h5 style="margin: 0 0 5px 0; font-size: 15px;">📅 Expiry Tracking</h5>
+                                        <p style="color: #666; margin: 0; font-size: 13px;">Enable expiry dates and tracking for products.</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="settingsExpiryTracking">
+                                    </label>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+                                    <div>
+                                        <h5 style="margin: 0 0 5px 0; font-size: 15px;">💰 Buying Price Tracking</h5>
+                                        <p style="color: #666; margin: 0; font-size: 13px;">Show buying prices in product and inventory views. (Always visible in Purchases).</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="settingsBuyingPriceTracking">
+                                    </label>
+                                </div>
+                            </div>
+
                         </div>
 
                         <!-- Product Configuration (Master Data) -->
@@ -3987,7 +4011,7 @@
                             <option value="">Select Category...</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group expiry-tracking-feature">
                         <label>Expiry Days (Optional)</label>
                         <input type="number" id="editProductExpiryDays" placeholder="e.g. 30" min="0">
                     </div>
@@ -4015,6 +4039,10 @@
                     <div class="form-group">
                         <label>Unit Price (₹)</label>
                         <input type="number" id="editProductPrice" step="0.01" required>
+                    </div>
+                    <div class="form-group buying-price-feature">
+                        <label>Buying Price (₹)</label>
+                        <input type="number" id="editProductPurchasePrice" step="0.01" placeholder="0.00">
                     </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label>Product Discount (%) — <small style="color:#666; font-weight:normal;">Overrides Category Discount</small></label>
@@ -4200,7 +4228,7 @@
                                         <option value="">Select Category...</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group expiry-tracking-feature">
                                     <label>Expiry Days (Optional)</label>
                                     <input type="number" id="newProductExpiryDays" placeholder="e.g. 30" min="0">
                                 </div>
@@ -4242,7 +4270,7 @@
                                     <label>Selling Price (₹)</label>
                                     <input type="number" id="newProductSellingPrice" placeholder="10.00">
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group buying-price-feature">
                                     <label>Buying Price (₹)</label>
                                     <input type="number" id="newProductPurchasePrice" placeholder="0.00">
                                 </div>
@@ -13627,6 +13655,8 @@
             document.getElementById('editProductId').value = product.id;
             document.getElementById('editProductBarcode').value = product.barcode || '';
             document.getElementById('editProductName').value = product.name;
+            const editPurchasePrice = document.getElementById('editProductPurchasePrice');
+            if(editPurchasePrice) editPurchasePrice.value = product.costPrice || '';
 
             const editImgBase64 = document.getElementById('editProductImageBase64');
             const editImgPreview = document.getElementById('editProductImagePreview');
@@ -16723,6 +16753,12 @@
 
             const defaultTaxType = document.getElementById('settingsDefaultTaxType');
             if(defaultTaxType) currentSettings.defaultTaxType = defaultTaxType.value;
+
+            const expiryToggle = document.getElementById('settingsExpiryTracking');
+            if(expiryToggle) currentSettings.expiryTracking = expiryToggle.checked;
+
+            const buyingToggle = document.getElementById('settingsBuyingPriceTracking');
+            if(buyingToggle) currentSettings.buyingPriceTracking = buyingToggle.checked;
 
             localStorage.setItem('settings', JSON.stringify(currentSettings));
             showAlert('Settings saved successfully!', '✅');
