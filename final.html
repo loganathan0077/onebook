@@ -399,9 +399,24 @@
             transition: all 0.3s;
             text-align: left;
             display: flex;
-            justify-content: space-between;
             align-items: center;
             box-sizing: border-box;
+            position: relative;
+        }
+
+        .nav-shortcut {
+            position: absolute;
+            right: 20px;
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            color: #495057;
+            padding: 2px 0;
+            width: 30px;
+            text-align: center;
+            border-radius: 3px;
+            font-size: 11px;
+            font-family: monospace;
+            display: inline-block;
         }
 
         .nav-tab:hover {
@@ -1730,16 +1745,16 @@
 
         <div class="main-wrapper">
         <div class="nav-tabs">
-            <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)"><span>📈 Dashboard</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F1</kbd></button>
-            <button class="nav-tab" data-tab="inventory" onclick="switchTab('inventory', this)"><span>📦 Inventory</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F2</kbd></button>
-            <button class="nav-tab" data-tab="sales" onclick="switchTab('sales', this)"><span>💰 Record Sale</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F3</kbd></button>
-            <button class="nav-tab" data-tab="reports" onclick="switchTab('reports', this)"><span>📊 Reports</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F4</kbd></button>
-            <button class="nav-tab" data-tab="products" onclick="switchTab('products', this)"><span>🏷️ Products</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F5</kbd></button>
-            <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty Cash</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F6</kbd></button>
-            <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day Closing</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F7</kbd></button>
-            <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮 Calculator</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F8</kbd></button>
-            <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️ Settings</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F9</kbd></button>
-            <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼 Purchase & Parties</span> <kbd style="background: #e9ecef; border: 1px solid #ced4da; color: #495057; padding: 2px 0; width: 30px; text-align: center; border-radius: 3px; font-size: 11px; margin-left: auto; font-family: monospace; display: inline-block;">F10</kbd></button>
+            <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)"><span>📈 Dashboard</span> <kbd class="nav-shortcut">F1</kbd></button>
+            <button class="nav-tab" data-tab="inventory" onclick="switchTab('inventory', this)"><span>📦 Inventory</span> <kbd class="nav-shortcut">F2</kbd></button>
+            <button class="nav-tab" data-tab="sales" onclick="switchTab('sales', this)"><span>💰 Record Sale</span> <kbd class="nav-shortcut">F3</kbd></button>
+            <button class="nav-tab" data-tab="reports" onclick="switchTab('reports', this)"><span>📊 Reports</span> <kbd class="nav-shortcut">F4</kbd></button>
+            <button class="nav-tab" data-tab="products" onclick="switchTab('products', this)"><span>🏷️ Products</span> <kbd class="nav-shortcut">F5</kbd></button>
+            <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty Cash</span> <kbd class="nav-shortcut">F6</kbd></button>
+            <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day Closing</span> <kbd class="nav-shortcut">F7</kbd></button>
+            <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮 Calculator</span> <kbd class="nav-shortcut">F8</kbd></button>
+            <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️ Settings</span> <kbd class="nav-shortcut">F9</kbd></button>
+            <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼 Purchase & Parties</span> <kbd class="nav-shortcut">F10</kbd></button>
             <div style="margin-top: auto; padding: 20px; color: #64748b; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
                 Application Version: 1.0.0 &bull; Built by Shermon Technology
             </div>
