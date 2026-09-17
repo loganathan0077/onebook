@@ -1852,7 +1852,7 @@
                                     <th class="gst-field" style="display:none; width: 6%;">HSN</th>
                                     <th class="gst-field" style="display:none; width: 6%;">GST%</th>
                                     <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
-                                    <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 10%;">Expiry Date <span id="sort-expiryDate"></span></th>
+                                    <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 10%;" class="expiry-tracking-feature">Expiry Date <span id="sort-expiryDate"></span></th>
                                     <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
                                     <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
                                     <th onclick="sortInventory('discount')" style="cursor: pointer; width: 8%;">Disc <span id="sort-discount"></span></th>
@@ -4230,7 +4230,7 @@
                                         <option value="">Select Category...</option>
                                     </select>
                                 </div>
-                                <div class="form-group expiry-tracking-feature">
+                                <div class="form-group" id="newProductExpiryContainer">
                                     <label>Expiry Days (Optional)</label>
                                     <input type="number" id="newProductExpiryDays" placeholder="e.g. 30" min="0">
                                 </div>
@@ -4272,7 +4272,7 @@
                                     <label>Selling Price (₹)</label>
                                     <input type="number" id="newProductSellingPrice" placeholder="10.00">
                                 </div>
-                                <div class="form-group buying-price-feature">
+                                <div class="form-group" id="newProductPurchasePriceContainer">
                                     <label>Buying Price (₹)</label>
                                     <input type="number" id="newProductPurchasePrice" placeholder="0.00">
                                 </div>
@@ -7610,6 +7610,22 @@
 
         function showPurchaseAddNewProductForm() {
             document.getElementById('purchaseNewProductContainer').style.display = 'flex';
+            
+            const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || {};
+            const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
+            const buyTrack = currentSettings.buyingPriceTracking !== undefined ? currentSettings.buyingPriceTracking : false;
+            
+            if (document.getElementById('newProductExpiryContainer')) {
+                document.getElementById('newProductExpiryContainer').style.display = expTrack ? 'block' : 'none';
+            }
+            if (document.getElementById('newProductPurchasePriceContainer')) {
+                if (window.isAddingFromInventory) {
+                    document.getElementById('newProductPurchasePriceContainer').style.display = buyTrack ? 'block' : 'none';
+                } else {
+                    document.getElementById('newProductPurchasePriceContainer').style.display = 'block';
+                }
+            }
+            
             populateCategoryDropdowns();
             populateUnitDropdowns();
             document.getElementById('newProductBarcode').value = '';
@@ -8779,7 +8795,7 @@
                     ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
                     ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                     <td>${product.category || 'Uncategorized'}</td>
-                    <td>${expiryDisplay}</td>
+                    <td class="expiry-tracking-feature">${expiryDisplay}</td>
                     <td class="${stockStatus}">${product.stock}</td>
                     <td>₹${product.price.toFixed(2)}</td>
                     <td>${displayDiscount}</td>
@@ -16980,6 +16996,44 @@
             printLabels(printItems);
         }
 
+        function applyProductFeaturesVisibility(expiryTracking, buyingPriceTracking) {
+            const styleId = 'product-features-style';
+            let styleEl = document.getElementById(styleId);
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = styleId;
+                document.head.appendChild(styleEl);
+            }
+            
+            let css = '';
+            if (!expiryTracking) {
+                css += '.expiry-tracking-feature { display: none !important; }\n';
+            }
+            if (!buyingPriceTracking) {
+                css += '.buying-price-feature { display: none !important; }\n';
+            }
+            styleEl.innerHTML = css;
+        }
+
+        function toggleSetting(setting, value) {
+            if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) {
+                showAlert('Unauthorized: Only Administrators can change settings.', 'error');
+                const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+                if(setting === 'expiryTracking') document.getElementById('settingsExpiryTracking').checked = settings.expiryTracking || false;
+                if(setting === 'buyingPriceTracking') document.getElementById('settingsBuyingPriceTracking').checked = settings.buyingPriceTracking || false;
+                return;
+            }
+            const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            currentSettings[setting] = value;
+            localStorage.setItem('settings', JSON.stringify(currentSettings));
+            
+            const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
+            const buyTrack = currentSettings.buyingPriceTracking !== undefined ? currentSettings.buyingPriceTracking : false;
+            applyProductFeaturesVisibility(expTrack, buyTrack);
+            
+            if (typeof loadProducts === 'function') loadProducts();
+        }
+
         function applySettingsToUI(settings) {
             const bName = settings.businessName || 'Business Name';
             const tagline = settings.tagline || 'Inventory & Sales System';
@@ -17011,6 +17065,12 @@
                 if (!settings.gstEnabled) showGSTInput.checked = false;
             }
             
+            const expToggle = document.getElementById('settingsExpiryTracking');
+            if(expToggle) expToggle.checked = (settings.expiryTracking !== undefined ? settings.expiryTracking : false);
+            
+            const buyToggle = document.getElementById('settingsBuyingPriceTracking');
+            if(buyToggle) buyToggle.checked = (settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false);
+            
             const gstExtendedSettings = document.getElementById('gstExtendedSettings');
             if (gstExtendedSettings) {
                 gstExtendedSettings.style.display = settings.gstEnabled ? 'block' : 'none';
@@ -17019,6 +17079,10 @@
             if (gstinInput) {
                 gstinInput.disabled = !settings.gstEnabled;
             }
+            
+            const expTrack = settings.expiryTracking !== undefined ? settings.expiryTracking : false;
+            const buyTrack = settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false;
+            applyProductFeaturesVisibility(expTrack, buyTrack);
             
             // Toggle all GST fields globally
             document.querySelectorAll('.gst-field').forEach(el => {
