@@ -1983,89 +1983,94 @@
 
                 <div id="cartItems" style="margin-bottom: 20px;"></div>
 
-                <div style="display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; margin-bottom: 10px;">
+                <div style="display: flex; gap: 15px; align-items: stretch; flex-wrap: wrap; margin-bottom: 10px;">
                     <!-- Customer Details -->
-                    <div class="scanner-container" style="flex: 1; min-width: 250px; background: #e3f2fd; padding: 10px 15px; border-radius: 8px; margin-bottom: 0; border: 1px solid #b8daff;">
+                    <div class="scanner-container" style="flex: 0 0 30%; min-width: 280px; max-width: 400px; background: #eef8ff; padding: 15px; border-radius: 8px; margin-bottom: 0; border: 1px solid #cce5ff; display: flex; flex-direction: column;">
                         <h4 style="color: #004085; margin: 0 0 10px 0; font-size: 18px;">👥 Customer Details</h4>
                         <div id="existingCustomerSection" style="max-width: 100%;">
                             <div class="form-group" style="position: relative; margin-bottom: 0;">
-                                <label style="font-size: 12px; margin-bottom: 2px;">Search Customer</label>
+                                <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Search Customer</label>
                                 <div style="display: flex; gap: 10px;">
-                                    <input type="text" id="saleCustomerSearch" class="form-control" style="flex: 1;" placeholder="Search by name, phone, or GSTIN... (Leave empty for Walk-in)" autocomplete="off" oninput="searchCustomers(this.value)" onkeydown="handleCustomerSearchKeydown(event)">
-                                    <button type="button" class="btn btn-success" onclick="openAddCustomerModal()" style="white-space: nowrap;">➕ Add <kbd style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">Alt+M</kbd></button>
+                                    <input type="text" id="saleCustomerSearch" class="form-control" style="flex: 1; padding: 10px 15px; height: 48px; font-size: 16px;" placeholder="Search by name, phone, or GSTIN... (Leave empty for Walk-in)" autocomplete="off" oninput="searchCustomers(this.value)" onkeydown="handleCustomerSearchKeydown(event)">
                                 </div>
                                 <div id="customerSearchResults" class="custom-dropdown" style="display: none; position: absolute; width: 100%; top: 100%; left: 0; z-index: 1000; max-height: 250px; overflow-y: auto;"></div>
                             </div>
-                            <div id="selectedCustomerDetails" style="display: none; margin-top: 10px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #cce5ff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div id="selectedCustomerDetails" style="display: none; margin-top: 15px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #cce5ff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                     <div>
-                                        <strong id="displayCustomerName" style="font-size: 16px; color: #004085;"></strong><br>
-                                        <small style="color: #666; display: block; margin-top: 5px;">📞 <span id="displayCustomerPhone"></span></small>
-                                        <small style="color: #666; display: block;">🏢 <span id="displayCustomerGSTIN"></span> | <span id="displayCustomerState"></span></small>
+                                        <strong id="displayCustomerName" style="font-size: 18px; color: #004085;"></strong><br>
+                                        <small style="color: #666; display: block; margin-top: 5px; font-size: 14px;">📞 <span id="displayCustomerPhone"></span></small>
+                                        <small style="color: #666; display: block; font-size: 14px;">🏢 <span id="displayCustomerGSTIN"></span> | <span id="displayCustomerState"></span></small>
                                     </div>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="clearCustomerSelection()">❌ Clear / Walk-in</button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="clearCustomerSelection()" style="padding: 4px 8px; font-size: 12px; font-weight: bold;">❌ Clear / Walk-in</button>
                                 </div>
                                 <input type="hidden" id="activeCustomerId">
                             </div>
                         </div>
+                        <div style="flex-grow: 1;"></div>
+                        <button type="button" class="btn btn-success" onclick="openAddCustomerModal()" style="width: 100%; height: 48px; font-size: 18px; font-weight: bold; margin-top: 15px; white-space: nowrap;">➕ Add Customer <kbd style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 2px 6px; border-radius: 4px; font-size: 14px; margin-left: 8px; font-family: monospace;">Alt+M</kbd></button>
                     </div>
 
                     <!-- Sale Summary and Payment -->
-                    <div class="scanner-container" style="flex: 2; min-width: 500px; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-bottom: 0;">
+                    <div class="scanner-container" style="flex: 1; min-width: 500px; background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 0;">
                         <style>
-                            .compact-summary-grid .form-group { margin-bottom: 0; }
-                            .compact-summary-grid label { font-size: 14px; margin-bottom: 4px; font-weight: 500; }
-                            .compact-summary-grid input[type="number"], .compact-summary-grid input[type="text"], .compact-summary-grid select { padding: 10px 15px; font-size: 20px !important; font-weight: bold; height: 48px; }
-                            .compact-summary-grid .combobox-input { padding: 10px 15px; font-size: 20px !important; font-weight: bold; height: 48px; }
+                            .compact-summary-grid .form-group { margin-bottom: 0; flex: 1; }
+                            .compact-summary-grid label { font-size: 14px; margin-bottom: 4px; font-weight: 500; display: block; }
+                            .compact-summary-grid input[type="number"], .compact-summary-grid input[type="text"], .compact-summary-grid select { padding: 10px 15px; font-size: 20px !important; font-weight: bold; height: 48px; width: 100%; box-sizing: border-box; }
+                            .compact-summary-grid .combobox-input { padding: 10px 15px; font-size: 20px !important; font-weight: bold; height: 48px; width: 100%; box-sizing: border-box; }
                             #cartSubtotal, #cartTaxableAmount, #cartCGST, #cartSGST, #cartIGST { font-size: 20px !important; }
                             #cartTotal { font-size: 24px !important; }
                         </style>
-                        <h4 style="margin: 0 0 10px 0; font-size: 18px;">💳 Sale Summary & Payment</h4>
+                        <h4 style="margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">💳 Sale Summary & Payment</h4>
                         
                         <div style="display: flex; gap: 15px;">
-                            <!-- Form Grid -->
-                            <div class="compact-summary-grid" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end;">
-                                <div class="form-group">
-                                    <label>Subtotal (₹)</label>
-                                    <input type="number" id="cartSubtotal" step="0.01" readonly
-                                        style="font-weight: bold; font-size: 18px;">
+                            <!-- Form Flex Layout -->
+                            <div class="compact-summary-grid" style="flex: 1; display: flex; flex-direction: column; gap: 15px; align-items: stretch;">
+                                
+                                <!-- Row 1 -->
+                                <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
+                                    <div class="form-group">
+                                        <label>Subtotal (₹)</label>
+                                        <input type="number" id="cartSubtotal" step="0.01" readonly style="font-weight: bold; font-size: 18px;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Total Item Disc. (₹)</label>
+                                        <input type="number" id="cartTotalItemDiscount" step="0.01" readonly style="font-weight: bold; color: red;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ext.Discount (₹)</label>
+                                        <input type="number" id="discountAmount" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('courierCharges').focus();}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Courier Charges (₹)</label>
+                                        <input type="number" id="courierCharges" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('paymentMethodSearch').focus();}">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Total Item Disc. (₹)</label>
-                                    <input type="number" id="cartTotalItemDiscount" step="0.01" readonly
-                                        style="font-weight: bold; color: red;">
+                                
+                                <!-- Row 2 -->
+                                <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
+                                    <div class="form-group gst-field" id="summary-taxable" style="display:none;">
+                                        <label>Taxable Amount (₹)</label>
+                                        <input type="number" id="cartTaxableAmount" step="0.01" readonly style="font-weight: bold;">
+                                    </div>
+                                    <div class="form-group gst-field" id="summary-cgst" style="display:none;">
+                                        <label>CGST (₹)</label>
+                                        <input type="number" id="cartCGST" step="0.01" readonly style="font-weight: bold;">
+                                    </div>
+                                    <div class="form-group gst-field" id="summary-sgst" style="display:none;">
+                                        <label>SGST (₹)</label>
+                                        <input type="number" id="cartSGST" step="0.01" readonly style="font-weight: bold;">
+                                    </div>
+                                    <div class="form-group gst-field" id="summary-igst" style="display:none;">
+                                        <label>IGST (₹)</label>
+                                        <input type="number" id="cartIGST" step="0.01" readonly style="font-weight: bold;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Total Amount (₹)</label>
+                                        <input type="number" id="cartTotal" step="0.01" readonly style="font-weight: bold; font-size: 20px; color: #28a745;">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Ext.Discount (₹)</label>
-                                    <input type="number" id="discountAmount" min="0" step="0.01" value="0"
-                                        onchange="updateDiscount()" placeholder="Discount amount" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('courierCharges').focus();}">
-                                </div>
-                                <div class="form-group">
-                                    <label>Courier Charges (₹)</label>
-                                    <input type="number" id="courierCharges" min="0" step="0.01" value="0"
-                                        onchange="updateDiscount()" placeholder="Courier charges" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('paymentMethodSearch').focus();}">
-                                </div>
-                                <div class="form-group gst-field" id="summary-taxable" style="display:none;">
-                                    <label>Taxable Amount (₹)</label>
-                                    <input type="number" id="cartTaxableAmount" step="0.01" readonly style="font-weight: bold;">
-                                </div>
-                                <div class="form-group gst-field" id="summary-cgst" style="display:none;">
-                                    <label>CGST (₹)</label>
-                                    <input type="number" id="cartCGST" step="0.01" readonly style="font-weight: bold;">
-                                </div>
-                                <div class="form-group gst-field" id="summary-sgst" style="display:none;">
-                                    <label>SGST (₹)</label>
-                                    <input type="number" id="cartSGST" step="0.01" readonly style="font-weight: bold;">
-                                </div>
-                                <div class="form-group gst-field" id="summary-igst" style="display:none;">
-                                    <label>IGST (₹)</label>
-                                    <input type="number" id="cartIGST" step="0.01" readonly style="font-weight: bold;">
-                                </div>
-                                <div class="form-group">
-                                    <label>Total Amount (₹)</label>
-                                    <input type="number" id="cartTotal" step="0.01" readonly
-                                        style="font-weight: bold; font-size: 20px; color: #28a745;">
-                                </div>
+
                                 <div style="display:none;">
                                     <select id="saleTaxType" class="form-control" onchange="updateCartDisplay()">
                                         <option value="auto">Auto (Detect from State)</option>
@@ -2073,45 +2078,46 @@
                                         <option value="inter">Inter-State (IGST)</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label>Payment Method</label>
-                                    <div class="combobox-container">
-                                        <input type="text" id="paymentMethodSearch" class="combobox-input" placeholder="Select Payment Method..." autocomplete="off" oninput="filterPaymentMethods()" value="Cash Only" onfocus="this.select()">
-                                        <span class="combobox-clear" id="paymentMethodClear" onclick="clearPaymentMethodSelection()" title="Clear selection" style="display: block;">×</span>
-                                        <div id="paymentMethodDropdown" class="custom-dropdown" style="display: none;"></div>
+                                
+                                <!-- Row 3 -->
+                                <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
+                                    <div class="form-group">
+                                        <label>Payment Method</label>
+                                        <div class="combobox-container" style="width: 100%;">
+                                            <input type="text" id="paymentMethodSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterPaymentMethods()" value="Cash Only" onfocus="this.select()">
+                                            <span class="combobox-clear" id="paymentMethodClear" onclick="clearPaymentMethodSelection()" title="Clear selection" style="display: block;">×</span>
+                                            <div id="paymentMethodDropdown" class="custom-dropdown" style="display: none; width: 100%;"></div>
+                                        </div>
+                                        <select id="paymentMethod" onchange="togglePaymentFields()" style="display: none;">
+                                            <option value="cash" selected>Cash Only</option>
+                                            <option value="card">Card</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="credit">Credit</option>
+                                            <option value="mixed">Mixed (Cash + UPI/Balance)</option>
+                                        </select>
                                     </div>
-                                    <select id="paymentMethod" onchange="togglePaymentFields()" style="display: none;">
-                                        <option value="cash" selected>Cash Only</option>
-                                        <option value="card">Card</option>
-                                        <option value="upi">UPI</option>
-                                        <option value="credit">Credit</option>
-                                        <option value="mixed">Mixed (Cash + UPI/Balance)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" id="customerAmountGroup" style="display: none; position: relative;">
-                                    <label>Cash Received (₹) <span style="color: red;">*</span></label>
-                                    <input type="number" id="customerAmount" step="0.01" onchange="calculateChange()"
-                                        oninput="calculateChange()" placeholder="Enter cash amount received" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnCompleteSale').focus();}">
-                                    <small id="cashAmountError" style="position: absolute; left: 0; bottom: -18px; font-size: 11px; color: red; display: none; white-space: nowrap;"></small>
-                                </div>
-                                <div class="form-group" id="otherPaymentGroup" style="display: none;">
-                                    <label>UPI/Balance Amount (₹)</label>
-                                    <input type="number" id="otherPaymentAmount" step="0.01" onchange="calculateChange()" oninput="calculateChange()"
-                                        placeholder="Enter UPI/Balance amount" value="0">
-                                </div>
-                                <div class="form-group" id="changeAmountGroup" style="display: none; position: relative;">
-                                    <label>Give (₹)</label>
-                                    <input type="number" id="changeAmount" step="0.01" readonly
-                                        style="font-weight: bold; color: #dc3545;">
-                                    <div id="negativeChangeInfo"
-                                        style="position: absolute; left: 0; bottom: -18px; font-size: 11px; color: #dc3545; display: none; white-space: nowrap;">
-                                        <span id="negativeChangeText"></span> | Count: <span id="negativeChangeCount">0</span>
+                                    <div class="form-group" id="customerAmountGroup" style="display: none; position: relative;">
+                                        <label>Cash Received (₹) <span style="color: red;">*</span></label>
+                                        <input type="number" id="customerAmount" step="0.01" onchange="calculateChange()" oninput="calculateChange()" placeholder="Enter amount" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnCompleteSale').focus();}">
+                                        <small id="cashAmountError" style="position: absolute; left: 0; bottom: -18px; font-size: 11px; color: red; display: none; white-space: nowrap;"></small>
+                                    </div>
+                                    <div class="form-group" id="otherPaymentGroup" style="display: none;">
+                                        <label>UPI/Balance Amount (₹)</label>
+                                        <input type="number" id="otherPaymentAmount" step="0.01" onchange="calculateChange()" oninput="calculateChange()" placeholder="Amount" value="0">
+                                    </div>
+                                    <div class="form-group" id="changeAmountGroup" style="display: none; position: relative;">
+                                        <label>Give (₹)</label>
+                                        <input type="number" id="changeAmount" step="0.01" readonly style="font-weight: bold; color: #dc3545;">
+                                        <div id="negativeChangeInfo" style="position: absolute; left: 0; bottom: -18px; font-size: 11px; color: #dc3545; display: none; white-space: nowrap;">
+                                            <span id="negativeChangeText"></span> | Count: <span id="negativeChangeCount">0</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div id="creditPaymentGroup" style="display: none; padding: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; margin-top: 15px; grid-column: 1 / -1; width: 100%;">
+                                
+                                <div id="creditPaymentGroup" style="display: none; padding: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; width: 100%; box-sizing: border-box;">
                                     <h4 style="margin: 0 0 15px 0; color: #c53030; font-size: 15px; border-bottom: 1px solid #fed7d7; padding-bottom: 5px;">💳 Credit Details</h4>
                                     
-                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
+                                    <div style="display: flex; gap: 15px; align-items: start; width: 100%;">
                                         <div class="form-group">
                                             <label>Initial Amount Paid (₹)</label>
                                             <input type="number" id="creditAmountPaid" step="0.01" class="form-control" onchange="calculateChange()" oninput="calculateChange()" placeholder="e.g. 1000" value="0">
@@ -2121,24 +2127,21 @@
                                             <input type="text" id="creditOutstanding" class="form-control" readonly style="font-weight: bold; color: #c53030; background: #fff5f5; border: 1px solid #fed7d7;" value="₹0.00">
                                         </div>
                                         
-                                        <div style="display: flex; gap: 15px; flex-direction: column;">
-                                            <div class="form-group" id="inlineAdvancePaymentSection" style="display: block;">
-                                                <label>Initial Payment Method</label>
-                                                <select id="creditPaymentMethod" class="form-control" onchange="calculateChange()">
-                                                    <option value="cash">Cash</option>
-                                                    <option value="upi">UPI</option>
-                                                    <option value="card">Card</option>
-                                                    <option value="bank">Bank Transfer</option>
-                                                    <option value="cheque">Cheque</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group" id="inlineReferenceGroup" style="display: none;">
-                                                <label>Reference No. (Optional)</label>
-                                                <input type="text" id="creditReference" class="form-control" placeholder="UPI Ref / Cheque No">
-                                            </div>
+                                        <div class="form-group" id="inlineAdvancePaymentSection" style="display: block;">
+                                            <label>Initial Payment Method</label>
+                                            <select id="creditPaymentMethod" class="form-control" onchange="calculateChange()">
+                                                <option value="cash">Cash</option>
+                                                <option value="upi">UPI</option>
+                                                <option value="card">Card</option>
+                                                <option value="bank">Bank Transfer</option>
+                                                <option value="cheque">Cheque</option>
+                                                <option value="other">Other</option>
+                                            </select>
                                         </div>
-
+                                        <div class="form-group" id="inlineReferenceGroup" style="display: none;">
+                                            <label>Reference No. (Optional)</label>
+                                            <input type="text" id="creditReference" class="form-control" placeholder="UPI Ref / Cheque No">
+                                        </div>
                                         <div class="form-group">
                                             <label>Due Date (Optional)</label>
                                             <input type="date" id="creditDueDate" class="form-control">
