@@ -10173,14 +10173,17 @@
             let tableHTML = `
                 <div class="scanner-container" style="background: white; border: 2px solid #dee2e6; padding: 10px; border-radius: 8px;">
                     <style>
-                        #cartItems table { font-size: 12px; }
-                        #cartItems th, #cartItems td { padding: 4px 8px !important; }
-                        #cartItems .qty-btn { padding: 2px 6px; font-size: 12px; height: 24px; }
-                        #cartItems .qty-value { min-width: 20px; font-size: 12px; padding: 2px; }
-                        #cartItems input[type="number"] { padding: 2px; height: 24px; font-size: 12px; }
-                        #cartItems .btn-sm { padding: 2px 8px; font-size: 11px; }
+                        #cartItems table { font-size: 15px; }
+                        #cartItems th { padding: 6px 4px !important; font-size: 15px; font-weight: bold; }
+                        #cartItems td { padding: 6px 4px !important; vertical-align: middle; }
+                        #cartItems td:nth-child(2) { max-width: 220px; white-space: normal; line-height: 1.2; word-wrap: break-word; }
+                        #cartItems .quantity-controls { gap: 2px; }
+                        #cartItems .qty-btn { padding: 0 8px; font-size: 18px; height: 32px; font-weight: bold; line-height: 1; border-radius: 4px; width: 32px; }
+                        #cartItems .qty-value { min-width: 28px; font-size: 16px; padding: 0; font-weight: bold; text-align: center; }
+                        #cartItems input[type="number"] { padding: 2px 4px; height: 32px; font-size: 15px; width: 55px !important; text-align: center; font-weight: bold; border-radius: 4px; }
+                        #cartItems .btn-sm { padding: 4px 10px; font-size: 14px; height: 32px; font-weight: bold; border-radius: 4px; }
                     </style>
-                    <h4 style="margin: 0 0 10px 0; font-size: 18px;">Shopping Cart (${cart.length} item(s))</h4>
+                    <h4 style="margin: 0 0 10px 0; font-size: 22px; font-weight: bold; color: #004085;">🛒 Shopping Cart (${cart.length} item(s))</h4>
                     <div class="table-responsive">
                         <table>
                             <thead>
@@ -10216,7 +10219,7 @@
                                             </div>
                                         </td>
                                         <td>₹${item.price.toFixed(2)}</td>
-                                        <td><input type="number" value="${item.discountPercent || 0}" min="0" max="100" style="width:60px; padding:2px;" onchange="updateCartItemDiscount(${index}, this.value)"></td>
+                                        <td><input type="number" value="${item.discountPercent || 0}" min="0" max="100" style="width:55px; padding:2px;" onchange="updateCartItemDiscount(${index}, this.value)"></td>
                                         <td>₹${item.grossAmount.toFixed(2)}</td>
                                         <td>₹${(item.taxableValue || 0).toFixed(2)}</td>
                                         ${gstEnabled ? `<td>₹${(item.cgst || 0).toFixed(2)}</td>` : ''}
