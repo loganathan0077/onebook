@@ -1901,9 +1901,9 @@
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 15px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 15px; align-items: stretch; flex-wrap: wrap; margin-bottom: 15px;">
                         <!-- Quick Sale with Scanner -->
-                        <div id="quickSaleBarcodePanel" class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff;">
+                        <div id="quickSaleBarcodePanel" class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff; display: flex; flex-direction: column; justify-content: space-between;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <h4 style="margin: 0; font-size: 18px; color: #004085; display: flex; align-items: center; gap: 8px;">
                                     <span style="font-weight: bold; font-family: monospace; letter-spacing: -1px; font-size: 22px; color: #0056b3;">|||||</span> Quick Sale with Barcode
@@ -1917,13 +1917,14 @@
                                     <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545; font-size: 12px; min-width: 25px;">OFF</span>
                                 </div>
                             </div>
-                            <div class="barcode-input-group" style="flex-wrap: wrap; display: flex; gap: 10px;">
+                            <div class="barcode-input-group" style="flex-wrap: wrap; display: flex; gap: 10px; align-items: flex-end;">
                                 <div class="combobox-container" style="flex: 1; min-width: 200px;">
-                                    <input type="text" id="quickSaleBarcode" class="combobox-input" placeholder="Scan or enter barcode" autocomplete="off" oninput="filterBarcodeSale()" style="padding: 6px 10px; height: 33px;">
-                                    <span class="combobox-clear" id="quickSaleBarcodeClear" onclick="clearBarcodeSaleSelection()" title="Clear selection" style="display: none;">×</span>
+                                    <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500; display: block;">Barcode</label>
+                                    <input type="text" id="quickSaleBarcode" class="combobox-input" placeholder="Scan or enter barcode" autocomplete="off" oninput="filterBarcodeSale()" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
+                                    <span class="combobox-clear" id="quickSaleBarcodeClear" onclick="clearBarcodeSaleSelection()" title="Clear selection" style="display: none; top: 38px;">×</span>
                                     <div id="barcodeSaleDropdown" class="custom-dropdown" style="display: none;"></div>
                                 </div>
-                                <button class="btn btn-scanner" onclick="openScannerModal('sale')" style="white-space: nowrap; height: 33px; padding: 0 15px;">
+                                <button class="btn btn-scanner" onclick="openScannerModal('sale')" style="white-space: nowrap; height: 48px; padding: 0 20px; font-size: 18px; font-weight: bold;">
                                     📷 Scan Barcode
                                 </button>
                             </div>
