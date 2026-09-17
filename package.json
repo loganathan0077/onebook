@@ -16,7 +16,7 @@
         "electron-builder": "^24.9.1"
     },
     "build": {
-        "appId": "com.shermon.sales",
+        "appId": "com.onebook.pos",
         "win": {
             "target": [
                 {
@@ -31,7 +31,12 @@
         "nsis": {
             "oneClick": false,
             "allowToChangeInstallationDirectory": true,
-            "perMachine": false
+            "perMachine": false,
+            "license": "build/license.txt",
+            "shortcutName": "OneBook",
+            "uninstallDisplayName": "OneBook",
+            "createDesktopShortcut": "always",
+            "createStartMenuShortcut": true
         },
         "mac": {
             "target": "dmg",

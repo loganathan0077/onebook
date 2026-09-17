@@ -1,0 +1,46 @@
+OneBook Software — Terms & Conditions
+
+Software License
+OneBook is software provided for business management, inventory, sales, billing and related business operations.
+The user receives a license to use the software according to the applicable license/usage terms.
+
+User Responsibility
+The user is responsible for:
+* Entering correct business information.
+* Entering correct product, price, GST/tax and inventory information.
+* Maintaining accurate customer and supplier information.
+* Reviewing invoices, receipts and reports before relying on them.
+* Maintaining appropriate backups.
+
+Data Responsibility
+Business data belongs to the user/business.
+The user is responsible for maintaining backups.
+OneBook should provide backup/restore functionality, but the user should not rely on a single copy of important business data.
+
+Financial & Tax Responsibility
+OneBook is a business management/POS tool.
+The software does not replace a qualified accountant, tax professional or legal adviser.
+The user is responsible for ensuring that GST, tax, invoice and accounting information is entered and reported correctly according to applicable laws.
+
+Hardware Responsibility
+Barcode scanners, printers, cameras, cash drawers and other hardware may require compatible drivers and operating-system support.
+OneBook does not guarantee compatibility with every third-party hardware device.
+
+Data Loss
+The user should maintain regular backups.
+The software provider should not be responsible for data loss caused by:
+* Hardware failure
+* Storage failure
+* Accidental deletion
+* Incorrect database handling
+* Operating-system failure
+* Malware/ransomware
+* User error
+* Improper backup/restore procedures
+
+Software Updates
+Future versions may introduce bug fixes, improvements and new functionality.
+Updates must not automatically delete or overwrite existing business data.
+
+Third-Party Services
+If the application uses third-party services, libraries, drivers or integrations, their respective terms may also apply.

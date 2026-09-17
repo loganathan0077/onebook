@@ -14,7 +14,7 @@ function createWindow() {
         }
     });
 
-    win.loadFile('final.html');
+    win.loadFile('OneBook.html');
 }
 
 // Set up IPC handlers

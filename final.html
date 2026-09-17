@@ -3336,6 +3336,17 @@
                 </div>
             </div>
             
+    
+    <!-- First Run Setup Modal -->
+    <div id="firstRunModal" class="modal" style="z-index: 999999; display: none; background-color: rgba(0,0,0,0.9);">
+        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 40px 20px;">
+            <img src="onebooklogo.png" alt="OneBook" style="height: 80px; margin-bottom: 20px;" onerror="this.style.display='none'">
+            <h1 style="margin: 0 0 10px 0; font-size: 28px; color: #333;">Welcome to OneBook</h1>
+            <p style="color: #666; margin: 0 0 30px 0; font-size: 16px;">Select your Business Data Location to get started.</p>
+            <button class="btn btn-primary" style="font-size: 18px; padding: 12px 24px; width: 100%; max-width: 300px; border-radius: 8px;" onclick="handleFirstRunSelectFolder()">📁 Choose Folder</button>
+        </div>
+    </div>
+
     <!-- Database Location Preview Modal -->
     <div id="dbPreviewModal" class="modal" style="z-index: 99999;">
         <div class="modal-content" style="max-width: 500px;">
