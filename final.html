@@ -2780,25 +2780,25 @@
                     </div>
                 </div>
 
-                <div id="productsListContainer"
-                    style="max-height: 400px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6; border-radius: 4px; display: block;">
-                    <table style="margin-bottom: 0;">
-                        <thead style="position: sticky; top: 0; background: white; z-index: 1;">
-                            <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="selectAllProducts"
-                                        onchange="toggleSelectAllProducts(this)"></th>
-                                <th style="width: 150px;">Barcode</th>
-                                <th>Product Name</th>
-                                <th>Category</th>
-                                <th id="labelCenterExpDaysHeader" style="text-align: right;">Exp. Days</th>
-                                <th>Stock</th>
-                                <th>Price</th>
-                                <th style="width: 100px; text-align: center;">Labels Qty</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="productsTableBody"></tbody>
-                    </table>
+                <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
+                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;" id="productsListContainer">
+                        <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
+                                <tr>
+                                    <th style="width: 4%; text-align: center;"><input type="checkbox" id="selectAllProducts" onchange="toggleSelectAllProducts(this)"></th>
+                                    <th style="width: 12%;">Barcode</th>
+                                    <th style="width: 26%;">Product Name</th>
+                                    <th style="width: 15%;">Category</th>
+                                    <th id="labelCenterExpDaysHeader" style="width: 9%; text-align: right;">Exp. Days</th>
+                                    <th style="width: 7%; text-align: right;">Stock</th>
+                                    <th style="width: 9%; text-align: right;">Price</th>
+                                    <th style="width: 8%; text-align: center;">Labels Qty</th>
+                                    <th style="width: 10%; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -13627,11 +13627,11 @@
                         ${product.name}
                     </td>
                     <td>${product.category}</td>
-                    ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 70px; text-align: right; margin: 0 0 0 auto; padding: 2px 5px;" placeholder="—"></td>` : ''}
-                    <td>${product.stock} ${product.unit || ''}</td>
-                    <td>₹${product.price.toFixed(2)}</td>
+                    ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control form-control-sm" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 60px; height: 26px; font-size: 13px; text-align: right; margin: 0 0 0 auto; padding: 2px 5px;" placeholder="—"></td>` : ''}
+                    <td style="text-align: right;">${product.stock} ${product.unit || ''}</td>
+                    <td style="text-align: right;">₹${product.price.toFixed(2)}</td>
                     <td style="text-align: center;">
-                        <input type="number" class="form-control main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" style="width: 70px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)">
+                        <input type="number" class="form-control form-control-sm main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" style="width: 60px; height: 26px; font-size: 13px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)">
                     </td>
                     <td>
                         <button class="btn btn-info btn-sm" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
