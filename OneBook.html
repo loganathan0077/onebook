@@ -1903,7 +1903,7 @@
 
                     <div style="display: flex; gap: 15px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 15px;">
                         <!-- Quick Sale with Scanner -->
-                        <div class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff;">
+                        <div id="quickSaleBarcodePanel" class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <h4 style="margin: 0; font-size: 15px; color: #004085; display: flex; align-items: center; gap: 8px;">
                                     <span style="font-weight: bold; font-family: monospace; letter-spacing: -1px; font-size: 18px; color: #0056b3;">|||||</span> Quick Sale with Barcode
@@ -3814,6 +3814,16 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;"><span style="font-weight: bold; font-family: monospace; letter-spacing: -1px; font-size: 16px; color: #0056b3;">|||||</span> Quick Sale with Barcode</h4>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Allow the barcode quick-sale panel to appear on the Record Sale screen.</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingsQuickSaleBarcode" onchange="toggleSetting('quickSaleBarcode', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px;">
                                 <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">📦 Product Features</h4>
                                 
@@ -5607,6 +5617,7 @@
                 defaultTaxType: 'auto',
                 showGST: false,
                 usbScannerEnabled: false,
+                quickSaleBarcode: true,
                 showBarcode: false,
                 adminPassword: 'Admin@2026',
                 // Label Printing Settings
@@ -17047,6 +17058,7 @@
                 const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
                 if(setting === 'expiryTracking') document.getElementById('settingsExpiryTracking').checked = settings.expiryTracking || false;
                 if(setting === 'buyingPriceTracking') document.getElementById('settingsBuyingPriceTracking').checked = settings.buyingPriceTracking || false;
+                if(setting === 'quickSaleBarcode') document.getElementById('settingsQuickSaleBarcode').checked = settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true;
                 return;
             }
             const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
@@ -17056,6 +17068,13 @@
             const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
             const buyTrack = currentSettings.buyingPriceTracking !== undefined ? currentSettings.buyingPriceTracking : false;
             applyProductFeaturesVisibility(expTrack, buyTrack);
+            
+            if (setting === 'quickSaleBarcode') {
+                const qsbPanel = document.getElementById('quickSaleBarcodePanel');
+                if (qsbPanel) {
+                    qsbPanel.style.display = value ? 'block' : 'none';
+                }
+            }
             
             if (typeof loadProducts === 'function') loadProducts();
         }
@@ -17093,6 +17112,12 @@
             
             const expToggle = document.getElementById('settingsExpiryTracking');
             if(expToggle) expToggle.checked = (settings.expiryTracking !== undefined ? settings.expiryTracking : false);
+            
+            const qsbToggle = document.getElementById('settingsQuickSaleBarcode');
+            if(qsbToggle) qsbToggle.checked = (settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true);
+            
+            const qsbPanel = document.getElementById('quickSaleBarcodePanel');
+            if(qsbPanel) qsbPanel.style.display = (settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true) ? 'block' : 'none';
             
             const buyToggle = document.getElementById('settingsBuyingPriceTracking');
             if(buyToggle) buyToggle.checked = (settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false);
