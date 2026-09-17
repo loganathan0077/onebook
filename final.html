@@ -17013,6 +17013,21 @@
                 css += '.buying-price-feature { display: none !important; }\n';
             }
             styleEl.innerHTML = css;
+
+            const labelShowExpiry = document.getElementById('labelShowExpiry');
+            if (labelShowExpiry) {
+                if (!expiryTracking) {
+                    labelShowExpiry.disabled = true;
+                    if (labelShowExpiry.checked) {
+                        labelShowExpiry.checked = false;
+                        const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || {};
+                        currentSettings.labelShowExpiry = false;
+                        localStorage.setItem('settings', JSON.stringify(currentSettings));
+                    }
+                } else {
+                    labelShowExpiry.disabled = false;
+                }
+            }
         }
 
         function toggleSetting(setting, value) {
