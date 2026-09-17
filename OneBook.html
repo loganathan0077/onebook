@@ -1938,9 +1938,9 @@
                             <form id="addItemForm" onsubmit="addItemToCart(event)" style="margin: 0;">
                                 <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
                                     <div class="form-group" style="flex: 2; min-width: 150px; margin-bottom: 0;">
-                                        <label style="font-size: 12px; margin-bottom: 2px;">Product</label>
+                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Product</label>
                                         <div class="combobox-container">
-                                            <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product..." autocomplete="off" oninput="filterSaleProducts()" style="padding: 6px 10px; height: 33px;">
+                                            <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product..." autocomplete="off" oninput="filterSaleProducts()" style="padding: 10px 15px; height: 44px; font-size: 16px;">
                                             <span class="combobox-clear" id="saleProductClear" onclick="clearSaleProductSelection()" title="Clear selection">×</span>
                                             <div id="saleProductDropdown" class="custom-dropdown" style="display: none;"></div>
                                         </div>
@@ -1951,9 +1951,9 @@
                                         </div>
                                     </div>
                                     <div class="form-group" style="flex: 1; min-width: 90px; margin-bottom: 0;">
-                                        <label style="font-size: 12px; margin-bottom: 2px;">Unit/Pack</label>
+                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Unit/Pack</label>
                                         <div class="combobox-container">
-                                            <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterSaleUnits()" style="padding: 6px 10px; height: 33px;">
+                                            <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterSaleUnits()" style="padding: 10px 15px; height: 44px; font-size: 16px;">
                                             <span class="combobox-clear" id="saleUnitClear" onclick="clearSaleUnitSelection()" title="Clear selection">×</span>
                                             <div id="saleUnitDropdown" class="custom-dropdown" style="display: none;"></div>
                                         </div>
@@ -1962,15 +1962,15 @@
                                         </select>
                                     </div>
                                     <div class="form-group" style="flex: 0.5; min-width: 60px; margin-bottom: 0;">
-                                        <label style="font-size: 12px; margin-bottom: 2px;">Qty</label>
-                                        <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('salePrice').focus();}" style="padding: 6px 10px; height: 33px;">
+                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Qty</label>
+                                        <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('salePrice').focus();}" style="padding: 10px 15px; height: 44px; font-size: 16px; font-weight: bold;">
                                     </div>
                                     <div class="form-group" style="flex: 0.8; min-width: 70px; margin-bottom: 0;">
-                                        <label style="font-size: 12px; margin-bottom: 2px;">Price (₹)</label>
-                                        <input type="number" id="salePrice" class="form-control" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="padding: 6px 10px; height: 33px;">
+                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Price (₹)</label>
+                                        <input type="number" id="salePrice" class="form-control" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="padding: 10px 15px; height: 44px; font-size: 16px; font-weight: bold;">
                                     </div>
                                     <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
-                                        <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 33px; padding: 0 15px; white-space: nowrap;">+ Add Item</button>
+                                        <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 44px; padding: 0 20px; white-space: nowrap; font-size: 16px; font-weight: bold; margin-bottom: 2px;">+ Add Item</button>
                                     </div>
                                 </div>
                             </form>
