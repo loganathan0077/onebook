@@ -2013,11 +2013,11 @@
                     <div class="scanner-container" style="flex: 2; min-width: 500px; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-bottom: 0;">
                         <style>
                             .compact-summary-grid .form-group { margin-bottom: 0; }
-                            .compact-summary-grid label { font-size: 12px; margin-bottom: 2px; }
-                            .compact-summary-grid input[type="number"], .compact-summary-grid input[type="text"] { padding: 4px 8px; font-size: 13px; height: 30px; }
-                            .compact-summary-grid .combobox-input { padding: 4px 8px; font-size: 13px; height: 30px; }
-                            #cartSubtotal, #cartTaxableAmount, #cartCGST, #cartSGST, #cartIGST { font-size: 14px !important; }
-                            #cartTotal { font-size: 16px !important; }
+                            .compact-summary-grid label { font-size: 14px; margin-bottom: 4px; font-weight: 500; }
+                            .compact-summary-grid input[type="number"], .compact-summary-grid input[type="text"] { padding: 10px 15px; font-size: 16px; height: 44px; }
+                            .compact-summary-grid .combobox-input { padding: 10px 15px; font-size: 16px; height: 44px; }
+                            #cartSubtotal, #cartTaxableAmount, #cartCGST, #cartSGST, #cartIGST { font-size: 18px !important; }
+                            #cartTotal { font-size: 22px !important; }
                         </style>
                         <h4 style="margin: 0 0 10px 0; font-size: 14px;">💳 Sale Summary & Payment</h4>
                         
@@ -2148,9 +2148,9 @@
                             
                             <!-- Action Buttons -->
                             <div style="display: flex; flex-direction: column; gap: 10px; min-width: 160px; justify-content: flex-end;">
-                                <button type="button" id="btnCompleteSale" class="btn btn-success" onclick="completeSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="height: 40px; white-space: nowrap;">✅ Complete Sale</button>
-                                <button type="button" class="btn btn-warning" onclick="holdSale()" style="height: 40px; color: #856404; font-weight: bold; white-space: nowrap;">⏸️ Hold Sale</button>
-                                <button type="button" class="btn btn-cart-remove" onclick="clearCart()" style="height: 40px; background-color: #dc3545; color: white; white-space: nowrap;">🗑️ Clear Cart</button>
+                                <button type="button" id="btnCompleteSale" class="btn btn-success" onclick="completeSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="height: 44px; white-space: nowrap; font-size: 16px;">✅ Complete Sale</button>
+                                <button type="button" class="btn btn-warning" onclick="holdSale()" style="height: 44px; color: #856404; font-weight: bold; white-space: nowrap; font-size: 16px;">⏸️ Hold Sale</button>
+                                <button type="button" class="btn btn-cart-remove" onclick="clearCart()" style="height: 44px; background-color: #dc3545; color: white; white-space: nowrap; font-size: 16px;">🗑️ Clear Cart</button>
                             </div>
                         </div>
                     </div>
