@@ -1,9 +1,3 @@
--- Clean up existing tables if this script is re-run
-DROP TABLE IF EXISTS activation_logs CASCADE;
-DROP TABLE IF EXISTS devices CASCADE;
-DROP TABLE IF EXISTS licenses CASCADE;
-DROP TABLE IF EXISTS businesses CASCADE;
-
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -89,4 +83,4 @@ ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activation_logs ENABLE ROW LEVEL SECURITY;
 
 -- Note: No permissive policies are created here. 
--- Only the service_role key (used by Edge Functions) bypasses RLS.
+-- Privileged licensing operations will be performed server-side using Supabase Edge Functions and server-side secrets. No client policies are intentionally created in this migration.
