@@ -32,15 +32,40 @@
     <script>
         (function initOfflineDatabase() {
             if (window.electronAPI) {
-                // Ensure a database folder is selected
-                let folder = localStorage.getItem('database_folder');
+                // Refactored Database Location Logic (Persistent Config First)
+                let folder = null;
+                
+                // 1. Try to get persistent config
+                if (window.electronAPI && window.electronAPI.getDbConfigSync) {
+                    folder = window.electronAPI.getDbConfigSync();
+                }
+                
+                // 2. Migration: If no persistent config, but localStorage has a folder, use it
                 if (!folder) {
-                    folder = window.electronAPI.selectDirectorySync();
+                    folder = localStorage.getItem('database_folder');
+                }
+                
+                // 3. Default: If still no folder, use the default Documents path
+                if (!folder && window.electronAPI && window.electronAPI.getDefaultDbFolderSync) {
+                    folder = window.electronAPI.getDefaultDbFolderSync();
                     if (folder) {
-                        localStorage.setItem('database_folder', folder);
-                    } else {
-                        alert('CRITICAL ERROR: You must select a folder to save your database! Please restart the application.');
+                        window.electronAPI.ensureFolderSync(folder);
                     }
+                }
+
+                // 4. Final fallback (e.g. permission errors getting default path)
+                if (!folder && window.electronAPI && window.electronAPI.selectDirectorySync) {
+                    folder = window.electronAPI.selectDirectorySync();
+                }
+
+                // 5. Save to both localStorage and persistent config
+                if (folder) {
+                    localStorage.setItem('database_folder', folder);
+                    if (window.electronAPI && window.electronAPI.setDbConfigSync) {
+                        window.electronAPI.setDbConfigSync(folder);
+                    }
+                } else {
+                    alert('CRITICAL ERROR: Unable to determine or create database folder. Please restart or check permissions.');
                 }
 
                 // Override localStorage
@@ -77,6 +102,37 @@
             await logout();
         };
         
+        
+        // --- GLOBAL EVENT LISTENER LIFECYCLE ---
+        window._globalEventListeners = [];
+        const originalAddEventListener = document.addEventListener;
+        document.addEventListener = function(type, listener, options) {
+            window._globalEventListeners.push({ type, listener, options });
+            return originalAddEventListener.call(document, type, listener, options);
+        };
+        
+        const originalWindowAddEventListener = window.addEventListener;
+        window.addEventListener = function(type, listener, options) {
+            window._globalEventListeners.push({ type, listener, options, target: 'window' });
+            return originalWindowAddEventListener.call(window, type, listener, options);
+        };
+
+        window.cleanupGlobalListeners = function() {
+            window._globalEventListeners.forEach(({ type, listener, options, target }) => {
+                if (target === 'window') {
+                    window.removeEventListener(type, listener, options);
+                } else {
+                    document.removeEventListener(type, listener, options);
+                }
+            });
+            window._globalEventListeners = [];
+            
+            // Also clean up any active USB scanner buffers/timers
+            if (typeof usbScanTimeout !== 'undefined') clearTimeout(usbScanTimeout);
+            if (typeof globalUsbScanTimeout !== 'undefined') clearTimeout(globalUsbScanTimeout);
+        };
+        // ---------------------------------------
+
         window.hasPermission = hasPermission;
         window.isAdminUser = false;
 
@@ -3948,8 +4004,15 @@
                 <select id="catDiscCategory" class="form-control" required></select>
             </div>
             <div class="form-group">
-                <label>Default Discount (%) <span style="color: red;">*</span></label>
-                <input type="number" id="catDiscPercent" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 10" required>
+                <label>Discount Type</label>
+                <select id="catDiscType" class="form-control" onchange="document.getElementById('catDiscValueLabel').innerText = this.value === 'percentage' ? 'Discount (%) *' : 'Discount (₹) *'">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Amount (₹)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label id="catDiscValueLabel">Discount (%) <span style="color: red;">*</span></label>
+                <input type="number" id="catDiscValue" class="form-control" min="0" step="0.01" placeholder="e.g. 10" required>
             </div>
             <div class="form-group">
                 <label>Status</label>
@@ -4072,8 +4135,14 @@
                         <input type="number" id="editProductPurchasePrice" step="0.01" placeholder="0.00">
                     </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Product Discount (%) — <small style="color:#666; font-weight:normal;">Overrides Category Discount</small></label>
-                        <input type="number" id="editProductDiscount" step="0.1" min="0" max="100" placeholder="e.g. 5 (Leave blank for category default)">
+                        <label id="editProductDiscountLabel">Product Discount (%) — <small style="color:#666; font-weight:normal;">Overrides Category Discount</small></label>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="editProductDiscountType" class="form-control" style="width: auto;" onchange="document.getElementById('editProductDiscountLabel').innerHTML = this.value === 'percentage' ? 'Product Discount (%) — <small style=\'color:#666; font-weight:normal;\'>Overrides Category Discount</small>' : 'Product Discount (₹) — <small style=\'color:#666; font-weight:normal;\'>Overrides Category Discount</small>'">
+                                <option value="percentage">Percentage (%)</option>
+                                <option value="amount">Amount (₹)</option>
+                            </select>
+                            <input type="number" id="editProductDiscount" step="0.01" min="0" placeholder="e.g. 5 (Leave blank for category default)" style="flex: 1;">
+                        </div>
                     </div>
                     <div class="form-group gst-field" style="display:none;">
                         <label>HSN/SAC Code</label>
@@ -5270,6 +5339,37 @@
 
         // Global variable to track admin status
         window.isUserAdmin = false;
+        
+        // --- GLOBAL EVENT LISTENER LIFECYCLE ---
+        window._globalEventListeners = [];
+        const originalAddEventListener = document.addEventListener;
+        document.addEventListener = function(type, listener, options) {
+            window._globalEventListeners.push({ type, listener, options });
+            return originalAddEventListener.call(document, type, listener, options);
+        };
+        
+        const originalWindowAddEventListener = window.addEventListener;
+        window.addEventListener = function(type, listener, options) {
+            window._globalEventListeners.push({ type, listener, options, target: 'window' });
+            return originalWindowAddEventListener.call(window, type, listener, options);
+        };
+
+        window.cleanupGlobalListeners = function() {
+            window._globalEventListeners.forEach(({ type, listener, options, target }) => {
+                if (target === 'window') {
+                    window.removeEventListener(type, listener, options);
+                } else {
+                    document.removeEventListener(type, listener, options);
+                }
+            });
+            window._globalEventListeners = [];
+            
+            // Also clean up any active USB scanner buffers/timers
+            if (typeof usbScanTimeout !== 'undefined') clearTimeout(usbScanTimeout);
+            if (typeof globalUsbScanTimeout !== 'undefined') clearTimeout(globalUsbScanTimeout);
+        };
+        // ---------------------------------------
+
         window.hasPermission = hasPermission;
 
         // Check authentication on page load
@@ -9751,16 +9851,26 @@
         }
 
         function getEffectiveDiscount(product) {
-            if (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") {
-                return parseFloat(product.productDiscount);
+            if (product.discountValue !== undefined && product.discountValue !== null && product.discountValue !== "") {
+                return { type: product.discountType || 'percentage', value: parseFloat(product.discountValue) };
+            }
+            // Fallback for older data that might use discountPercent or productDiscount
+            let oldProdVal = product.discountPercent !== undefined ? product.discountPercent : product.productDiscount;
+            if (oldProdVal !== undefined && oldProdVal !== null && oldProdVal !== "") {
+                return { type: 'percentage', value: parseFloat(oldProdVal) };
             }
             if (product.category) {
                 const catDiscount = categoryDiscounts.find(c => c.category === product.category && c.active);
                 if (catDiscount) {
-                    return parseFloat(catDiscount.discount);
+                    if (catDiscount.discountValue !== undefined && catDiscount.discountValue !== null && catDiscount.discountValue !== "") {
+                        return { type: catDiscount.discountType || 'percentage', value: parseFloat(catDiscount.discountValue) };
+                    }
+                    if (catDiscount.discount !== undefined && catDiscount.discount !== null && catDiscount.discount !== "") {
+                        return { type: 'percentage', value: parseFloat(catDiscount.discount) };
+                    }
                 }
             }
-            return 0;
+            return { type: 'percentage', value: 0 };
         }
 
         function addItemToCart(event) {
@@ -9849,6 +9959,7 @@
                 cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + quantity).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
+                let effDisc = getEffectiveDiscount(product);
                 cart.push({
                     productId: productId,
                     productName: product.name,
@@ -9857,7 +9968,9 @@
                     price: unitPrice,
                     quantity: quantity,
                     baseQuantity: unitQuantity, // Store multiplier
-                    discountPercent: getEffectiveDiscount(product),
+                    discountType: effDisc.type,
+                    discountValue: effDisc.value,
+                    discountPercent: effDisc.type === 'percentage' ? effDisc.value : 0, // Fallback placeholder
                     total: quantity * unitPrice
                 });
             }
@@ -10037,7 +10150,29 @@
         }
 
         function updateCartItemDiscount(index, value) {
-            cart[index].discountPercent = parseFloat(value) || 0;
+            let item = cart[index];
+            let valStr = String(value).trim();
+            let isPercentage = valStr.includes('%');
+            let parsedVal = parseFloat(valStr.replace('%', ''));
+            
+            if (isNaN(parsedVal) || parsedVal < 0) {
+                showAlert('Invalid discount value.', '⚠️');
+                updateCartDisplay();
+                return;
+            }
+
+            let gross = item.quantity * item.price;
+            let amount = isPercentage ? gross * (parsedVal / 100) : parsedVal;
+
+            if (amount > gross) {
+                showAlert('Discount cannot be greater than the item amount.', '⚠️');
+                updateCartDisplay(); // reset input
+                return;
+            }
+
+            item.discountType = isPercentage ? 'percentage' : 'amount';
+            item.discountValue = parsedVal;
+            item.discountPercent = isPercentage ? parsedVal : 0; // backward compat
             updateCartDisplay();
         }
 
@@ -10077,9 +10212,20 @@
                 const product = products.find(p => p.id === item.productId);
                 const gstRate = (gstEnabled && product) ? (product.gstRate || 0) : 0;
                 
-                item.discountPercent = item.discountPercent || 0;
                 let grossAmount = item.quantity * item.price;
-                let itemDiscountAmount = grossAmount * (item.discountPercent / 100);
+                let itemDiscountAmount = 0;
+                let dType = item.discountType || 'percentage';
+                let dVal = item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0);
+
+                if (dType === 'percentage') {
+                    itemDiscountAmount = grossAmount * (dVal / 100);
+                } else {
+                    itemDiscountAmount = dVal;
+                }
+                
+                // Ensure no negative totals (fallback protection)
+                if (itemDiscountAmount > grossAmount) itemDiscountAmount = grossAmount;
+
                 let netInclusive = grossAmount - itemDiscountAmount;
                 
                 let taxableValue = 0;
@@ -10197,7 +10343,7 @@
                                     ${gstEnabled ? `<th>GST%</th>` : ''}
                                     <th>Qty</th>
                                     <th>Rate</th>
-                                    <th>Disc %</th>
+                                    <th>Discount</th>
                                     <th>Amount</th>
                                     <th>Subtotal</th>
                                     ${gstEnabled ? `<th>CGST</th>` : ''}
@@ -10222,7 +10368,9 @@
                                             </div>
                                         </td>
                                         <td>₹${item.price.toFixed(2)}</td>
-                                        <td><input type="number" value="${item.discountPercent || 0}" min="0" max="100" style="width:55px; padding:2px;" onchange="updateCartItemDiscount(${index}, this.value)"></td>
+                                        <td>
+                                            <input type="text" value="${(item.discountType || 'percentage') === 'percentage' ? (item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0)) + '%' : (item.discountValue || 0)}" style="width:65px; padding:2px; text-align:center;" onchange="updateCartItemDiscount(${index}, this.value)">
+                                        </td>
                                         <td>₹${item.grossAmount.toFixed(2)}</td>
                                         <td>₹${(item.taxableValue || 0).toFixed(2)}</td>
                                         ${gstEnabled ? `<td>₹${(item.cgst || 0).toFixed(2)}</td>` : ''}
@@ -10674,6 +10822,8 @@
                             igst: item.igst || 0,
                             totalTax: item.totalTax || 0,
                             itemDiscount: item.discount || 0,
+                            discountType: item.discountType || 'percentage',
+                            discountValue: item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0),
                             discountPercent: item.discountPercent || 0,
                             gstRate: item.gstRate || 0,
                             hsn: item.hsn || '',
@@ -11212,7 +11362,12 @@
                     const qty = item.quantity || 0;
                     const rate = item.price || 0;
                     const amount = item.grossAmount || (rate * qty);
-                    const discPerc = item.discountPercent ? `${item.discountPercent}%` : '0%';
+                    let discPerc = '0';
+                    if ((item.discountType || 'percentage') === 'percentage') {
+                        discPerc = (item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0)) + '%';
+                    } else {
+                        discPerc = '₹' + (item.discountValue || 0);
+                    }
                     const discVal = item.itemDiscount || 0;
                     const taxable = item.taxableValue || 0;
                     const cgst = item.cgst || 0;
@@ -11303,7 +11458,7 @@
                                     ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">GST%</th>` : ''}
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Qty</th>
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Rate</th>
-                                    <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Disc %</th>
+                                    <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Discount</th>
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Amount</th>
                                     ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Subtotal</th>` : ''}
                                     ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">CGST</th>` : ''}
@@ -17227,27 +17382,54 @@
         }
 
         function changeAdminPassword() {
-            const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const currentPwd = document.getElementById('settingsCurrentPwd').value;
             const newPwd = document.getElementById('settingsNewPwd').value;
             const confirmPwd = document.getElementById('settingsConfirmPwd').value;
 
-            if (currentPwd !== currentSettings.adminPassword) {
+            const userStr = sessionStorage.getItem('currentUser');
+            if (!userStr) {
+                showAlert('User session not found.', '❌');
+                return;
+            }
+            const sessionUser = JSON.parse(userStr);
+
+            let users = JSON.parse(localStorage.getItem('users') || '[]');
+            const dbUser = users.find(u => u.id === sessionUser.id);
+
+            if (!dbUser) {
+                showAlert('User not found in the active database.', '❌');
+                return;
+            }
+
+            if (currentPwd !== dbUser.password) {
                 showAlert('Incorrect current password.', '❌');
                 return;
             }
+            
             if (newPwd !== confirmPwd) {
-                showAlert('New password and confirm password do not match.', '❌');
+                showAlert('New password and confirmation do not match.', '❌');
                 return;
             }
+            
             if (!newPwd) {
                 showAlert('Password cannot be empty.', '⚠️');
                 return;
             }
 
+            // Update password in users array (this uses the exact same storage as Admin Login)
+            dbUser.password = newPwd;
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Keep session storage updated
+            sessionUser.password = newPwd;
+            sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
+
+            // Keep settings in sync for any legacy code, but primary is users
+            const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             currentSettings.adminPassword = newPwd;
             localStorage.setItem('settings', JSON.stringify(currentSettings));
-            showAlert('Admin password changed successfully!', '✅');
+            
+            showAlert('Password changed successfully.', '✅');
             
             document.getElementById('settingsCurrentPwd').value = '';
             document.getElementById('settingsNewPwd').value = '';
@@ -17310,6 +17492,9 @@
         function proceedWithDatabaseSwitch() {
             if (pendingDatabaseFolder) {
                 localStorage.setItem('database_folder', pendingDatabaseFolder);
+                if (window.electronAPI && window.electronAPI.setDbConfigSync) {
+                    window.electronAPI.setDbConfigSync(pendingDatabaseFolder);
+                }
                 window.location.reload();
             }
         }
@@ -18109,6 +18294,7 @@
                 cart[existingItemIndex].quantity += 1;
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
+                let effDisc = getEffectiveDiscount(product);
                 cart.push({
                     productId: product.id,
                     productName: product.name,
@@ -18117,6 +18303,9 @@
                     price: unitPrice,
                     quantity: 1,
                     baseQuantity: 1,
+                    discountType: effDisc.type,
+                    discountValue: effDisc.value,
+                    discountPercent: effDisc.type === 'percentage' ? effDisc.value : 0,
                     total: unitPrice
                 });
             }
@@ -18381,6 +18570,7 @@
                 cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + prec).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
+                let effDisc = getEffectiveDiscount(product);
                 cart.push({
                     productId: product.id,
                     productName: product.name,
@@ -18390,7 +18580,9 @@
                     quantity: prec,
                     baseQuantity: 1,
                     total: unitPrice,
-                    discountPercent: getEffectiveDiscount(product)
+                    discountType: effDisc.type,
+                    discountValue: effDisc.value,
+                    discountPercent: effDisc.type === 'percentage' ? effDisc.value : 0
                 });
             }
 
@@ -18711,14 +18903,18 @@
                 if (cd) {
                     document.getElementById('categoryDiscountModalTitle').innerText = '✏️ Edit Category Discount';
                     catSelect.value = cd.category;
-                    document.getElementById('catDiscPercent').value = cd.discount;
+                    document.getElementById('catDiscType').value = cd.discountType || 'percentage';
+                    document.getElementById('catDiscValue').value = cd.discountValue !== undefined ? cd.discountValue : cd.discount;
                     document.getElementById('catDiscStatus').value = cd.active ? 'active' : 'inactive';
+                    document.getElementById('catDiscValueLabel').innerText = (cd.discountType || 'percentage') === 'percentage' ? 'Discount (%) *' : 'Discount (₹) *';
                     if (deleteBtn) deleteBtn.style.display = 'block';
                 }
             } else {
                 document.getElementById('categoryDiscountModalTitle').innerText = '➕ Add Category Discount';
-                document.getElementById('catDiscPercent').value = '';
+                document.getElementById('catDiscType').value = 'percentage';
+                document.getElementById('catDiscValue').value = '';
                 document.getElementById('catDiscStatus').value = 'active';
+                document.getElementById('catDiscValueLabel').innerText = 'Discount (%) *';
                 if (deleteBtn) deleteBtn.style.display = 'none';
             }
             
@@ -18741,15 +18937,16 @@
             if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) return showAlert('Unauthorized: Only Administrators can modify category discounts.', 'error');
             const id = document.getElementById('editingCategoryDiscountId').value;
             const category = document.getElementById('catDiscCategory').value;
-            const discountPercent = parseFloat(document.getElementById('catDiscPercent').value);
+            const discountType = document.getElementById('catDiscType').value;
+            const discountValue = parseFloat(document.getElementById('catDiscValue').value);
             const status = document.getElementById('catDiscStatus').value === 'active';
             
             if (!category) {
                 showAlert('Please select a category.', '⚠️');
                 return;
             }
-            if (isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
-                showAlert('Discount must be a number between 0 and 100.', '⚠️');
+            if (isNaN(discountValue) || discountValue < 0 || (discountType === 'percentage' && discountValue > 100)) {
+                showAlert(discountType === 'percentage' ? 'Discount must be between 0 and 100.' : 'Discount must be a valid positive amount.', '⚠️');
                 return;
             }
             
@@ -18762,7 +18959,9 @@
                         return;
                     }
                     cd.category = category;
-                    cd.discount = discountPercent;
+                    cd.discountType = discountType;
+                    cd.discountValue = discountValue;
+                    cd.discount = discountValue; // Backward compatibility
                     cd.active = status;
                 }
             } else {
@@ -18773,7 +18972,9 @@
                 categoryDiscounts.push({
                     id: 'cd_' + Math.random().toString(36).substr(2, 9),
                     category: category,
-                    discount: discountPercent,
+                    discountType: discountType,
+                    discountValue: discountValue,
+                    discount: discountValue, // Backward compatibility
                     active: status
                 });
             }

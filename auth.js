@@ -52,7 +52,6 @@ export async function login(username, password) {
 
 export async function logout() {
     sessionStorage.removeItem('currentUser');
-    window.location.reload();
     return { success: true };
 }
 

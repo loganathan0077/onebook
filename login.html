@@ -576,7 +576,8 @@
         });
 
         // Auto-focus email field
-        document.getElementById('email').focus();
+        if (window.electronAPI && window.electronAPI.focusWindow) { window.electronAPI.focusWindow(); }
+        setTimeout(() => { document.getElementById('email').focus(); }, 100);
 
         // Toggle Password Visibility
         const togglePassword = document.getElementById('togglePassword');
