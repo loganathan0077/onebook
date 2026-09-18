@@ -29,9 +29,10 @@ CREATE TABLE businesses (
 -- 2. Licenses
 CREATE TABLE licenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    license_key TEXT UNIQUE NOT NULL,
+    license_key_hash TEXT UNIQUE NOT NULL,
+    license_key_last4 TEXT NOT NULL,
     business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE RESTRICT,
-    plan TEXT NOT NULL,
+    plan TEXT NOT NULL CHECK (plan IN ('TRIAL', 'MONTHLY', 'ANNUAL', 'LIFETIME')),
     status TEXT NOT NULL CHECK (status IN ('TRIAL', 'ACTIVE', 'SUSPENDED', 'EXPIRED', 'DEACTIVATED')),
     max_devices INTEGER NOT NULL DEFAULT 1 CHECK (max_devices > 0),
     activated_at TIMESTAMPTZ,
@@ -46,7 +47,6 @@ CREATE TABLE licenses (
 CREATE TABLE devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id TEXT NOT NULL,
-    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE RESTRICT,
     license_id UUID NOT NULL REFERENCES licenses(id) ON DELETE RESTRICT,
     device_name TEXT,
     operating_system TEXT,
@@ -55,8 +55,7 @@ CREATE TABLE devices (
     last_seen_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'REVOKED')),
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-    UNIQUE (device_id, license_id)
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 4. Activation Logs
@@ -64,7 +63,7 @@ CREATE TABLE activation_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     license_id UUID REFERENCES licenses(id) ON DELETE SET NULL,
     device_id TEXT NOT NULL,
-    action TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('ACTIVATED', 'VALIDATED', 'VALIDATION_FAILED', 'DEACTIVATED', 'DEVICE_RESET', 'DEVICE_REPLACED', 'SUSPENDED', 'REACTIVATED')),
     app_version TEXT,
     ip_address TEXT,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -72,9 +71,10 @@ CREATE TABLE activation_logs (
 
 -- Indexes
 CREATE INDEX idx_licenses_business_id ON licenses(business_id);
+CREATE INDEX idx_licenses_key_hash ON licenses(license_key_hash);
 CREATE INDEX idx_devices_device_id ON devices(device_id);
 CREATE INDEX idx_devices_license_id ON devices(license_id);
-CREATE INDEX idx_devices_business_id ON devices(business_id);
+CREATE UNIQUE INDEX idx_unique_active_device ON devices(device_id) WHERE status = 'ACTIVE';
 CREATE INDEX idx_activation_logs_license_id ON activation_logs(license_id);
 
 -- Triggers for updated_at
