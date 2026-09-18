@@ -9,7 +9,7 @@ $$ LANGUAGE plpgsql;
 
 -- 1. Businesses
 CREATE TABLE businesses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     business_code TEXT UNIQUE NOT NULL,
     business_name TEXT NOT NULL,
     owner_name TEXT,
@@ -22,7 +22,7 @@ CREATE TABLE businesses (
 
 -- 2. Licenses
 CREATE TABLE licenses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     license_key TEXT UNIQUE NOT NULL,
     business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE RESTRICT,
     plan TEXT NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE licenses (
 
 -- 3. Devices
 CREATE TABLE devices (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id TEXT NOT NULL,
     business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE RESTRICT,
     license_id UUID NOT NULL REFERENCES licenses(id) ON DELETE RESTRICT,
@@ -55,7 +55,7 @@ CREATE TABLE devices (
 
 -- 4. Activation Logs
 CREATE TABLE activation_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     license_id UUID REFERENCES licenses(id) ON DELETE SET NULL,
     device_id TEXT NOT NULL,
     action TEXT NOT NULL,
