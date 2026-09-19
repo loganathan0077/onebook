@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activate OneBook</title>
+    <link rel="stylesheet" href="license.css">
+</head>
+<body>
+    <div class="activation-container">
+        <div class="activation-card">
+            <div class="logo-container">
+                <img src="onebooklogo.png" alt="OneBook Logo" class="logo">
+            </div>
+            
+            <div class="header">
+                <h1>Activate OneBook</h1>
+                <p>Enter your license key to continue using the software.</p>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="licenseKey" placeholder="OB-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+                <div id="errorMessage" class="error-message"></div>
+            </div>
+
+            <button id="activateBtn" class="activate-btn">
+                <span class="btn-text">Activate License</span>
+                <div class="spinner" id="spinner" style="display: none;"></div>
+            </button>
+            
+            <div class="footer">
+                <p>Need a license? <a href="#" id="buyLink">Contact Support</a></p>
+                <div id="machineIdDisplay" class="machine-id">Machine ID: Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="license.js"></script>
+</body>
+</html>

@@ -70,3 +70,17 @@ node_modules/
 
 # Build output
 dist/
+
+# Cryptographic Keys (Prevent accidental secret leaks)
+*.pem
+*.key
+*.cert
+*.p8
+
+# Temporary agent scripts
+patch_*.py
+run_*.py
+test_*.ts
+
+# Supabase local environment data
+supabase/.temp/

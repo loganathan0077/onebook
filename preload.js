@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkFolderHasDataSync: (folderPath) => ipcRenderer.sendSync('check-folder-has-data-sync', folderPath),
     focusWindow: () => ipcRenderer.send('focus-window'),
 
+    // Licensing APIs
+    getLicenseSync: () => ipcRenderer.sendSync('get-license-sync'),
+    saveLicenseSync: (data) => ipcRenderer.sendSync('save-license-sync', data),
+    getMachineIdSync: () => ipcRenderer.sendSync('get-machine-id-sync'),
 });
 
 
