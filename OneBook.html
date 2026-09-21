@@ -3839,10 +3839,12 @@
 
                         <!-- License -->
                         <div id="settings-pane-license" class="settings-pane">
-                            <h3>🔑 License</h3>
-                            <p><strong>Status:</strong> Active</p>
-                            <p><strong>License Type:</strong> One-Time / Single Computer</p>
-                            <p><strong>Version:</strong> 1.0.0</p>
+                            <div style="max-width: 500px; background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                                <h3 style="margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; color: #1e293b;">🔑 License Information</h3>
+                                <div id="licenseInfoDisplay" style="font-size: 14px; line-height: 1.6; color: #334155;">
+                                    <p>Loading license information...</p>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- About -->
@@ -16799,6 +16801,12 @@
                 selectedPane.classList.add('active');
             }
 
+            if(paneId === 'settings-pane-license') {
+                if(typeof refreshLicenseUI === 'function') {
+                    refreshLicenseUI();
+                }
+            }
+
             if(paneId === 'settings-pane-account') {
                 if(typeof renderUserManagementTable === 'function') {
                     renderUserManagementTable();
@@ -20930,7 +20938,87 @@
             }
         }
     </script>
+
+<script>
+    function refreshLicenseUI() {
+        if (!window.electronAPI || !window.electronAPI.getLicenseInfoSync) return;
+        const info = window.electronAPI.getLicenseInfoSync();
+        const display = document.getElementById('licenseInfoDisplay');
+        if (!display) return;
+
+        if (!info) {
+            display.innerHTML = '<p style="color: #dc3545;">Failed to read secure license data.</p>';
+            return;
+        }
+
+        let daysRemainingStr = '';
+        let expiryDateStr = '';
+
+        if (!info.expiresAt) {
+            daysRemainingStr = 'Unlimited';
+            expiryDateStr = 'Never';
+        } else {
+            const expDate = new Date(info.expiresAt);
+            const now = new Date();
+            const ms = expDate.getTime() - now.getTime();
+
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            expiryDateStr = expDate.toLocaleDateString('en-GB', options);
+
+            if (ms <= 0) {
+                daysRemainingStr = '0 days';
+            } else {
+                const days = Math.ceil(ms / 86400000);
+                daysRemainingStr = days + (days === 1 ? ' day' : ' days');
+            }
+        }
+
+        const lastCheckDate = info.lastOnlineCheck ? new Date(info.lastOnlineCheck).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never';
+        const graceDate = info.offlineGraceUntil ? new Date(info.offlineGraceUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never';
+
+        let statusColor = '#28a745';
+        if (info.status !== 'ACTIVE' && info.status !== 'TRIAL') statusColor = '#dc3545';
+
+        let warningHtml = '';
+
+        // Expiry Warning
+        if (info.expiresAt && info.status !== 'EXPIRED') {
+            const ms = new Date(info.expiresAt).getTime() - new Date().getTime();
+            if (ms <= 0) {
+                warningHtml += '<div style="background: #f8d7da; color: #721c24; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;">License expired</div>';
+            } else {
+                const days = Math.ceil(ms / 86400000);
+                if (days <= 7) {
+                    const text = days === 1 ? 'tomorrow' : `in ${days} days`;
+                    warningHtml += `<div style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;">⚠️ License expires ${text}</div>`;
+                }
+            }
+        }
+
+        // Grace Warning
+        if (info.offlineGraceUntil && info.lastOnlineCheck) {
+            const msSinceCheck = new Date().getTime() - new Date(info.lastOnlineCheck).getTime();
+            if (msSinceCheck > 7 * 86400000) {
+                warningHtml += '<div style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;">⚠️ Offline validation grace active<br><span style="font-weight:normal;font-size:12px;">Connect to the internet to verify your license.</span></div>';
+            }
+        }
+
+        display.innerHTML = `
+            ${warningHtml}
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; width: 150px;"><strong>Status</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; color: ${statusColor}; font-weight: bold;">${info.status}</td></tr>
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Plan</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${info.plan || 'UNKNOWN'}</td></tr>
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Expires</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${expiryDateStr}</td></tr>
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Days Remaining</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${daysRemainingStr}</td></tr>
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Device</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${info.deviceStatus}</td></tr>
+                <tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;"><strong>Last Online Check</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${lastCheckDate}</td></tr>
+                <tr><td style="padding: 8px 0;"><strong>Offline Grace Until</strong></td><td style="padding: 8px 0;">${graceDate}</td></tr>
+            </table>
+        `;
+    }
+</script>
 </body>
+
 </html>
 <script>
     if (window.electronAPI && window.electronAPI.onLicenseGraceWarning) {

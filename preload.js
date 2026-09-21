@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Licensing APIs
     getLicenseSync: () => ipcRenderer.sendSync('get-license-sync'),
+    getLicenseInfoSync: () => ipcRenderer.sendSync('get-license-info-sync'),
     saveLicenseSync: (data) => ipcRenderer.sendSync('save-license-sync', data),
     getMachineIdSync: () => ipcRenderer.sendSync('get-machine-id-sync'),
 

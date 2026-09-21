@@ -314,6 +314,43 @@ function verifyLicenseSignature(payloadObj, signatureBase64) {
 
 
 
+
+ipcMain.on('get-license-info-sync', (event) => {
+    try {
+        const p = getLicensePath();
+        if (!fs.existsSync(p) || !safeStorage.isEncryptionAvailable()) {
+            event.returnValue = null;
+            return;
+        }
+
+        const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+        const parsed = JSON.parse(decrypted);
+        const { license, signature } = parsed;
+
+        if (!verifyLicenseSignature(license, signature)) {
+            event.returnValue = null;
+            return;
+        }
+
+        let deviceStatus = 'ACTIVE';
+        if (license.deviceId !== machineIdCache) {
+            deviceStatus = 'MISMATCH';
+        }
+
+        event.returnValue = {
+            status: license.status,
+            plan: license.plan,
+            expiresAt: license.expiresAt,
+            deviceStatus: deviceStatus,
+            lastOnlineCheck: license.lastOnlineCheck,
+            offlineGraceUntil: license.offlineGraceUntil
+        };
+    } catch (e) {
+        console.error('License info read error:', e);
+        event.returnValue = null;
+    }
+});
+
 ipcMain.on('get-license-sync', (event) => {
 
     try {
