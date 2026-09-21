@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getLicenseSync: () => ipcRenderer.sendSync('get-license-sync'),
     saveLicenseSync: (data) => ipcRenderer.sendSync('save-license-sync', data),
     getMachineIdSync: () => ipcRenderer.sendSync('get-machine-id-sync'),
+
+    onLicenseBlockedReason: (callback) => ipcRenderer.on('license-blocked-reason', (_event, value) => callback(value)),
+    onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value))
 });
 
 

@@ -20932,3 +20932,22 @@
     </script>
 </body>
 </html>
+<script>
+    if (window.electronAPI && window.electronAPI.onLicenseGraceWarning) {
+        window.electronAPI.onLicenseGraceWarning((daysLeft) => {
+            const banner = document.createElement('div');
+            banner.style.position = 'fixed';
+            banner.style.top = '0';
+            banner.style.left = '0';
+            banner.style.width = '100%';
+            banner.style.backgroundColor = '#ffcc00';
+            banner.style.color = '#333';
+            banner.style.textAlign = 'center';
+            banner.style.padding = '10px';
+            banner.style.zIndex = '999999';
+            banner.style.fontWeight = 'bold';
+            banner.innerHTML = 'Please connect to the internet soon. Offline access expires in ' + daysLeft + ' days.';
+            document.body.appendChild(banner);
+        });
+    }
+</script>
