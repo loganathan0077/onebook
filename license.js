@@ -51,6 +51,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showError(saveResult.error || 'Failed to save license locally.');
                 }
+            } else if (data.error === "Device limit exceeded" && data.transferAvailable) {
+                setLoading(false);
+                const confirmTransfer = confirm("This license is currently active on another computer. Move it to this computer?");
+                if (confirmTransfer) {
+                    setLoading(true);
+                    try {
+                        const transferRes = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/transfer-license', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                licenseKey: key,
+                                deviceId: machineId,
+                                deviceName: 'OneBook POS',
+                                operatingSystem: navigator.platform,
+                                appVersion: '1.0.0'
+                            })
+                        });
+                        const transferData = await transferRes.json();
+                        if (transferData.success) {
+                            const saveResult = window.electronAPI.saveLicenseSync(transferData);
+                            if (saveResult.success) {
+                                window.location.href = 'OneBook.html';
+                            } else {
+                                showError(saveResult.error || 'Failed to save license locally.');
+                            }
+                        } else {
+                            showError(transferData.error || 'Transfer failed.');
+                        }
+                    } catch (err) {
+                        console.error('Transfer error:', err);
+                        showError('Network error during transfer.');
+                    } finally {
+                        setLoading(false);
+                    }
+                }
             } else {
                 showError(data.error || 'Activation failed.');
             }

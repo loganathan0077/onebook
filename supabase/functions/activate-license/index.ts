@@ -246,7 +246,7 @@ serve(async (req) => {
 
     if (!existingDevice && devices.length >= license.max_devices) {
 
-       return new Response(JSON.stringify({ success: false, error: "Device limit exceeded" }), {
+       return new Response(JSON.stringify({ success: false, error: "Device limit exceeded", transferAvailable: true }), {
 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 

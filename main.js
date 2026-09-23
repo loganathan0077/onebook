@@ -38,14 +38,11 @@ function createWindow() {
 
 
 
-    if (checkLicense()) {
-
-        win.loadFile('OneBook.html');
-
-    } else {
-
+    const mode = checkLicense();
+    if (mode === 'DEMO') {
         win.loadFile('license.html');
-
+    } else {
+        win.loadFile('OneBook.html');
     }
 
     win.maximize();
@@ -55,6 +52,47 @@ function createWindow() {
 
 
 // Set up IPC handlers
+
+ipcMain.handle('surrender-license', async (event) => {
+    try {
+        const p = getLicensePath();
+        if (!fs.existsSync(p)) return { success: false, error: 'No local license found.' };
+
+        const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+        const parsed = JSON.parse(decrypted);
+        const { license, signature } = parsed;
+
+        console.log('[LICENSE SURRENDER] Starting surrender');
+        console.log('[LICENSE SURRENDER] License ID:', license.licenseId);
+        console.log('[LICENSE SURRENDER] Device ID:', license.deviceId);
+
+        const response = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/surrender-license', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                licenseId: license.licenseId,
+                deviceId: license.deviceId,
+                signature: signature,
+                licensePayload: license
+            })
+        });
+
+        const data = await response.json();
+        console.log('[LICENSE SURRENDER] HTTP status:', response.status);
+        console.log('[LICENSE SURRENDER] Response:', data);
+        
+        if (data.success) {
+            // Delete trusted state only after server confirmation
+            fs.unlinkSync(p);
+            return { success: true };
+        }
+        return { success: false, error: data.error || 'Server rejected surrender.' };
+    } catch (e) {
+        console.error('Surrender error:', e);
+        return { success: false, error: e.message || 'Failed to contact server.' };
+    }
+});
+
 
 ipcMain.on('select-directory-sync', (event) => {
 
@@ -189,9 +227,7 @@ const getLicensePath = () => path.join(app.getPath('userData'), 'license-state.b
 
 
 const LICENSE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-
 MCowBQYDK2VwAyEAt7Yd7SNQPoNlkjBCIs6cOa9josLFtw0qTsTy6e9SnY8=
-
 -----END PUBLIC KEY-----`;
 
 
@@ -269,21 +305,15 @@ function verifyLicenseSignature(payloadObj, signatureBase64) {
         // Construct canonical payload exactly
 
         const canonical = JSON.stringify({
-
             deviceId: payloadObj.deviceId,
-
             expiresAt: payloadObj.expiresAt,
-
             issuedAt: payloadObj.issuedAt,
-
+            lastOnlineCheck: payloadObj.lastOnlineCheck,
             licenseId: payloadObj.licenseId,
-
             licenseVersion: payloadObj.licenseVersion,
-
+            offlineGraceUntil: payloadObj.offlineGraceUntil,
             plan: payloadObj.plan,
-
             status: payloadObj.status
-
         });
 
 
@@ -318,8 +348,12 @@ function verifyLicenseSignature(payloadObj, signatureBase64) {
 ipcMain.on('get-license-info-sync', (event) => {
     try {
         const p = getLicensePath();
-        if (!fs.existsSync(p) || !safeStorage.isEncryptionAvailable()) {
-            event.returnValue = null;
+        if (!fs.existsSync(p)) {
+            event.returnValue = { mode: 'DEMO', status: 'DEMO' };
+            return;
+        }
+        if (!safeStorage.isEncryptionAvailable()) {
+            event.returnValue = { mode: 'DEMO', status: 'NO_SECURE_STORAGE' };
             return;
         }
 
@@ -328,7 +362,7 @@ ipcMain.on('get-license-info-sync', (event) => {
         const { license, signature } = parsed;
 
         if (!verifyLicenseSignature(license, signature)) {
-            event.returnValue = null;
+            event.returnValue = { mode: 'DEMO', status: 'INVALID_SIGNATURE' };
             return;
         }
 
@@ -336,8 +370,19 @@ ipcMain.on('get-license-info-sync', (event) => {
         if (license.deviceId !== machineIdCache) {
             deviceStatus = 'MISMATCH';
         }
+        
+        let mode = 'LICENSED';
+        if (deviceStatus !== 'ACTIVE' || license.status !== 'ACTIVE') mode = 'DEMO';
+        if (license.expiresAt) {
+            const expiresAt = new Date(license.expiresAt);
+            if (expiresAt < new Date()) {
+                mode = 'DEMO';
+                license.status = 'EXPIRED';
+            }
+        }
 
         event.returnValue = {
+            mode: mode,
             status: license.status,
             plan: license.plan,
             expiresAt: license.expiresAt,
@@ -347,7 +392,7 @@ ipcMain.on('get-license-info-sync', (event) => {
         };
     } catch (e) {
         console.error('License info read error:', e);
-        event.returnValue = null;
+        event.returnValue = { mode: 'DEMO', status: 'ERROR' };
     }
 });
 
@@ -444,107 +489,33 @@ ipcMain.on('save-license-sync', (event, responseData) => {
 
 
 function checkLicense() {
-
     try {
-
         const p = getLicensePath();
-
         if (!fs.existsSync(p)) {
-
-            // Delete old insecure json if it exists
-
             const oldPath = path.join(app.getPath('userData'), 'license-state.json');
-
-            if (fs.existsSync(oldPath)) {
-
-                fs.unlinkSync(oldPath);
-
-            }
-
-            return false;
-
+            if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+            return 'DEMO';
         }
 
-
-
-        if (!safeStorage.isEncryptionAvailable()) {
-
-            console.error("Secure license storage is unavailable on this device.");
-
-            return false;
-
-        }
-
-
+        if (!safeStorage.isEncryptionAvailable()) return 'DEMO';
 
         const decrypted = safeStorage.decryptString(fs.readFileSync(p));
-
         const parsed = JSON.parse(decrypted);
-
         const { license, signature } = parsed;
 
-
-
-        // 1. Re-verify signature
-
-        if (!verifyLicenseSignature(license, signature)) {
-
-            console.error("Signature rejected at startup.");
-
-            return false;
-
-        }
-
-
-
-        // 2. Verify hardware deviceId
-
-        if (license.deviceId !== machineIdCache) {
-
-            console.error("Device ID mismatch at startup.");
-
-            return false;
-
-        }
-
-
-
-        // 3. Verify status
-
-        if (license.status !== 'ACTIVE') {
-
-            return false;
-
-        }
-
-
-
-        // 4. Verify expiry
-
+        if (!verifyLicenseSignature(license, signature)) return 'DEMO';
+        if (license.deviceId !== machineIdCache) return 'DEMO';
+        if (license.status !== 'ACTIVE') return 'DEMO';
+        
         if (license.expiresAt) {
-
             const expiresAt = new Date(license.expiresAt);
-
-            if (expiresAt < new Date()) {
-
-                return false;
-
-            }
-
+            if (expiresAt < new Date()) return 'DEMO';
         }
-
-
-
-        return true;
-
+        return 'LICENSED';
     } catch (e) {
-
         console.error('License check error:', e);
-
     }
-
-    return false;
-
+    return 'DEMO';
 }
 
 // ---------------------------------------------

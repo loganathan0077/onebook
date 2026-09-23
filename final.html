@@ -114,6 +114,17 @@
         // Initialize App
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 App Initializing...');
+            if (isDemoMode()) {
+                const w = document.getElementById('demoWatermark');
+                const b = document.getElementById('demoActivateBtn');
+                if (w) w.style.display = 'block';
+                if (b) b.style.display = 'block';
+            } else {
+                const w = document.getElementById('demoWatermark');
+                const b = document.getElementById('demoActivateBtn');
+                if (w) w.style.display = 'none';
+                if (b) b.style.display = 'none';
+            }
             const user = await checkAuth(false); // don't redirect, just check
             
             if (user) {
@@ -1716,6 +1727,141 @@
         }
         .search-result-item.highlighted { background-color: #e2e8f0; border-left: 3px solid #007bff; }
     </style>
+<!-- DEMO MODE CONTROLS -->
+    <script>
+        const DEMO_MAX_PRODUCTS = 10;
+        const DEMO_MAX_CUSTOMERS = 2;
+        const DEMO_MAX_SALES_PER_DAY = 5;
+
+        function isDemoMode() {
+            if (window.electronAPI && window.electronAPI.getLicenseInfoSync) {
+                try {
+                    const info = window.electronAPI.getLicenseInfoSync();
+                    return info && info.mode === 'DEMO';
+                } catch (e) {
+                    console.error('License check error:', e);
+                }
+            }
+            return true; // Default to DEMO if we can't verify
+        }
+
+        function getDemoProductCount() { return products ? products.filter(p => p.isDemo).length : 0; }
+        function canCreateDemoProduct() { return getDemoProductCount() < DEMO_MAX_PRODUCTS; }
+        function getDemoCustomerCount() { return customers ? customers.filter(c => c.isDemo).length : 0; }
+        function canCreateDemoCustomer() { return getDemoCustomerCount() < DEMO_MAX_CUSTOMERS; }
+        function getDemoSalesCountForDate(dateStr) { return sales ? sales.filter(s => s.isDemo && s.date && s.date.startsWith(dateStr)).length : 0; }
+        function canCreateDemoSale(dateStr) { return getDemoSalesCountForDate(dateStr) < DEMO_MAX_SALES_PER_DAY; }
+
+        
+        function requireLicensedForWrite(actionName = 'this action') {
+            if (typeof isDemoMode !== 'function' || !isDemoMode()) {
+                return true;
+            }
+            
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('demoLicenseModal');
+            if (!modal) {
+                const modalHtml = `
+                    <div id="demoLicenseModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+                        <div style="background: white; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); width: 100%; max-width: 460px; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; animation: modalFadeIn 0.2s ease-out;">
+                            <div style="padding: 24px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 22px;">🔵</span>
+                                <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px;">DEMO MODE</h2>
+                            </div>
+                            <div style="padding: 24px; color: #334155; font-size: 15px; line-height: 1.6;">
+                                <p style="margin-top: 0;">You're currently using OneBook in Demo Mode.</p>
+                                <p id="demoLicenseMessage" style="font-weight: 600; color: #0f172a; margin: 18px 0; font-size: 15px;">Saving ${actionName} requires an active OneBook license.</p>
+                                <p style="margin-bottom: 0;">Activate your license to continue using OneBook for business operations.</p>
+                            </div>
+                            <div style="padding: 20px 24px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+                                <button onclick="document.getElementById('demoLicenseModal').style.display = 'none'" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; font-size: 14px; cursor: pointer;">Cancel</button>
+                                <button onclick="window.location.href='license.html'" style="padding: 10px 20px; border-radius: 8px; border: none; background: #007bff; color: white; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">Activate License</button>
+                            </div>
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes modalFadeIn {
+                            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+                            to { opacity: 1; transform: scale(1) translateY(0); }
+                        }
+                    </style>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                modal = document.getElementById('demoLicenseModal');
+                
+                // Add ESC key listener
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && modal.style.display === 'flex') {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Update message text
+            let msgText = `Saving ${actionName} requires an active OneBook license.`;
+            if (actionName.includes('more than')) { // Handle limit messages
+                msgText = `You've reached the maximum of ${actionName.replace('creating more than ', '').replace('completing more than ', '')}.<br>Activate your OneBook license to continue.`;
+            } else {
+                // Ensure natural phrasing for custom strings
+                msgText = `${actionName.charAt(0).toUpperCase() + actionName.slice(1)} requires an active OneBook license.`;
+            }
+            document.getElementById('demoLicenseMessage').innerHTML = msgText;
+            
+            // Show modal
+            modal.style.display = 'flex';
+            
+            return false;
+        }
+
+        function showDemoLimitMessage(type) {
+            let actionName = 'this action';
+            if (type === 'products') actionName = 'creating more than 10 products';
+            if (type === 'customers') actionName = 'creating more than 2 customers';
+            if (type === 'sales') actionName = 'completing more than 5 sales per day';
+            requireLicensedForWrite(actionName);
+        }
+
+    
+        // Ctrl+D Shortcut for Sale Date
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+                // Ensure we are on the Record Sale tab before intercepting
+                const salesTab = document.getElementById('sales');
+                if (salesTab && salesTab.style.display !== 'none' && salesTab.classList.contains('active')) {
+                    e.preventDefault();
+                    
+                    const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+                    
+                    if (!settings.enableSalesDate) {
+                        // Toast non-intrusively
+                        const toast = document.createElement('div');
+                        toast.innerText = 'Sales Date feature is disabled in Settings.';
+                        toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 5px; z-index: 99999; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s;';
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.style.opacity = '1', 10);
+                        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+                        return;
+                    }
+                    
+                    if (typeof isDemoMode === 'function' && isDemoMode()) {
+                        const toast = document.createElement('div');
+                        toast.innerText = 'Demo Mode: Sales Date is fixed to today.';
+                        toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #ff9800; color: white; padding: 10px 20px; border-radius: 5px; z-index: 99999; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s;';
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.style.opacity = '1', 10);
+                        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+                        return;
+                    }
+                    
+                    const dateInput = document.getElementById('customSaleDate');
+                    if (dateInput) {
+                        dateInput.focus();
+                        setTimeout(() => dateInput.select(), 10);
+                    }
+                }
+            }
+        });
+    </script>
 </head>
 
 <body>
@@ -1733,6 +1879,8 @@
                 </div>
                 <div style="text-align: right; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 15px;"
                     class="header-actions">
+                    <div id="demoWatermark" style="display: none; background: #fff; color: var(--th-primary); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; border: 2px solid var(--th-primary); box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🔵 DEMO MODE</div>
+                    <button id="demoActivateBtn" onclick="window.location.href='license.html';"  style="display: none; background: #fff; color: var(--th-primary); border: none; padding: 6px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">Activate License</button>
                     <span id="userEmail" style="font-size: 0.9em; opacity: 0.9;"></span>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="handleLogout()"
@@ -1902,14 +2050,24 @@
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; z-index: 50; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; background: #e8f5e9; padding: 5px 20px; border-radius: 8px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                            <span style="font-weight: bold; font-size: 20px; color: #155724; line-height: 1;">Total Amount (₹)</span>
-                            <span id="topRightTotalAmount" style="font-weight: bold; font-size: 40px; color: #28a745; line-height: 1.2;">0.00</span>
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div id="customSaleDateContainer" style="display: none; background: #fff; padding: 5px 15px; border-radius: 8px; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);">
+                            <span style="font-weight: bold; font-size: 14px; color: #495057; display: block; margin-bottom: 2px;">📅 Sale Date <small style="font-weight:normal;color:#6c757d">(Ctrl+D)</small></span>
+                            <div style="display: flex; align-items: center; position: relative;">
+                                <input type="text" id="customSaleDate" placeholder="DD/MM/YYYY" autocomplete="off" inputmode="numeric" style="border: none; outline: none; font-size: 16px; font-weight: bold; color: #212529; background: transparent; padding: 0; width: 110px;" onblur="normalizeSaleDateInput(this)" onkeydown="if(event.key === 'Enter') normalizeSaleDateInput(this)">
+                                <span style="cursor: pointer; font-size: 16px; margin-left: 5px;" onclick="document.getElementById('nativeSalePicker').showPicker()">📅</span>
+                                <input type="date" id="nativeSalePicker" style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;" onchange="handleNativePickerChange(this)">
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; background: #e8f5e9; padding: 5px 20px; border-radius: 8px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                                <span style="font-weight: bold; font-size: 20px; color: #155724; line-height: 1;">Total Amount (₹)</span>
+                                <span id="topRightTotalAmount" style="font-weight: bold; font-size: 40px; color: #28a745; line-height: 1.2;">0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3814,10 +3972,15 @@
 
                         <!-- License -->
                         <div id="settings-pane-license" class="settings-pane">
-                            <h3>🔑 License</h3>
-                            <p><strong>Status:</strong> Active</p>
-                            <p><strong>License Type:</strong> One-Time / Single Computer</p>
-                            <p><strong>Version:</strong> 1.0.0</p>
+                            <div style="max-width: 500px; background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                                <h3 style="margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; color: #1e293b;">🔑 License Information</h3>
+                                <div id="licenseInfoDisplay" style="font-size: 14px; line-height: 1.6; color: #334155;">
+                                    <p>Loading license information...</p>
+                                </div>
+                                <div id="licenseActionContainer" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                                </div>
+                                
+                            </div>
                         </div>
 
                         <!-- About -->
@@ -3839,6 +4002,16 @@
                         <!-- General Settings -->
                         <div id="settings-pane-general" class="settings-pane">
                             <h3>⚙️ General Settings</h3>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;">📅 Enable Sales Date</h4>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Allow selecting the date for new sales. (Shortcut: Ctrl+D)</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingsEnableSalesDate" onchange="toggleSetting('enableSalesDate', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h4 style="margin: 0 0 5px 0;">🔌 USB Scanner</h4>
@@ -5440,7 +5613,6 @@
             // Refresh UI components
             updateDashboard();
             updateInventoryTable();
-            populateProductSelect('updateStockProduct');
 
             console.log('🔄 About to call populateSaleProductSelect()...');
             populateSaleProductSelect();
@@ -5830,6 +6002,7 @@
             
             localStorage.setItem('customers', JSON.stringify(customers));
             localStorage.setItem('sales', JSON.stringify(sales));
+                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
         }
 
         let masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
@@ -5868,7 +6041,6 @@
             if (typeof updateInventoryTable === 'function') updateInventoryTable();
             if (typeof updateTodaysSales === 'function') updateTodaysSales(); // Updates daily sales list
             if (typeof populateProductSelect === 'function') {
-                populateProductSelect('updateStockProduct');
                 populateSaleProductSelect();
             }
         };
@@ -6004,6 +6176,7 @@
                 document.getElementById('creditPaymentMethod').value = 'cash';
                 document.getElementById('creditDueDate').value = '';
                 console.log('Cart cleared successfully');
+                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
                 showAlert('Cart cleared successfully!', '✅');
             });
         }
@@ -6177,6 +6350,7 @@
         function saveData() {
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('sales', JSON.stringify(sales));
+                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
             localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
             localStorage.setItem('purchaseOrders', JSON.stringify(purchaseOrders));
             localStorage.setItem('purchases', JSON.stringify(purchases));
@@ -6291,6 +6465,7 @@
                             // Restore to localStorage
                             localStorage.setItem('products', JSON.stringify(products));
                             localStorage.setItem('sales', JSON.stringify(sales));
+                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
                             localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
                             localStorage.setItem('draftSales', JSON.stringify(draftSales));
                             localStorage.setItem('purchases', JSON.stringify(purchases));
@@ -7044,6 +7219,7 @@
         }
 
         function saveSupplier() {
+            if (!requireLicensedForWrite('creating a supplier')) return;
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to manage suppliers.', 'error');
             const editId = document.getElementById('supplierEditId').value;
             const name = document.getElementById('newSupplierName').value.trim().toUpperCase();
@@ -7313,7 +7489,17 @@
             let matchedMatches = [];
             let duplicateCustomer = null;
 
-            const checkDuplicate = (record) => {
+
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                // If editing existing, allow it. If creating new, check limit.
+                const editingId = document.getElementById('editCustomerId').value;
+                if (!editingId) {
+                    if (!canCreateDemoCustomer()) {
+                        showDemoLimitMessage('customers');
+                        return;
+                    }
+                }
+            }            const checkDuplicate = (record) => {
                 if (record.id === editId) return false;
                 
                 let matches = [];
@@ -7565,6 +7751,7 @@
 
         // Save Purchase
         function savePurchase() {
+            if (!requireLicensedForWrite('creating a purchase')) return;
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
             const invoice = document.getElementById('purchaseInvoiceNumber').value;
             const supplierName = document.getElementById('purchaseSupplier').value;
@@ -8402,7 +8589,6 @@
                     updateDashboard();
                 } else if (tabName === 'inventory') {
                     updateInventoryTable();
-                    populateProductSelect('updateStockProduct');
                 } else if (tabName === 'sales') {
                     populateSaleProductSelect();
                     updateTodaysSales();
@@ -8999,6 +9185,7 @@
         }
 
         function addStock() {
+            if (!requireLicensedForWrite('updating stock')) return;
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
@@ -9262,15 +9449,46 @@
                 return;
             }
 
-            // Filter products based on search term
-            const filteredProducts = products.filter(product => {
-                const searchLower = searchTerm.toLowerCase();
-                const nameStr = product.name !== undefined && product.name !== null ? String(product.name).toLowerCase() : '';
-                const barcodeStr = product.barcode !== undefined && product.barcode !== null ? String(product.barcode).toLowerCase() : '';
-                const categoryStr = product.category !== undefined && product.category !== null ? String(product.category).toLowerCase() : '';
+            // Advanced Tokenized Product Search
+            const tokens = searchTerm.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+            
+            let matchedProducts = [];
+            if (tokens.length === 0) {
+                matchedProducts = products.map(product => ({ product, score: 0 }));
+            } else {
+                products.forEach(product => {
+                    const nameStr = product.name !== undefined && product.name !== null ? String(product.name).toLowerCase() : '';
+                    const barcodeStr = product.barcode !== undefined && product.barcode !== null ? String(product.barcode).toLowerCase() : '';
+                    const categoryStr = product.category !== undefined && product.category !== null ? String(product.category).toLowerCase() : '';
+                    const brandStr = product.brand !== undefined && product.brand !== null ? String(product.brand).toLowerCase() : '';
+                    const skuStr = product.sku !== undefined && product.sku !== null ? String(product.sku).toLowerCase() : '';
+                    const priceStr = product.sellingPrice !== undefined && product.sellingPrice !== null ? String(product.sellingPrice) : '';
+                    
+                    const searchableText = `${nameStr} ${barcodeStr} ${categoryStr} ${brandStr} ${skuStr} ${priceStr}`;
+                    
+                    const matchesAll = tokens.every(token => searchableText.includes(token));
+                    
+                    if (matchesAll) {
+                        let score = 999;
+                        const exactBarcodeMatch = tokens.length === 1 && barcodeStr === tokens[0];
+                        const exactNameMatch = nameStr === searchTerm.toLowerCase().trim();
+                        const startsWith = nameStr.startsWith(tokens[0]);
+                        const allTokensInName = tokens.every(token => nameStr.includes(token));
+                        
+                        if (exactBarcodeMatch) score = 1;
+                        else if (exactNameMatch) score = 2;
+                        else if (startsWith) score = 3;
+                        else if (allTokensInName) score = 4;
+                        else if (tokens.every(token => nameStr.includes(token) || categoryStr.includes(token) || brandStr.includes(token))) score = 5;
+                        else score = 6;
+                        
+                        matchedProducts.push({ product, score });
+                    }
+                });
                 
-                return nameStr.includes(searchLower) || barcodeStr.includes(searchLower) || categoryStr.includes(searchLower);
-            });
+                matchedProducts.sort((a, b) => a.score - b.score);
+            }
+            const filteredProducts = matchedProducts.map(m => m.product);
 
             if (filteredProducts.length === 0) {
                 dropdown.style.display = 'none';
@@ -10552,6 +10770,9 @@
         }
 
         function generateReceiptNumber() {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                return "DEMO SALE " + Math.random().toString().slice(2, 8);
+            }
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
             const prefix = (settings.invoicePrefix || '').trim();
@@ -10590,7 +10811,110 @@
             return formattedStr;
         }
 
+
+        function isFutureDate(isoString) {
+            if (!isoString) return false;
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayIso = `${year}-${month}-${day}`;
+            return isoString > todayIso;
+        }
+
+        function normalizeSaleDate(input) {
+            if (!input) return { valid: false };
+            input = input.trim().replace(/\s+/g, '');
+            let d, m, y;
+            if (/^\d{8}$/.test(input)) {
+                d = input.substring(0, 2);
+                m = input.substring(2, 4);
+                y = input.substring(4, 8);
+            } else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(input)) {
+                const parts = input.split(/[/-]/);
+                d = parts[0].padStart(2, '0');
+                m = parts[1].padStart(2, '0');
+                y = parts[2];
+            } else {
+                return { valid: false };
+            }
+
+            const day = parseInt(d, 10);
+            const month = parseInt(m, 10);
+            const year = parseInt(y, 10);
+            
+            const dateObj = new Date(year, month - 1, day);
+            if (dateObj.getFullYear() === year && dateObj.getMonth() === month - 1 && dateObj.getDate() === day) {
+                return {
+                    valid: true,
+                    iso: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+                    display: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+                };
+            }
+            return { valid: false };
+        }
+
+        function normalizeSaleDateInput(el) {
+            if (typeof isDemoMode === 'function' && isDemoMode()) return;
+            if (!el.value) return;
+            const res = normalizeSaleDate(el.value);
+            if (res.valid) {
+                if (typeof isFutureDate === 'function' && isFutureDate(res.iso)) {
+                    showAlert('Future dates are not allowed. Please enter today or a previous date.', '⚠️');
+                    resetSaleDateToToday();
+                } else {
+                    el.value = res.display;
+                    el.dataset.isoDate = res.iso;
+                }
+            } else {
+                showAlert('Invalid date. Please enter a valid date in DDMMYYYY format.', '⚠️');
+                resetSaleDateToToday();
+            }
+        }
+
+        function handleNativePickerChange(el) {
+            if (typeof isDemoMode === 'function' && isDemoMode()) return;
+            if (el.value) {
+                if (typeof isFutureDate === 'function' && isFutureDate(el.value)) {
+                    showAlert('Future dates are not allowed. Please enter today or a previous date.', '⚠️');
+                    resetSaleDateToToday();
+                    return;
+                }
+                const parts = el.value.split('-');
+                const display = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                const textInput = document.getElementById('customSaleDate');
+                if (textInput) {
+                    textInput.value = display;
+                    textInput.dataset.isoDate = el.value;
+                }
+            }
+        }
+
+        function resetSaleDateToToday() {
+            const el = document.getElementById('customSaleDate');
+            if (el) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                el.value = `${day}/${month}/${year}`;
+                el.dataset.isoDate = `${year}-${month}-${day}`;
+            }
+        }
+        
+        // Add to window load so it gets evaluated immediately and overrides any cached values
+        window.addEventListener('DOMContentLoaded', resetSaleDateToToday);
+
         function completeSale() {
+
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                const systemDateStr = new Date().toISOString().slice(0, 10);
+                if (!canCreateDemoSale(systemDateStr)) {
+                    showDemoLimitMessage('sales');
+                    return;
+                }
+            }
+
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
@@ -10738,6 +11062,16 @@
                 }
             }
 
+            const _settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            if (_settings.enableSalesDate && !(typeof isDemoMode === 'function' && isDemoMode())) {
+                const _customDateVal = document.getElementById('customSaleDate') ? document.getElementById('customSaleDate').dataset.isoDate : '';
+                if (_customDateVal && typeof isFutureDate === 'function' && isFutureDate(_customDateVal)) {
+                    showAlert('Future dates are not allowed. Please enter today or a previous date.', '⚠️');
+                    if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
+                    return;
+                }
+            }
+
             // Confirm Completion
             showConfirm(`Complete sale for ₹${totalReceived.toFixed(2)}?`, async () => {
                 // Generate receipt number in format: {saleNumber}-{month}{year}
@@ -10745,7 +11079,21 @@
 
                 // Create sale records and update stock
                 const saleId = Date.now();
-                const saleDate = new Date().toISOString();
+                let saleDate = new Date().toISOString();
+                const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+                if (settings.enableSalesDate) {
+                    if (typeof isDemoMode === 'function' && isDemoMode()) {
+                        // Demo Mode forces system date
+                    } else {
+                        const customDateVal = document.getElementById('customSaleDate') ? document.getElementById('customSaleDate').dataset.isoDate : '';
+                        if (customDateVal) {
+                            // Use custom date but preserve current time for ordering
+                            const now = new Date();
+                            const timePart = now.toISOString().split('T')[1];
+                            saleDate = `${customDateVal}T${timePart}`;
+                        }
+                    }
+                }
                 const saleItems = [];
 
                 // Calculate payment details
@@ -10779,11 +11127,13 @@
                             id: saleId + saleItems.length,
                             saleId: saleId, // Group items from same sale
                             receiptNumber: receiptNumber, // Receipt number in format
+                            isDemo: (typeof isDemoMode === 'function' && isDemoMode()),
                             userId: currentUser.id || '',
                             username: currentUser.username || currentUser.name || '',
                             userCode: currentUser.userCode || '-',
                             counterCode: currentUser.userCode || '-',
                             date: saleDate,
+                            createdAt: new Date().toISOString(),
                             productId: item.productId,
                             productName: item.productName,
                             barcode: item.barcode,
@@ -11328,6 +11678,7 @@
             if (saleData.paymentMethod === 'mixed') paymentStr = `CASH + UPI`;
 
             const dateStr = new Date(saleData.date).toLocaleDateString();
+            const enteredAtHtml = saleData.createdAt ? `<div><strong>Entered At:</strong> ${new Date(saleData.createdAt).toLocaleString()}</div>` : '';
 
             // Build Item Rows & Aggregates from saved data
             let rowsHtml = '';
@@ -11404,6 +11755,7 @@
                             <div style="flex: 1; text-align: right; font-size: 11px; line-height: 1.4;">
                                 <div><strong>Invoice No:</strong> ${saleData.receiptNumber}</div>
                                 <div><strong>Invoice Date:</strong> ${dateStr}</div>
+                                ${enteredAtHtml}
                                 <div><strong>Payment Method:</strong> ${paymentStr}</div>
                                 ${invoiceGstApplied ? `<div><strong>Tax Type:</strong> ${taxTypeStr}</div>` : ''}
                             </div>
@@ -12079,6 +12431,7 @@
         }
 
         function saveEditedBill(billNumber) {
+            if (!requireLicensedForWrite('editing a bill')) return;
             try {
                 const billItems = window.editingBillItems;
 
@@ -13629,6 +13982,13 @@
         }
 
         function finalizeAddProduct(product, categorySelect, customCategoryInput) {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                if (!canCreateDemoProduct()) {
+                    showDemoLimitMessage('products');
+                    return;
+                }
+                product.isDemo = true;
+            }
             // Handle Custom Category persistence
             if (categorySelect.value === 'Other' && customCategoryInput.value.trim() !== '') {
                 const customValue = product.category;
@@ -13968,6 +14328,7 @@
         }
 
         function saveEditedProduct(event) {
+            if (!requireLicensedForWrite('editing a product')) return;
             event.preventDefault();
 
             try {
@@ -14961,6 +15322,7 @@
         }
 
         function savePO() {
+            if (!requireLicensedForWrite('saving a purchase order')) return;
             if (poCart.length === 0) {
                 showAlert('PO List is empty!', '⚠️');
                 return;
@@ -15790,6 +16152,7 @@
         }
 
         function saveDayClosing() {
+            if (!requireLicensedForWrite('performing day closing')) return;
             if (!window.hasPermission('day_closing')) return showAlert('Unauthorized: You do not have permission for day closing.', 'error');
             let totalCounted = 0;
             const record = {
@@ -16775,6 +17138,12 @@
                 selectedPane.classList.add('active');
             }
 
+            if(paneId === 'settings-pane-license') {
+                if(typeof refreshLicenseUI === 'function') {
+                    refreshLicenseUI();
+                }
+            }
+
             if(paneId === 'settings-pane-account') {
                 if(typeof renderUserManagementTable === 'function') {
                     renderUserManagementTable();
@@ -16798,6 +17167,11 @@
             const settings = { ...getDefaultSettings(), ...savedSettings };
 
             const businessNameInput = document.getElementById('settingsBusinessName');
+            if(document.getElementById('settingsEnableSalesDate')) document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate === true;
+            // set customSaleDate display
+            const saleDateContainer = document.getElementById('customSaleDateContainer');
+            if(saleDateContainer) saleDateContainer.style.display = settings.enableSalesDate === true ? 'block' : 'none';
+            if(typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
             if (businessNameInput) businessNameInput.value = settings.businessName || '';
             const taglineInput = document.getElementById('settingsTagline');
             if (taglineInput) taglineInput.value = settings.tagline || '';
@@ -16883,6 +17257,7 @@
         }
 
         function saveSettings() {
+            if (!requireLicensedForWrite('saving settings')) return;
             if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) return showAlert('Unauthorized: Only Administrators can change settings.', 'error');
             const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
@@ -16960,6 +17335,7 @@
         }
 
         function saveInvoiceSettings() {
+            if (!requireLicensedForWrite('saving invoice settings')) return;
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
             settings.invoicePrefix = document.getElementById('invoicePrefix').value;
@@ -17057,6 +17433,7 @@
         }
 
         function saveLabelSettings() {
+            if (!requireLicensedForWrite('saving label settings')) return;
             const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
             const p = document.getElementById('labelPreset'); if(p) currentSettings.labelPreset = p.value;
@@ -17196,6 +17573,7 @@
                 const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
                 if(setting === 'expiryTracking') document.getElementById('settingsExpiryTracking').checked = settings.expiryTracking || false;
                 if(setting === 'buyingPriceTracking') document.getElementById('settingsBuyingPriceTracking').checked = settings.buyingPriceTracking || false;
+                if(setting === 'enableSalesDate') document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate || false;
                 if(setting === 'quickSaleBarcode') document.getElementById('settingsQuickSaleBarcode').checked = settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true;
                 return;
             }
@@ -17206,6 +17584,11 @@
             const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
             const buyTrack = currentSettings.buyingPriceTracking !== undefined ? currentSettings.buyingPriceTracking : false;
             applyProductFeaturesVisibility(expTrack, buyTrack);
+            
+            if (setting === 'enableSalesDate') {
+                const saleDateContainer = document.getElementById('customSaleDateContainer');
+                if(saleDateContainer) saleDateContainer.style.display = value ? 'block' : 'none';
+            }
             
             if (setting === 'quickSaleBarcode') {
                 const qsbPanel = document.getElementById('quickSaleBarcodePanel');
@@ -17695,6 +18078,7 @@
         }
 
         function savePCTransaction() {
+            if (!requireLicensedForWrite('saving a petty cash transaction')) return;
             const date = document.getElementById('pcDate').value;
             const amountStr = document.getElementById('pcAmount').value;
             const amount = parseFloat(amountStr);
@@ -20536,6 +20920,7 @@
         }
 
         function saveLedgerPayment() {
+            if (!requireLicensedForWrite('saving a ledger payment')) return;
             const partyId = document.getElementById('lp-party-id').value;
             const partyType = document.getElementById('lp-party-type').value;
             const date = document.getElementById('lp-date').value;
@@ -20976,6 +21361,104 @@
         }
     }, true);
     </script>
-</body>
+<script>
+    function refreshLicenseUI() {
+        const display = document.getElementById('licenseInfoDisplay');
+        if (!display) return;
+        
+        if (!window.electronAPI || !window.electronAPI.getLicenseInfoSync) {
+            display.innerHTML = '<div style="color:red; padding: 10px; background: #f8d7da; border-radius: 6px;">Unable to load license information</div>';
+            return;
+        }
+
+        let info;
+        try {
+            info = window.electronAPI.getLicenseInfoSync();
+        } catch (e) {
+            display.innerHTML = `<div style="color:red; padding: 10px; background: #f8d7da; border-radius: 6px;">Exception: ${e.message}</div>`;
+            return;
+        }
+
+        if (!info) {
+            display.innerHTML = '<div style="color:red; padding: 10px; background: #f8d7da; border-radius: 6px;">No data returned.</div>';
+            return;
+        }
+
+        let statusColor = '#dc3545';
+        if (info.status === 'ACTIVE') statusColor = '#28a745';
+        else if (info.status === 'TRIAL') statusColor = '#ffc107';
+        
+        let planText = info.plan || 'DEMO';
+        let daysRemainingStr = 'Not applicable';
+        let expiryDateStr = 'Not applicable';
+        let graceDate = 'Not applicable';
+        let deviceStatus = info.deviceStatus || 'Not available';
+        let lastCheckDate = 'Not available';
+        let isFreshDemo = (info.mode === 'DEMO' && !info.plan);
+
+        if (!isFreshDemo) {
+            if (info.plan === 'LIFETIME' || !info.expiresAt) {
+                daysRemainingStr = 'Unlimited';
+                expiryDateStr = 'Never';
+                if (info.plan === 'LIFETIME') graceDate = 'Not applicable';
+            } else if (info.expiresAt) {
+                const expDate = new Date(info.expiresAt);
+                const now = new Date();
+                const ms = expDate.getTime() - now.getTime();
+
+                try {
+                    expiryDateStr = expDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                } catch(e) {
+                    expiryDateStr = info.expiresAt;
+                }
+
+                if (ms <= 0) {
+                    daysRemainingStr = 'Expired';
+                } else {
+                    const days = Math.ceil(ms / 86400000);
+                    daysRemainingStr = days + (days === 1 ? ' Day' : ' Days');
+                }
+            }
+            if (info.offlineGraceUntil && info.plan !== 'LIFETIME') {
+                try {
+                    graceDate = new Date(info.offlineGraceUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                } catch(e) {}
+            }
+            if (info.lastOnlineCheck) {
+                try {
+                    lastCheckDate = new Date(info.lastOnlineCheck).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                } catch(e) {}
+            }
+        }
+
+        let warningHtml = '';
+        if (info.mode === 'DEMO') {
+            warningHtml += '<div style="background: #e2e8f0; color: #1e293b; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;">ℹ️ Application is operating in Demo Mode. Activate a license to unlock full capabilities.</div>';
+        }
+
+        let actionButtonHtml = '';
+        if (typeof isDemoMode === 'function' && isDemoMode()) {
+            actionButtonHtml = '<button class="btn btn-primary" onclick="window.location.href=\'license.html\'" style="width: 100%; font-weight: bold; background-color: #007bff; border-color: #007bff; padding: 10px; border-radius: 6px; color: white; cursor: pointer; margin-top: 25px;">Activate License</button>';
+        } else {
+            actionButtonHtml = '<button class="btn btn-danger" onclick="if(typeof promptSurrenderLicense === \'function\') promptSurrenderLicense(); else alert(\'Surrender not implemented in this view.\');" style="width: 100%; font-weight: bold; background-color: #dc3545; border-color: #dc3545; padding: 10px; border-radius: 6px; color: white; cursor: pointer; margin-top: 25px;">Surrender License</button>';
+        }
+
+        display.innerHTML = `
+            ${warningHtml}
+            <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; width: 160px; color: #64748b;">License Status</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: ${statusColor}; font-weight: bold;">${info.status}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Plan</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${planText}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Expires</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${expiryDateStr}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Days Remaining</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${daysRemainingStr}</td></tr>
+                <tr><td style="padding: 20px 0 0 0;" colspan="2"></td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Device Status</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${deviceStatus}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Last Online Check</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${lastCheckDate}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Offline Grace Until</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${graceDate}</td></tr>
+            </table>
+            ${actionButtonHtml}
+        `;
+    }
+    </script>
+    </body>
 
 </html>

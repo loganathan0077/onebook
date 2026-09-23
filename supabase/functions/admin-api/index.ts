@@ -59,7 +59,7 @@ serve(async (req: Request) => {
         supabase.from('businesses').select('*', { count: 'exact', head: true }),
         supabase.from('licenses').select('*', { count: 'exact', head: true }),
         supabase.from('licenses').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-        supabase.from('licenses').select('*', { count: 'exact', head: true }).eq('status', 'TRIAL'),
+        supabase.from('licenses').select('*', { count: 'exact', head: true }).eq('plan', 'TRIAL'),
         supabase.from('devices').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
       ]);
 

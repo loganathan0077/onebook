@@ -1,6 +1,57 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
+
+// AES-GCM encryption helpers
+async function getCryptoKey(base64Key: string): Promise<CryptoKey> {
+  const binaryString = atob(base64Key);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+  }
+  return await crypto.subtle.importKey(
+      'raw',
+      bytes,
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptText(plaintext: string, base64Key: string): Promise<string> {
+  const key = await getCryptoKey(base64Key);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertextBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  
+  const ivBase64 = btoa(String.fromCharCode(...iv));
+  const cipherBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertextBuffer)));
+  
+  return `v1:${ivBase64}:${cipherBase64}`;
+}
+
+async function decryptText(encryptedFormat: string, base64Key: string): Promise<string> {
+  if (!encryptedFormat.startsWith('v1:')) throw new Error('Unsupported encryption version');
+  const parts = encryptedFormat.split(':');
+  if (parts.length !== 3) throw new Error('Invalid encrypted format');
+  
+  const ivBinary = atob(parts[1]);
+  const iv = new Uint8Array(ivBinary.length);
+  for(let i=0; i<ivBinary.length; i++) iv[i] = ivBinary.charCodeAt(i);
+  
+  const cipherBinary = atob(parts[2]);
+  const ciphertext = new Uint8Array(cipherBinary.length);
+  for(let i=0; i<cipherBinary.length; i++) ciphertext[i] = cipherBinary.charCodeAt(i);
+  
+  const key = await getCryptoKey(base64Key);
+  try {
+      const decryptedBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return new TextDecoder().decode(decryptedBuffer);
+  } catch(e) {
+      throw new Error('Decryption failed');
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -56,7 +107,27 @@ serve(async (req: Request) => {
     
     let resultData = null;
 
-    if (action === 'CREATE_LICENSE') {
+    
+    if (action === 'CREATE_BUSINESS') {
+      if (role === 'SUPPORT') throw new Error('Forbidden: SUPPORT role cannot create businesses');
+      
+      const { business_code, business_name, owner_name, phone, email } = payload;
+      if (!business_code || !business_name) throw new Error('Missing required fields for business creation');
+      
+      const { data: biz, error: bizError } = await supabase.from('businesses').insert({
+        business_code,
+        business_name,
+        owner_name,
+        phone,
+        email
+      }).select().single();
+      
+      if (bizError) throw new Error(`Failed to create business: ${bizError.message}`);
+      
+      await logAudit(supabase, user.id, action, 'SUCCESS', { business_id: biz.id });
+      resultData = biz;
+
+        } else if (action === 'CREATE_LICENSE') {
       if (role === 'SUPPORT') throw new Error('Forbidden: SUPPORT role cannot create licenses');
       
       const { business_id, plan, max_devices, expires_at, notes } = payload;
@@ -74,9 +145,14 @@ serve(async (req: Request) => {
       const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
       const last4 = rawKey.slice(-4);
       
+      const encKeyBase64 = Deno.env.get('ONEBOOK_LICENSE_ENCRYPTION_KEY');
+      if (!encKeyBase64) throw new Error('Encryption key not configured');
+      const encryptedKey = await encryptText(rawKey, encKeyBase64);
+
       const { data: lic, error: licError } = await supabase.from('licenses').insert({
         license_key_hash: hashHex,
         license_key_last4: last4,
+        encrypted_license_key: encryptedKey,
         business_id,
         plan,
         status: plan === 'TRIAL' ? 'TRIAL' : 'ACTIVE',
@@ -107,6 +183,45 @@ serve(async (req: Request) => {
       
       await logAudit(supabase, user.id, action, 'SUCCESS', { license_id });
       resultData = lic;
+
+    } else if (action === 'DELETE_LICENSE') {
+      if (role !== 'SUPER_ADMIN') throw new Error('Forbidden: Only SUPER_ADMIN can delete licenses');
+      
+      const { license_id } = payload;
+      if (!license_id) throw new Error('License ID required');
+      
+      // Check if license has device history
+      const { data: devices, error: devCheckError } = await supabase.from('devices')
+        .select('id')
+        .eq('license_id', license_id)
+        .limit(1);
+        
+      if (devCheckError) throw new Error(`Failed to check device history: ${devCheckError.message}`);
+      if (devices && devices.length > 0) {
+        throw new Error('This license has device history and cannot be permanently deleted. Deactivate the license instead.');
+      }
+      
+      // Get license details for audit logging before deleting
+      const { data: licToDel, error: licFetchError } = await supabase.from('licenses')
+        .select('business_id, license_key_last4')
+        .eq('id', license_id)
+        .single();
+        
+      if (licFetchError) throw new Error(`License not found: ${licFetchError.message}`);
+      
+      // Delete license
+      const { error: delError } = await supabase.from('licenses')
+        .delete()
+        .eq('id', license_id);
+        
+      if (delError) throw new Error(`Failed to delete license: ${delError.message}`);
+      
+      await logAudit(supabase, user.id, action, 'SUCCESS', { 
+        license_id, 
+        business_id: licToDel.business_id,
+        masked_key: `OB-****-${licToDel.license_key_last4}`
+      });
+      resultData = { success: true };
 
     } else if (action === 'EXTEND_EXPIRY') {
       if (role === 'SUPPORT') throw new Error('Forbidden');

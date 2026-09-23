@@ -7,7 +7,24 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
+    
     <div id="app"></div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Generic Modal -->
+    <div id="genericModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <span id="modalTitle">Title</span>
+                <button class="modal-close" onclick="window.closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
+    </div>
+
     <script type="module" src="./main.js"></script>
   </body>
 </html>

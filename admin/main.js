@@ -1,8 +1,76 @@
+
+// Modal UI System
+
+window.copyKeyToClipboard = async (key, btnId) => {
+    try {
+        await navigator.clipboard.writeText(key);
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            const oldText = btn.innerText;
+            btn.innerText = 'Copied!';
+            window.showToast('Key copied to clipboard');
+            setTimeout(() => { btn.innerText = oldText; }, 2000);
+        }
+    } catch(err) {
+        window.showErrorAlert('Failed to copy to clipboard');
+    }
+};
+
+window.showOneTimeKeyModal = (key, plan) => {
+    const keyBody = `
+        <p>License created successfully for ${plan} plan.</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin: 15px 0;">
+            <div class="key-display" style="margin: 0; flex-grow: 1;">${key}</div>
+            <button class="btn btn-secondary" id="copy_btn_new" onclick="window.copyKeyToClipboard('${key}', 'copy_btn_new')">Copy Key</button>
+        </div>
+        <p style="color:red; font-weight:bold; text-align: center;">WARNING:<br>SAVE THIS KEY NOW. IT WILL NOT BE SHOWN AGAIN.</p>
+    `;
+    window.openModal('License Key Generated', keyBody, `<button class="btn btn-primary" onclick="window.closeModal()">I have saved it</button>`, false);
+};
+
+window.openModal = (title, bodyHtml, footerHtml, closeable = true) => {
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalFooter').innerHTML = footerHtml;
+    const closeBtn = document.querySelector('.modal-close');
+    closeBtn.style.display = closeable ? 'block' : 'none';
+    document.getElementById('genericModal').style.display = 'flex';
+};
+
+window.closeModal = () => {
+    document.getElementById('genericModal').style.display = 'none';
+};
+
+window.showToast = (message) => {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = message;
+    document.getElementById('toastContainer').appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 3000);
+};
+
+// ... replace alert logic
+window.showErrorAlert = (msg) => {
+    window.openModal('Error', `<p style="color:red">${msg}</p>`, `<button class="btn btn-secondary" onclick="window.closeModal()">Close</button>`);
+}
+
+window.showConfirmModal = (title, message, confirmBtnText, onConfirmStr) => {
+    window.openModal(
+        title,
+        `<p>${message}</p>`,
+        `<button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+         <button class="btn btn-danger" onclick="window.closeModal(); ${onConfirmStr}">${confirmBtnText}</button>`
+    );
+};
+
 import { createClient } from '@supabase/supabase-js';
 
-// NOTE: Use the actual Supabase project URL and anon key here
-const SUPABASE_URL = 'http://127.0.0.1:54321'; // Or process.env.SUPABASE_URL
-const SUPABASE_ANON_KEY = 'ey...'; // Replace with actual anon key in production
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('<REAL')) {
+    console.error('Supabase configuration missing');
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let session = null;
@@ -117,7 +185,7 @@ window.loadDashboard = async () => {
         `;
         renderAppLayout(html);
     } catch (e) {
-        alert(e.message);
+        window.showErrorAlert(e.message);
     }
 };
 
@@ -128,13 +196,16 @@ window.loadLicenses = async () => {
         let rows = '';
         licenses.forEach(l => {
             const biz = l.businesses ? l.businesses.business_name : 'Unknown';
+            const activeCount = l.devices ? l.devices.filter(d => d.status === 'ACTIVE').length : 0;
+            const revokedCount = l.devices ? l.devices.filter(d => d.status === 'REVOKED').length : 0;
+            const deviceStr = `${activeCount} / ${l.max_devices} <span style="font-size:11px;color:#64748b;display:block;">(${revokedCount} revoked)</span>`;
             rows += `
                 <tr>
                     <td>${biz}</td>
                     <td><a href="#" onclick="window.viewLicense('${l.id}')">OB-****-${l.license_key_last4}</a></td>
                     <td>${l.plan}</td>
                     <td><span class="badge badge-${l.status.toLowerCase()}">${l.status}</span></td>
-                    <td>${l.devices ? l.devices.length : 0}/${l.max_devices}</td>
+                    <td>${deviceStr}</td>
                     <td>${l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Never'}</td>
                 </tr>
             `;
@@ -154,7 +225,7 @@ window.loadLicenses = async () => {
         `;
         renderAppLayout(html);
     } catch (e) {
-        alert(e.message);
+        window.showErrorAlert(e.message);
     }
 };
 
@@ -200,6 +271,7 @@ window.viewLicense = async (id) => {
                 <h3>Actions</h3>
                 ${l.status === 'ACTIVE' ? `<button class="btn btn-danger" onclick="window.suspendLicense('${l.id}')">Suspend License</button>` : ''}
                 ${l.status === 'SUSPENDED' ? `<button class="btn btn-primary" onclick="window.reactivateLicense('${l.id}')">Reactivate License</button>` : ''}
+                <button class="btn btn-danger" onclick="window.deleteLicense('${l.id}')" style="margin-left: 10px;">Delete License</button>
             </div>
 
             <div class="card">
@@ -212,34 +284,38 @@ window.viewLicense = async (id) => {
         `;
         renderAppLayout(html);
     } catch (e) {
-        alert(e.message);
+        window.showErrorAlert(e.message);
     }
 };
 
 window.suspendLicense = async (id) => {
-    if(!confirm('Are you sure you want to suspend this license?')) return;
+    window.showConfirmModal('Suspend License', 'Are you sure you want to suspend this license?', 'Suspend', `window.executeSuspend('${id}')`);
+};
+window.executeSuspend = async (id) => {
     try {
         await executeAdminAction('SUSPEND_LICENSE', { license_id: id });
-        alert('License suspended successfully');
+        window.showToast('License suspended successfully');
         window.viewLicense(id);
-    } catch(e) { alert(e.message); }
+    } catch(e) { window.showErrorAlert(e.message); }
 };
 
 window.reactivateLicense = async (id) => {
     try {
         await executeAdminAction('REACTIVATE_LICENSE', { license_id: id });
-        alert('License reactivated successfully');
+        window.showToast('License reactivated successfully');
         window.viewLicense(id);
-    } catch(e) { alert(e.message); }
+    } catch(e) { window.showErrorAlert(e.message); }
 };
 
 window.resetDevice = async (license_id, device_id) => {
-    if(!confirm('Are you sure you want to reset (revoke) this device?')) return;
+    window.showConfirmModal('Reset Device', 'Are you sure you want to reset (revoke) this device?', 'Reset Device', `window.executeResetDevice('${license_id}', '${device_id}')`);
+};
+window.executeResetDevice = async (license_id, device_id) => {
     try {
         await executeAdminAction('RESET_DEVICE', { license_id, device_id });
-        alert('Device reset successfully');
+        window.showToast('Device reset successfully');
         window.viewLicense(license_id);
-    } catch(e) { alert(e.message); }
+    } catch(e) { window.showErrorAlert(e.message); }
 };
 
 // ... more endpoints like loadBusinesses, loadLogs etc.
@@ -263,7 +339,10 @@ window.loadBusinesses = async () => {
             `;
         });
         const html = `
-            <h2>Businesses</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Businesses</h2>
+                <button class="btn btn-primary" onclick="window.showCreateBusinessModal()">+ Create Business</button>
+            </div>
             <div class="card">
                 <table>
                     <thead><tr><th>Code</th><th>Name</th><th>Owner</th><th>Phone</th><th>Licenses</th></tr></thead>
@@ -272,7 +351,7 @@ window.loadBusinesses = async () => {
             </div>
         `;
         renderAppLayout(html);
-    } catch(e) { alert(e.message); }
+    } catch(e) { window.showErrorAlert(e.message); }
 };
 
 window.loadLogs = async () => {
@@ -300,19 +379,163 @@ window.loadLogs = async () => {
             </div>
         `;
         renderAppLayout(html);
-    } catch(e) { alert(e.message); }
+    } catch(e) { window.showErrorAlert(e.message); }
 };
 
-window.showCreateLicenseModal = () => {
-    const bizId = prompt('Enter Business ID (UUID):');
-    if(!bizId) return;
-    const plan = prompt('Enter Plan (TRIAL, MONTHLY, ANNUAL, LIFETIME):', 'TRIAL');
-    if(!plan) return;
-    executeAdminAction('CREATE_LICENSE', { business_id: bizId, plan: plan, max_devices: 1 })
-    .then(data => {
-        alert('License created successfully! Plaintext Key: ' + data.rawKey + '
 
-SAVE THIS KEY NOW. IT WILL NOT BE SHOWN AGAIN.');
+window.showCreateBusinessModal = () => {
+    const body = `
+        <div class="form-group"><label>Business Code *</label><input type="text" id="cb_code" class="form-control"></div>
+        <div class="form-group"><label>Business Name *</label><input type="text" id="cb_name" class="form-control"></div>
+        <div class="form-group"><label>Owner Name *</label><input type="text" id="cb_owner" class="form-control"></div>
+        <div class="form-group"><label>Phone *</label><input type="text" id="cb_phone" class="form-control"></div>
+        <div class="form-group"><label>Email *</label><input type="email" id="cb_email" class="form-control"></div>
+        <div id="cb_error" class="form-error"></div>
+    `;
+    const footer = `
+        <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="cb_submit" onclick="window.submitCreateBusiness()">Create Business</button>
+    `;
+    window.openModal('Create Business', body, footer);
+};
+
+window.submitCreateBusiness = async () => {
+    const code = document.getElementById('cb_code').value.trim();
+    const name = document.getElementById('cb_name').value.trim();
+    const owner = document.getElementById('cb_owner').value.trim();
+    let phone = document.getElementById('cb_phone').value.trim();
+    let email = document.getElementById('cb_email').value.trim();
+    const errDiv = document.getElementById('cb_error');
+    
+    if(!code || !name || !owner || !phone || !email) {
+        errDiv.innerText = 'Please fill in all required fields.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    // Phone validation
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+        errDiv.innerText = 'Phone must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        errDiv.innerText = 'Please enter a valid email address.';
+        errDiv.style.display = 'block';
+        return;
+    }
+    email = email.toLowerCase();
+    
+    document.getElementById('cb_submit').disabled = true;
+    document.getElementById('cb_submit').innerText = 'Creating...';
+    
+    try {
+        await executeAdminAction('CREATE_BUSINESS', { business_code: code, business_name: name, owner_name: owner, phone, email });
+        window.closeModal();
+        window.showToast('Business Created Successfully');
+        window.loadBusinesses();
+    } catch(e) {
+        errDiv.innerText = e.message;
+        errDiv.style.display = 'block';
+        document.getElementById('cb_submit').disabled = false;
+        document.getElementById('cb_submit').innerText = 'Create Business';
+    }
+};
+
+window.showCreateLicenseModal = async () => {
+    try {
+        const businesses = await fetchAdminData('businesses');
+        let bizOptions = businesses.map(b => `<option value="${b.id}">${b.business_name} (${b.business_code})</option>`).join('');
+        
+        const body = `
+            <div class="form-group"><label>Business *</label><select id="cl_biz" class="form-control">${bizOptions}</select></div>
+            <div class="form-group"><label>Plan *</label>
+                <select id="cl_plan" class="form-control" onchange="window.updateLicenseModalUI()">
+                    <option value="TRIAL">TRIAL</option>
+                    <option value="MONTHLY">MONTHLY</option>
+                    <option value="ANNUAL">ANNUAL</option>
+                    <option value="LIFETIME">LIFETIME</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Max Devices *</label><input type="number" id="cl_devices" class="form-control" value="1" min="1"></div>
+            <div class="form-group" id="cl_expiry_group"><label>Expiry Date</label><input type="date" id="cl_expiry" class="form-control"></div>
+            <div class="form-group"><label>Notes</label><textarea id="cl_notes" class="form-control"></textarea></div>
+            <div id="cl_error" class="form-error"></div>
+        `;
+        const footer = `
+            <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+            <button class="btn btn-primary" id="cl_submit" onclick="window.submitCreateLicense()">Create License</button>
+        `;
+        window.openModal('Create License', body, footer);
+    } catch(e) { window.showErrorAlert(e.message); }
+};
+
+window.updateLicenseModalUI = () => {
+    const plan = document.getElementById('cl_plan').value;
+    const expGrp = document.getElementById('cl_expiry_group');
+    if(plan === 'LIFETIME') {
+        expGrp.style.display = 'none';
+    } else {
+        expGrp.style.display = 'block';
+    }
+};
+
+window.submitCreateLicense = async () => {
+    const bizId = document.getElementById('cl_biz').value;
+    const plan = document.getElementById('cl_plan').value;
+    const max_devices = parseInt(document.getElementById('cl_devices').value);
+    const expires_at = document.getElementById('cl_expiry').value;
+    const notes = document.getElementById('cl_notes').value;
+    const errDiv = document.getElementById('cl_error');
+    
+    document.getElementById('cl_submit').disabled = true;
+    document.getElementById('cl_submit').innerText = 'Creating...';
+    
+    try {
+        const payload = { business_id: bizId, plan, max_devices, notes };
+        if (plan !== 'LIFETIME' && expires_at) {
+            payload.expires_at = new Date(expires_at).toISOString();
+        }
+        
+        const data = await executeAdminAction('CREATE_LICENSE', payload);
+        window.closeModal();
+        
+        window.showOneTimeKeyModal(data.rawKey, plan);
+        
         window.loadLicenses();
-    }).catch(e => alert(e.message));
+        
+    } catch(e) {
+        errDiv.innerText = e.message;
+        errDiv.style.display = 'block';
+        document.getElementById('cl_submit').disabled = false;
+        document.getElementById('cl_submit').innerText = 'Create License';
+    }
+};
+
+
+
+
+
+
+window.deleteLicense = (licenseId) => {
+    window.showConfirmModal(
+        'Delete License?',
+        'This action permanently deletes this license. This cannot be undone.',
+        'Delete License',
+        `window.executeDeleteLicense('${licenseId}')`
+    );
+};
+
+window.executeDeleteLicense = async (licenseId) => {
+    try {
+        await executeAdminAction('DELETE_LICENSE', { license_id: licenseId });
+        window.showToast('License deleted successfully.');
+        window.loadLicenses();
+    } catch(e) {
+        window.showErrorAlert(e.message);
+    }
 };
