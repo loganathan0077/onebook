@@ -2046,6 +2046,17 @@ input[type="number"] {
             }
         });
     </script>
+
+<style>
+/* Enhance keyboard focus visibility globally across modals */
+input:focus, select:focus, textarea:focus, button:focus {
+    outline: 1px solid #007bff !important;
+    outline-offset: 1px !important;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.4) !important;
+    border-color: #007bff !important;
+    transition: all 0.1s ease-in-out;
+}
+</style>
 </head>
 
 <body>
@@ -2083,11 +2094,11 @@ input[type="number"] {
             <button class="nav-tab" data-tab="sales" onclick="switchTab('sales', this)"><span>💰 Record Sale</span> <kbd class="nav-shortcut">F3</kbd></button>
             <button class="nav-tab" data-tab="reports" onclick="switchTab('reports', this)"><span>📊 Reports</span> <kbd class="nav-shortcut">F4</kbd></button>
             <button class="nav-tab" data-tab="products" onclick="switchTab('products', this)"><span>🏷️ Products</span> <kbd class="nav-shortcut">F5</kbd></button>
-            <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty Cash</span> <kbd class="nav-shortcut">F6</kbd></button>
-            <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day Closing</span> <kbd class="nav-shortcut">F7</kbd></button>
-            <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮 Calculator</span> <kbd class="nav-shortcut">F8</kbd></button>
-            <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️ Settings</span> <kbd class="nav-shortcut">F9</kbd></button>
-            <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼 Purchase & Parties</span> <kbd class="nav-shortcut">F10</kbd></button>
+            <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼 Purchase & Parties</span> <kbd class="nav-shortcut">F6</kbd></button>
+            <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty Cash</span> <kbd class="nav-shortcut">F7</kbd></button>
+            <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day Closing</span> <kbd class="nav-shortcut">F8</kbd></button>
+            <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮 Calculator</span> <kbd class="nav-shortcut">F9</kbd></button>
+            <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️ Settings</span> <kbd class="nav-shortcut">F10</kbd></button>
             <div style="margin-top: auto; padding: 20px; color: #64748b; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
                 Application Version: 1.0.0 &bull; Built by Shermon Technology
             </div>
@@ -2137,20 +2148,7 @@ input[type="number"] {
                 <h3 class="section-title">Low Stock Alert</h3>
                 <div id="lowStockAlert"></div>
 
-                <h3 class="section-title">Recent Sales</h3>
-                <div class="table-responsive">
-                    <table id="reportTable">
-                        <thead>
-                            <tr>
-                                <th>Product Name</th>
-                                <th>Stock</th>
-                                <th>Unit</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportTableBody"></tbody>
-                    </table>
-                </div>
+                
                 
                             </div>
 
@@ -2652,7 +2650,8 @@ input[type="number"] {
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead style="position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <tr>
-                                <th>Date & Time</th>
+                                <th>Sale Date</th>
+                                <th>Entry Date & Time</th>
                                 <th>Bill No</th>
                                 <th>Subtotal</th>
                                 <th>Discount</th>
@@ -2760,7 +2759,8 @@ input[type="number"] {
                                 <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
                                     <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
                                         <tr>
-                                            <th style="width: 12%">Date & Time</th>
+                                            <th style="width: 8%">Sale Date</th>
+                                            <th style="width: 12%">Entry Date & Time</th>
                                             <th style="width: 8%">Bill No</th>
                                             <th style="width: 8%">Counter</th>
                                             <th style="width: 12%">Customer</th>
@@ -2789,7 +2789,8 @@ input[type="number"] {
                                 <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
                                     <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
                                         <tr>
-                                            <th style="cursor: pointer; color: #007bff; width: 8%" onclick="sortItemWiseReport('date')">Date ↕️</th>
+                                            <th style="cursor: pointer; color: #007bff; width: 8%" onclick="sortItemWiseReport('date')">Sale Date ↕️</th>
+                                            <th style="width: 12%">Entry Date & Time</th>
                                             <th style="cursor: pointer; color: #007bff; width: 16%" onclick="sortItemWiseReport('product')">Product ↕️</th>
                                             <th style="width: 10%">Barcode</th>
                                             <th style="width: 6%">HSN</th>
@@ -2886,7 +2887,7 @@ input[type="number"] {
                             return;
                         }
 
-                        let csv = 'Date,Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Customer,Payment Method\n';
+                        let csv = 'Sale Date,Entry Date & Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Customer,Payment Method\n';
 
                         filteredSales.forEach(sale => {
                             const date = new Date(sale.date);
@@ -3911,15 +3912,15 @@ input[type="number"] {
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-invoice', this)">🔢 Sales Bill / Invoice <span class="shortcut-letter">N</span>umbering</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-receipt', this)">🧻 <span class="shortcut-letter">R</span>eceipt Settings</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-printer', this)">🖨️ <span class="shortcut-letter">P</span>rinter Settings</button>
-                        <button class="settings-nav-item" onclick="document.getElementById('labelSettingsModal').style.display='flex'">🏷️ <span class="shortcut-letter">L</span>abel Settings</button>
+                        <button class="settings-nav-item" id="btnOpenLabelSettings" onclick="document.getElementById('labelSettingsModal').style.display='flex'; setTimeout(() => document.getElementById('labelPreset').focus(), 50);">🏷️ <span class="shortcut-letter">L</span>abel Settings</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-general', this)">⚙️ <span class="shortcut-letter">G</span>eneral Settings</button>
                         <button class="settings-nav-item" onclick="document.getElementById('shortcutsModal').style.display='block'">⌨️ <span class="shortcut-letter">K</span>eyboard Shortcuts</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-account', this)">🔐 <span class="shortcut-letter">A</span>ccount / Security</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-product', this)">🛠️ Product <span class="shortcut-letter">C</span>onfiguration</button>
-                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-backup', this)">💾 Back<span class="shortcut-letter">u</span>p & Restore</button>
-                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-license', this)">🔑 L<span class="shortcut-letter">i</span>cense</button>
-                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-about', this)">ℹ️ Ab<span class="shortcut-letter">o</span>ut</button>
-                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-theme', this)">🎨 Th<span class="shortcut-letter">e</span>me</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-backup', this)">💾 Back<span class="shortcut-letter">U</span>p & Restore</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-theme', this)">🎨 Th<span class="shortcut-letter">E</span>me</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-license', this)">🔑 L<span class="shortcut-letter">I</span>cense</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-about', this)">ℹ️ Ab<span class="shortcut-letter">O</span>ut</button>
                     </div>
 
                     <!-- Content Area -->
@@ -4511,7 +4512,7 @@ input[type="number"] {
                         <div style="display: flex; gap: 5px;">
                             <input type="text" id="editProductBarcode" placeholder="Scan or enter barcode"
                                 style="flex: 1;">
-                            <button type="button" class="btn btn-secondary" onclick="generateAutoBarcodeForEdit()"
+                            <button type="button" id="btnEditProductAutoGenerate" class="btn btn-secondary" onclick="generateAutoBarcodeForEdit()"
                                 style="white-space: nowrap; background-color: #6c757d; color: white; padding: 0 10px;">⚡
                                 Auto</button>
                         </div>
@@ -4584,8 +4585,7 @@ input[type="number"] {
                         <div id="editPackSizesContainer">
                             <!-- Dynamic pack size inputs will be added here -->
                         </div>
-                        <button type="button" class="btn btn-info btn-sm"
-                            onclick="addPackSizeInput('', '', '', 'editPackSizesContainer')">+ Add Pack Size</button>
+                        <button type="button" id="btnEditProductAddPackSize" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'editPackSizesContainer')">+ Add Pack Size</button>
                     </div>
 
                     <div class="form-group">
@@ -4602,8 +4602,8 @@ input[type="number"] {
                     </div>
                 </div>
                 <input type="hidden" id="editProductId">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-                <button type="button" class="btn btn-warning" onclick="closeEditProductModal()">Cancel</button>
+                <button type="submit" id="btnSaveEditProduct" class="btn btn-primary">Save Changes</button>
+                <button type="button" id="btnCancelEditProduct" class="btn btn-warning" onclick="closeEditProductModal()">Cancel</button>
             </form>
         </div>
     </div>
@@ -4710,8 +4710,8 @@ input[type="number"] {
                                     <label>Barcode</label>
                                     <div style="display: flex; gap: 8px;">
                                         <input type="text" id="newProductBarcode" placeholder="Scan or enter barcode" style="flex: 1;">
-                                        <button type="button" class="btn btn-info" onclick="openScannerModal('newProduct')">📷 Scan</button>
-                                        <button type="button" class="btn btn-secondary" onclick="generateNewProductBarcode()" style="background-color: #6c757d; color: white;">⚡ Auto-Generate</button>
+                                        <button type="button" id="btnPurchaseScanBarcode" class="btn btn-info" onclick="openScannerModal('newProduct')">📷 Scan</button>
+                                        <button type="button" id="btnPurchaseAutoGenerate" class="btn btn-secondary" onclick="generateNewProductBarcode()" style="background-color: #6c757d; color: white;">⚡ Auto-Generate</button>
                                     </div>
                                 </div>
                                 <div class="form-group" style="grid-column: span 2; display: flex; align-items: end; gap: 15px;">
@@ -4788,7 +4788,7 @@ input[type="number"] {
                             <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-top: 10px; margin-bottom: 10px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                                     <label style="margin: 0;">Pack Sizes (whole size item info)</label>
-                                    <button type="button" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'purchasePackSizesContainer')">+ Add Pack Size</button>
+                                    <button type="button" id="btnPurchaseAddPackSize" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'purchasePackSizesContainer')">+ Add Pack Size</button>
                                 </div>
                                 <div id="purchasePackSizesContainer">
                                     <!-- Dynamic pack size inputs will be added here -->
@@ -4817,8 +4817,8 @@ input[type="number"] {
                         </div>
                         
                         <div style="padding: 10px 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; background: #f8f9fa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-                            <button class="btn btn-secondary" onclick="hidePurchaseAddNewProductForm()">❌ Cancel</button>
-                            <button class="btn btn-primary" onclick="addNewProductToPurchase()">Add Product</button>
+                            <button id="btnPurchaseCancelNewProduct" class="btn btn-secondary" onclick="hidePurchaseAddNewProductForm()">❌ Cancel</button>
+                            <button id="btnPurchaseSaveNewProduct" class="btn btn-primary" onclick="addNewProductToPurchase()">Add Product</button>
                         </div>
                     </div>
                 </div>
@@ -5714,7 +5714,9 @@ input[type="number"] {
     <!-- Toast Notification -->
     <div id="toast"></div>
 
-    <!-- Add this just before </body> for modal popup implementation -->
+    <!-- Add this just before 
+</body>
+ for modal popup implementation -->
     <!-- Select PO Modal -->
     <div id="selectPOModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
@@ -8191,6 +8193,7 @@ input[type="number"] {
             populateUnitDropdowns();
             document.getElementById('newProductBarcode').value = '';
             document.getElementById('newProductName').value = '';
+            setTimeout(() => { const nm = document.getElementById('newProductName'); if(nm) nm.focus(); }, 50);
             document.getElementById('newProductCategory').value = '';
             if (document.getElementById('newProductCustomCategory')) {
                 document.getElementById('newProductCustomCategory').style.display = 'none';
@@ -12043,7 +12046,9 @@ input[type="number"] {
                             }
                         </style>
                     </head>
-                    <body>${printContent}</body>
+                    <body>${printContent}
+</body>
+
                 </html >
             `);
             printWindow.document.close();
@@ -12068,7 +12073,9 @@ input[type="number"] {
                             th { background-color: #f2f2f2; }
                         </style>
                     </head>
-                    <body>${receiptContent}</body>
+                    <body>${receiptContent}
+</body>
+
                 </html >
             `);
             printWindow.document.close();
@@ -12394,7 +12401,9 @@ input[type="number"] {
                         }
                     </style>
                 </head>
-                <body>${printContent}</body>
+                <body>${printContent}
+</body>
+
             </html>
             `);
             printWindow.document.close();
@@ -12571,6 +12580,7 @@ input[type="number"] {
                     salesByTransaction[sale.saleId] = {
                         saleId: sale.saleId,
                         date: sale.date,
+                        createdAt: sale.createdAt,
                         receiptNumber: sale.receiptNumber || '-',
                         customerName: sale.customerName,
                         paymentMethod: sale.paymentMethod,
@@ -12619,7 +12629,8 @@ input[type="number"] {
 
                 return `
                     <tr>
-                        <td>${new Date(transaction.date).toLocaleString()}</td>
+                        <td>${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
+                        <td>${transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                         <td>${transaction.receiptNumber}</td>
                         <td>₹${transaction.subtotal.toFixed(2)}</td>
                         <td>₹${transaction.discount.toFixed(2)}</td>
@@ -12821,7 +12832,9 @@ input[type="number"] {
                             }, 500);
                         };
                     <\/script>
-                </body>
+                
+</body>
+
             </html>
             `);
             printWindow.document.close();
@@ -14333,7 +14346,9 @@ input[type="number"] {
                             }, 500);
                         };
                     <\/script>
-                </body>
+                
+</body>
+
                 </html>
             `;
 
@@ -14875,6 +14890,7 @@ input[type="number"] {
 
             // Show modal
             document.getElementById('editProductModal').style.display = 'flex';
+            setTimeout(() => { const nm = document.getElementById('editProductName'); if(nm) nm.focus(); }, 50);
         }
 
         function closeEditProductModal() {
@@ -15076,7 +15092,9 @@ input[type="number"] {
                     <div class="footer">
                         <p>Generated on ${new Date().toLocaleString()}</p>
                     </div>
-                </body>
+                
+</body>
+
                 </html>
             `;
 
@@ -15107,7 +15125,7 @@ input[type="number"] {
                 return;
             }
 
-            let csv = 'Date & Time,Bill No,Customer Name,Customer GSTIN / GST No,Customer Address,Customer State,Tax Type (Intra-State / Inter-State),Subtotal,Discount,Taxable Amount,CGST,SGST,IGST,Total,Payment Method\n';
+            let csv = 'Sale Date,Entry Date & Time,Bill No,Customer Name,Customer GSTIN / GST No,Customer Address,Customer State,Tax Type (Intra-State / Inter-State),Subtotal,Discount,Taxable Amount,CGST,SGST,IGST,Total,Payment Method\n';
 
             // Group by bill
             const bills = {};
@@ -15116,6 +15134,7 @@ input[type="number"] {
                     bills[sale.saleId] = {
                         saleId: sale.saleId,
                         date: sale.date,
+                        createdAt: sale.createdAt,
                         receiptNumber: sale.receiptNumber || '-',
                         customerName: sale.customerName || '-',
                         customerGSTIN: sale.customerGSTIN || '-',
@@ -15173,7 +15192,8 @@ input[type="number"] {
                 grandTotalInvoice += bill.total;
 
                 const date = new Date(bill.date);
-                const dateStr = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                const sd = date.toLocaleDateString('en-GB');
+                const ed = bill.createdAt ? new Date(bill.createdAt).toLocaleString('en-GB') : 'N/A';
 
                 let paymentDisplay = bill.paymentMethod.toUpperCase();
                 if (bill.paymentMethod === 'mixed') {
@@ -15192,11 +15212,11 @@ input[type="number"] {
                 const customerAddress = `"${bill.customerAddress.replace(/"/g, '""')}"`;
                 const payment = `"${paymentDisplay.replace(/"/g, '""')}"`;
 
-                csv += `${dateStr},${bill.receiptNumber},${customerName},${customerGSTIN},${customerAddress},${bill.customerState},${taxTypeDisplay},${bill.subtotal.toFixed(2)},${bill.discount.toFixed(2)},${bill.taxableValue.toFixed(2)},${bill.cgst.toFixed(2)},${bill.sgst.toFixed(2)},${bill.igst.toFixed(2)},${bill.total.toFixed(2)},${payment}\n`;
+                csv += `${sd},${ed},${bill.receiptNumber},${customerName},${customerGSTIN},${customerAddress},${bill.customerState},${taxTypeDisplay},${bill.subtotal.toFixed(2)},${bill.discount.toFixed(2)},${bill.taxableValue.toFixed(2)},${bill.cgst.toFixed(2)},${bill.sgst.toFixed(2)},${bill.igst.toFixed(2)},${bill.total.toFixed(2)},${payment}\n`;
             });
             
             // Append Grand Total Row
-            csv += `GRAND TOTAL,,,,,,,${grandSubtotal.toFixed(2)},${grandDiscount.toFixed(2)},${grandTaxable.toFixed(2)},${grandCGST.toFixed(2)},${grandSGST.toFixed(2)},${grandIGST.toFixed(2)},${grandTotalInvoice.toFixed(2)},\n`;
+            csv += `GRAND TOTAL,,,,,,,,${grandSubtotal.toFixed(2)},${grandDiscount.toFixed(2)},${grandTaxable.toFixed(2)},${grandCGST.toFixed(2)},${grandSGST.toFixed(2)},${grandIGST.toFixed(2)},${grandTotalInvoice.toFixed(2)},\n`;
 
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
@@ -17224,8 +17244,8 @@ input[type="number"] {
             if (!e.altKey && !e.ctrlKey && !e.shiftKey && e.key && e.key.startsWith('F')) {
                 const tabMap = {
                     'F1': 'dashboard', 'F2': 'inventory', 'F3': 'sales', 'F4': 'reports',
-                    'F5': 'products', 'F6': 'pettycash', 'F7': 'denomination', 'F8': 'calculator',
-                    'F9': 'settings', 'F10': 'purchaseparties'
+                    'F5': 'products', 'F6': 'purchaseparties', 'F7': 'pettycash', 'F8': 'denomination',
+                    'F9': 'calculator', 'F10': 'settings'
                 };
                 if (tabMap[e.key]) {
                     e.preventDefault();
@@ -17637,10 +17657,10 @@ input[type="number"] {
             </div>
             
             <div style="padding: 10px 15px; border-top: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; background: #f8f9fa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-                <button class="btn btn-danger" onclick="resetLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">↩ Reset Defaults</button>
+                <button class="btn btn-danger" id="btnLabelReset" onclick="resetLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">↩ Reset Defaults</button>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary" onclick="previewLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">👁️ Preview</button>
-                    <button class="btn btn-primary" onclick="saveLabelSettings(); document.getElementById('labelSettingsModal').style.display='none';" style="height: 32px; padding: 4px 12px; font-size: 13px;">💾 Save & Close</button>
+                    <button class="btn btn-secondary" id="btnLabelPreview" onclick="previewLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">👁️ Preview</button>
+                    <button class="btn btn-primary" id="btnLabelSave" onclick="saveLabelSettings(); document.getElementById('labelSettingsModal').style.display='none';" style="height: 32px; padding: 4px 12px; font-size: 13px;">💾 Save & Close</button>
                 </div>
             </div>
         </div>
@@ -20247,6 +20267,7 @@ input[type="number"] {
                 if (!billMap[sale.receiptNumber]) {
                     billMap[sale.receiptNumber] = {
                         date: sale.date,
+                        createdAt: sale.createdAt,
                         billNo: sale.receiptNumber,
                         counterCode: sale.counterCode || '-',
                         customer: sale.customerName || 'Walk-in Customer',
@@ -20299,7 +20320,8 @@ input[type="number"] {
                 totDisc += b.discount;
                 
                 return `<tr>
-                    <td>${new Date(b.date).toLocaleString()}</td>
+                    <td>${new Date(b.date).toLocaleDateString('en-GB')}</td>
+                    <td>${b.createdAt ? new Date(b.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                     <td>${b.billNo}</td>
                     <td>${b.counterCode}</td>
                     <td>${b.customer}</td>
@@ -20373,7 +20395,8 @@ input[type="number"] {
                 totQty += i.quantity;
                 totSales += i.total;
                 return `<tr>
-                    <td>${new Date(i.date).toLocaleString()}</td>
+                    <td>${new Date(i.date).toLocaleDateString('en-GB')}</td>
+                    <td>${i.createdAt ? new Date(i.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                     <td>${i.productName}</td>
                     <td>${i.barcode || '-'}</td>
                     <td>${i.hsn || '-'}</td>
@@ -20560,7 +20583,7 @@ input[type="number"] {
                 globalFilteredSales.forEach(sale => {
                     if (!billMap[sale.receiptNumber]) {
                         billMap[sale.receiptNumber] = {
-                            date: sale.date, billNo: sale.receiptNumber, customer: sale.customerName || 'Walk-in Customer',
+                            date: sale.date, createdAt: sale.createdAt, billNo: sale.receiptNumber, customer: sale.customerName || 'Walk-in Customer',
                             subtotal: 0, discount: sale.discount || 0, total: 0, payment: sale.paymentMethod
                         };
                     }
@@ -20568,17 +20591,21 @@ input[type="number"] {
                     billMap[sale.receiptNumber].total += sale.total;
                 });
                 
-                let csv = 'Date,Time,Bill No,Counter,Customer,Subtotal,Discount,Total,Payment Method\\n';
+                let csv = 'Sale Date,Entry Date & Time,Bill No,Counter,Customer,Subtotal,Discount,Total,Payment Method\\n';
                 Object.values(billMap).forEach(b => {
                     const d = new Date(b.date);
-                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${b.billNo},${b.counterCode},"${b.customer}",${b.subtotal.toFixed(2)},${b.discount.toFixed(2)},${b.total.toFixed(2)},${b.payment}\\n`;
+                    const sd = d.toLocaleDateString('en-GB');
+                    const ed = b.createdAt ? new Date(b.createdAt).toLocaleString('en-GB') : 'N/A';
+                    csv += `${sd},${ed},${b.billNo},${b.counterCode},"${b.customer}",${b.subtotal.toFixed(2)},${b.discount.toFixed(2)},${b.total.toFixed(2)},${b.payment}\\n`;
                 });
                 triggerCSVDownload(csv, 'bill_wise_sales');
             } else if (type === 'items') {
-                let csv = 'Date,Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Counter,Customer,Payment Method\\n';
+                let csv = 'Sale Date,Entry Date & Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Counter,Customer,Payment Method\\n';
                 globalFilteredSales.forEach(sale => {
                     const d = new Date(sale.date);
-                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},${sale.counterCode || '-'},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
+                    const sd = d.toLocaleDateString('en-GB');
+                    const ed = sale.createdAt ? new Date(sale.createdAt).toLocaleString('en-GB') : 'N/A';
+                    csv += `${sd},${ed},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},${sale.counterCode || '-'},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
                 });
                 triggerCSVDownload(csv, 'item_wise_sales');
             }
@@ -21627,7 +21654,9 @@ input[type="number"] {
                     <body>
                         <h2 style="text-align: center;">Account Statement</h2>
                         ${content}
-                    </body>
+                    
+</body>
+
                 </html>
             `);
             win.document.close();
@@ -22861,5 +22890,239 @@ document.addEventListener('keydown', function(e) {
         });
     </script>
     
+
+<!-- Modal Navigation Script -->
+<script>
+document.addEventListener('keydown', function(e) {
+    const isPurchaseModal = document.getElementById('purchaseNewProductContainer') && document.getElementById('purchaseNewProductContainer').style.display === 'flex';
+    const isProductModal = document.getElementById('newProductModal') && document.getElementById('newProductModal').style.display === 'flex';
+    const isEditModal = document.getElementById('editProductModal') && document.getElementById('editProductModal').style.display === 'flex';
+    
+    if (!isPurchaseModal && !isProductModal && !isEditModal) return;
+
+    // Prevent number input spinner from arrows
+    if (e.target && e.target.type === 'number' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+    }
+
+    let layout = [];
+    let enterSequence = [];
+    let isPurchase = isPurchaseModal;
+    let isProduct = isProductModal;
+
+    if (isEditModal) {
+        layout = [
+            ['editProductImage'],
+            ['editProductBarcode', 'btnEditProductAutoGenerate', 'editProductName', 'editProductCategory', 'editProductExpiryDays', 'editProductUnit'],
+            ['editProductQuantityType', 'editProductPrice', 'editProductPurchasePrice'],
+            ['editProductDiscountType', 'editProductDiscount'],
+            ['editProductHSN', 'editProductGSTRate', 'editProductCustomGSTRate'],
+            ['btnEditProductAddPackSize'],
+            ['editProductStock', 'editProductMinStock', 'editProductSupplier'],
+            ['btnCancelEditProduct', 'btnSaveEditProduct']
+        ];
+        enterSequence = [
+            'editProductBarcode', 'editProductName', 'editProductCategory', 'editProductUnit',
+            'editProductQuantityType', 'editProductPrice',
+            'editProductDiscountType', 'editProductDiscount',
+            'editProductHSN', 'editProductGSTRate',
+            'btnEditProductAddPackSize',
+            'editProductStock', 'editProductMinStock', 'editProductSupplier',
+            'btnSaveEditProduct'
+        ];
+    } else {
+        layout = [
+            [isPurchase ? 'newProductBarcode' : 'productBarcode', isPurchase ? 'btnPurchaseScanBarcode' : 'btnScanBarcode', isPurchase ? 'btnPurchaseAutoGenerate' : 'btnAutoGenerateBarcode', isPurchase ? 'newProductImage' : 'productImage'],
+            [isPurchase ? 'newProductName' : 'productName', isPurchase ? 'newProductHSN' : 'productHSN', isPurchase ? 'newProductCategory' : 'productCategory', isPurchase ? 'newProductExpiryDays' : 'productExpiryDays', isPurchase ? 'newProductUnit' : 'productUnit', isPurchase ? 'newProductQuantityType' : 'productQuantityType', isPurchase ? 'newProductGSTRate' : 'productGSTRate', isPurchase ? 'newProductCustomGSTRate' : 'productCustomGSTRate', isPurchase ? 'newProductSellingPrice' : 'productPrice', isPurchase ? 'newProductPurchasePrice' : 'productPurchasePrice'],
+            [isPurchase ? 'btnPurchaseAddPackSize' : 'btnAddPackSize'],
+            [isPurchase ? 'newProductInitialStock' : 'productStock', isPurchase ? 'newProductMinStock' : 'productMinStock', isPurchase ? 'newProductSupplier' : 'productSupplier', isPurchase ? 'newProductDescription' : 'productDescription'],
+            [isPurchase ? 'btnPurchaseCancelNewProduct' : 'btnCancelNewProduct', isPurchase ? 'btnPurchaseSaveNewProduct' : 'btnSaveNewProduct']
+        ];
+
+        enterSequence = [
+            isPurchase ? 'newProductBarcode' : 'productBarcode',
+            isPurchase ? 'newProductName' : 'productName',
+            isPurchase ? 'newProductHSN' : 'productHSN',
+            isPurchase ? 'newProductCategory' : 'productCategory',
+            isPurchase ? 'newProductUnit' : 'productUnit',
+            isPurchase ? 'newProductQuantityType' : 'productQuantityType',
+            isPurchase ? 'newProductGSTRate' : 'productGSTRate',
+            isPurchase ? 'newProductSellingPrice' : 'productPrice',
+            isPurchase ? 'newProductPurchasePrice' : 'productPurchasePrice',
+            isPurchase ? 'btnPurchaseAddPackSize' : 'btnAddPackSize',
+            isPurchase ? 'newProductInitialStock' : 'productStock',
+            isPurchase ? 'newProductMinStock' : 'productMinStock',
+            isPurchase ? 'newProductSupplier' : 'productSupplier',
+            isPurchase ? 'newProductDescription' : 'productDescription',
+            isPurchase ? 'btnPurchaseSaveNewProduct' : 'btnSaveNewProduct'
+        ];
+    }
+
+    const getVisibleIds = (ids) => {
+        return ids.filter(id => {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            if (el.style.display === 'none') return false;
+            const parentGroup = el.closest('.form-group');
+            if (parentGroup && parentGroup.style.display === 'none') return false;
+            return true;
+        });
+    };
+
+    const activeId = e.target.id;
+    if (!activeId) return;
+
+    if (e.key === 'Enter') {
+        const visibleSeq = getVisibleIds(enterSequence);
+        const idx = visibleSeq.indexOf(activeId);
+        
+        if (idx !== -1) {
+            e.preventDefault();
+            if (activeId === (isPurchase ? 'btnPurchaseSaveNewProduct' : (isEditModal ? 'btnSaveEditProduct' : 'btnSaveNewProduct')) || activeId === 'btnCancelEditProduct') {
+                e.target.click();
+                return;
+            } else if (activeId === (isPurchase ? 'btnPurchaseAddPackSize' : (isEditModal ? 'btnEditProductAddPackSize' : 'btnAddPackSize'))) {
+                e.target.click();
+            }
+            const nextId = visibleSeq[idx + 1];
+            if (nextId) {
+                document.getElementById(nextId).focus();
+            }
+        }
+    } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        if (e.target.tagName === 'SELECT' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            return; 
+        }
+
+        let isInGrid = false;
+        let rIdx = -1, cIdx = -1;
+        const grid = layout.map(row => getVisibleIds(row)).filter(row => row.length > 0);
+        
+        for (let r = 0; r < grid.length; r++) {
+            const c = grid[r].indexOf(activeId);
+            if (c !== -1) {
+                rIdx = r;
+                cIdx = c;
+                isInGrid = true;
+                break;
+            }
+        }
+        
+        if (isInGrid) {
+            e.preventDefault();
+            let nextR = rIdx, nextC = cIdx;
+            
+            if (e.key === 'ArrowRight') {
+                if (nextC + 1 < grid[rIdx].length) nextC++;
+            } else if (e.key === 'ArrowLeft') {
+                if (nextC - 1 >= 0) nextC--;
+            } else if (e.key === 'ArrowDown') {
+                if (nextR + 1 < grid.length) {
+                    nextR++;
+                    nextC = Math.min(nextC, grid[nextR].length - 1);
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (nextR - 1 >= 0) {
+                    nextR--;
+                    nextC = Math.min(nextC, grid[nextR].length - 1);
+                }
+            }
+            
+            if (grid[nextR] && grid[nextR][nextC]) {
+                const targetEl = document.getElementById(grid[nextR][nextC]);
+                if (targetEl) targetEl.focus();
+            }
+        }
+    }
+}, true);
+</script>
+
+<script>
+// Label Settings Modal Keyboard Navigation
+document.addEventListener('keydown', function(e) {
+    const modal = document.getElementById('labelSettingsModal');
+    if (!modal || modal.style.display === 'none') return;
+
+    if (e.key === 'Escape') {
+        modal.style.display = 'none';
+        const openBtn = document.getElementById('btnOpenLabelSettings');
+        if (openBtn) openBtn.focus();
+        return;
+    }
+
+    const labelSettingsLayout = [
+        ['labelPreset'],
+        ['labelWidth', 'labelHeight'],
+        ['labelGapX', 'labelGapY'],
+        ['labelMarginTop', 'labelMarginRight'],
+        ['labelMarginBottom', 'labelMarginLeft'],
+        ['labelShowBusinessName', 'labelShowMonthCode', 'labelShowMRP'],
+        ['labelShowExpiry', 'labelShowMfgDate', 'labelShowBarcode'],
+        ['labelFontSize', 'labelFontBold', 'labelAlignment'],
+        ['labelBarcodeSize'],
+        ['btnLabelReset', 'btnLabelPreview', 'btnLabelSave']
+    ];
+
+    const activeEl = document.activeElement;
+    if (!activeEl) return;
+    const activeId = activeEl.id;
+
+    let r = -1, c = -1;
+    for (let i = 0; i < labelSettingsLayout.length; i++) {
+        const idx = labelSettingsLayout[i].indexOf(activeId);
+        if (idx !== -1) {
+            r = i;
+            c = idx;
+            break;
+        }
+    }
+
+    if (r === -1 && activeId !== 'btnLabelSave' && activeId !== 'btnLabelPreview' && activeId !== 'btnLabelReset') {
+        return;
+    }
+
+    const focusElement = (row, col) => {
+        if (row < 0 || row >= labelSettingsLayout.length) return;
+        const rowArr = labelSettingsLayout[row];
+        if (col < 0) col = 0;
+        if (col >= rowArr.length) col = rowArr.length - 1;
+        
+        let el = document.getElementById(rowArr[col]);
+        if (el && el.offsetParent !== null) {
+            el.focus();
+            if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number')) {
+                el.select();
+            }
+        }
+    };
+
+    if (e.key === 'Enter') {
+        if (activeEl.tagName === 'SELECT') return; 
+        if (activeId === 'btnLabelSave' || activeId === 'btnLabelReset' || activeId === 'btnLabelPreview') return;
+        
+        e.preventDefault();
+        if (c + 1 < labelSettingsLayout[r].length) {
+            focusElement(r, c + 1);
+        } else if (r + 1 < labelSettingsLayout.length) {
+            focusElement(r + 1, 0);
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        focusElement(r - 1, c);
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        focusElement(r + 1, c);
+    } else if (e.key === 'ArrowLeft') {
+        if (activeEl.tagName === 'INPUT' && (activeEl.type === 'text' || activeEl.type === 'number') && activeEl.selectionStart > 0) return;
+        e.preventDefault();
+        focusElement(r, c - 1);
+    } else if (e.key === 'ArrowRight') {
+        if (activeEl.tagName === 'INPUT' && (activeEl.type === 'text' || activeEl.type === 'number') && activeEl.selectionEnd < activeEl.value.length) return;
+        e.preventDefault();
+        focusElement(r, c + 1);
+    }
+}, true);
+</script>
 </body>
+
 </html>

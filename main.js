@@ -45,7 +45,16 @@ function createWindow() {
         win.loadFile('OneBook.html');
     }
 
+    
+    win.webContents.on('before-input-event', (event, input) => {
+        if (input.type === 'keyDown' && input.key === 'F12') {
+            win.webContents.reload();
+            event.preventDefault();
+        }
+    });
+
     win.maximize();
+
 
 }
 
