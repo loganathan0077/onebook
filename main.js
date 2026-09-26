@@ -53,7 +53,7 @@ function createWindow() {
 
 // Set up IPC handlers
 
-ipcMain.handle('surrender-license', async (event) => {
+ipcMain.handle('surrender-license', async (event, licenseKey, contact) => {
     try {
         const p = getLicensePath();
         if (!fs.existsSync(p)) return { success: false, error: 'No local license found.' };
@@ -73,7 +73,9 @@ ipcMain.handle('surrender-license', async (event) => {
                 licenseId: license.licenseId,
                 deviceId: license.deviceId,
                 signature: signature,
-                licensePayload: license
+                licensePayload: license,
+                licenseKey: licenseKey,
+                registeredContact: contact
             })
         });
 
@@ -372,7 +374,7 @@ ipcMain.on('get-license-info-sync', (event) => {
         }
         
         let mode = 'LICENSED';
-        if (deviceStatus !== 'ACTIVE' || license.status !== 'ACTIVE') mode = 'DEMO';
+        if (deviceStatus !== 'ACTIVE' || (license.status !== 'ACTIVE' && license.status !== 'TRIAL')) mode = 'DEMO';
         if (license.expiresAt) {
             const expiresAt = new Date(license.expiresAt);
             if (expiresAt < new Date()) {
@@ -505,7 +507,7 @@ function checkLicense() {
 
         if (!verifyLicenseSignature(license, signature)) return 'DEMO';
         if (license.deviceId !== machineIdCache) return 'DEMO';
-        if (license.status !== 'ACTIVE') return 'DEMO';
+        if (license.status !== 'ACTIVE' && license.status !== 'TRIAL') return 'DEMO';
         
         if (license.expiresAt) {
             const expiresAt = new Date(license.expiresAt);

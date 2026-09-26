@@ -269,9 +269,15 @@ window.viewLicense = async (id) => {
             
             <div class="card">
                 <h3>Actions</h3>
-                ${l.status === 'ACTIVE' ? `<button class="btn btn-danger" onclick="window.suspendLicense('${l.id}')">Suspend License</button>` : ''}
-                ${l.status === 'SUSPENDED' ? `<button class="btn btn-primary" onclick="window.reactivateLicense('${l.id}')">Reactivate License</button>` : ''}
-                <button class="btn btn-danger" onclick="window.deleteLicense('${l.id}')" style="margin-left: 10px;">Delete License</button>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button class="btn btn-primary" onclick="window.extendExpiryModal('${l.id}', '${l.expires_at || ''}')">Extend Expiry</button>
+                    <button class="btn btn-primary" onclick="window.changeMaxDevicesModal('${l.id}', '${l.max_devices}')">Change Max Devices</button>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    ${l.status === 'ACTIVE' ? `<button class="btn btn-danger" onclick="window.suspendLicense('${l.id}')">Suspend License</button>` : ''}
+                    ${l.status === 'SUSPENDED' ? `<button class="btn btn-primary" onclick="window.reactivateLicense('${l.id}')">Reactivate License</button>` : ''}
+                    <button class="btn btn-danger" onclick="window.deactivateLicense('${l.id}')">Deactivate License</button>
+                </div>
             </div>
 
             <div class="card">
@@ -521,21 +527,150 @@ window.submitCreateLicense = async () => {
 
 
 
-window.deleteLicense = (licenseId) => {
-    window.showConfirmModal(
-        'Delete License?',
-        'This action permanently deletes this license. This cannot be undone.',
-        'Delete License',
-        `window.executeDeleteLicense('${licenseId}')`
-    );
+
+
+
+
+window.extendExpiryModal = (licenseId, currentExpiryStr) => {
+    let currentDisp = 'Never';
+    if (currentExpiryStr) {
+        currentDisp = new Date(currentExpiryStr).toLocaleDateString();
+    }
+    
+    // We store the current date as a JS Date object for easy calculation
+    const currDateObj = currentExpiryStr ? new Date(currentExpiryStr) : new Date();
+
+    const bodyHtml = `
+        <p><strong>Current Expiry:</strong> ${currentDisp}</p>
+        <p><strong>Extension Type:</strong></p>
+        <div style="margin-bottom: 10px;">
+            <label><input type="radio" name="ext_type" value="1_month" checked onclick="window.updateExtExpiryPreview('${currentExpiryStr}')"> 1 Month</label><br>
+            <label><input type="radio" name="ext_type" value="1_year" onclick="window.updateExtExpiryPreview('${currentExpiryStr}')"> 1 Year</label><br>
+            <label><input type="radio" name="ext_type" value="custom" onclick="window.updateExtExpiryPreview('${currentExpiryStr}')"> Custom Date</label>
+        </div>
+        <div id="ext_custom_div" style="display:none; margin-bottom:10px;">
+            <label>New Expiry Date:</label><br>
+            <input type="date" id="ext_custom_date" class="form-input" style="width:100%;">
+        </div>
+        <p><strong>New Expiry:</strong> <span id="ext_preview" style="font-weight:bold;"></span></p>
+    `;
+    const footerHtml = `
+        <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="window.executeExtendExpiry('${licenseId}', '${currentExpiryStr}')">Confirm</button>
+    `;
+    window.openModal('Extend License', bodyHtml, footerHtml);
+    setTimeout(() => { window.updateExtExpiryPreview(currentExpiryStr); }, 100);
 };
 
-window.executeDeleteLicense = async (licenseId) => {
+window.updateExtExpiryPreview = (currentExpiryStr) => {
+    const type = document.querySelector('input[name="ext_type"]:checked').value;
+    const customDiv = document.getElementById('ext_custom_div');
+    const previewSpan = document.getElementById('ext_preview');
+    
+    const baseDate = currentExpiryStr ? new Date(currentExpiryStr) : new Date();
+    
+    if (type === '1_month') {
+        customDiv.style.display = 'none';
+        baseDate.setMonth(baseDate.getMonth() + 1);
+        previewSpan.innerText = baseDate.toLocaleDateString();
+        window._tempExtDate = baseDate.toISOString();
+    } else if (type === '1_year') {
+        customDiv.style.display = 'none';
+        baseDate.setFullYear(baseDate.getFullYear() + 1);
+        previewSpan.innerText = baseDate.toLocaleDateString();
+        window._tempExtDate = baseDate.toISOString();
+    } else if (type === 'custom') {
+        customDiv.style.display = 'block';
+        const customVal = document.getElementById('ext_custom_date').value;
+        if (customVal) {
+            const cd = new Date(customVal);
+            previewSpan.innerText = cd.toLocaleDateString();
+            window._tempExtDate = cd.toISOString();
+        } else {
+            previewSpan.innerText = '-';
+            window._tempExtDate = null;
+        }
+        
+        document.getElementById('ext_custom_date').onchange = () => {
+             const v = document.getElementById('ext_custom_date').value;
+             if (v) {
+                 const d2 = new Date(v);
+                 previewSpan.innerText = d2.toLocaleDateString();
+                 window._tempExtDate = d2.toISOString();
+             } else {
+                 previewSpan.innerText = '-';
+                 window._tempExtDate = null;
+             }
+        };
+    }
+};
+
+window.executeExtendExpiry = async (licenseId, currentExpiryStr) => {
     try {
-        await executeAdminAction('DELETE_LICENSE', { license_id: licenseId });
-        window.showToast('License deleted successfully.');
-        window.loadLicenses();
+        if (!window._tempExtDate) {
+            window.showErrorAlert("Please select a valid expiry date.");
+            return;
+        }
+        
+        // Prevent shortening by accident
+        if (currentExpiryStr) {
+            const curDate = new Date(currentExpiryStr);
+            const newDate = new Date(window._tempExtDate);
+            if (newDate <= curDate) {
+                if(!confirm("The new expiry date is earlier than or equal to the current expiry. Proceed anyway?")) {
+                    return;
+                }
+            }
+        }
+        
+        window.closeModal();
+        await executeAdminAction('EXTEND_EXPIRY', { license_id: licenseId, expires_at: window._tempExtDate });
+        window.showToast('License expiry extended successfully');
+        window.viewLicense(licenseId);
     } catch(e) {
         window.showErrorAlert(e.message);
     }
+};
+
+window.changeMaxDevicesModal = (licenseId, currentMax) => {
+    const bodyHtml = `
+        <p><strong>Current Maximum Devices:</strong> ${currentMax}</p>
+        <div>
+            <label>New Maximum Devices:</label><br>
+            <input type="number" id="new_max_devices" class="form-input" style="width:100%;" min="1" value="${currentMax}">
+        </div>
+    `;
+    const footerHtml = `
+        <button class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="window.executeChangeMaxDevices('${licenseId}')">Save</button>
+    `;
+    window.openModal('Change Maximum Devices', bodyHtml, footerHtml);
+};
+
+window.executeChangeMaxDevices = async (licenseId) => {
+    try {
+        const newMax = document.getElementById('new_max_devices').value;
+        if (!newMax || parseInt(newMax) < 1) {
+            window.showErrorAlert("Valid max devices count is required.");
+            return;
+        }
+        window.closeModal();
+        await executeAdminAction('CHANGE_MAX_DEVICES', { license_id: licenseId, max_devices: parseInt(newMax) });
+        window.showToast('Max devices updated successfully');
+        window.viewLicense(licenseId);
+    } catch(e) {
+        window.showErrorAlert(e.message);
+    }
+};
+
+window.deactivateLicense = async (id) => {
+    window.showConfirmModal('Deactivate License', 'Are you sure you want to deactivate this license? It cannot be used anymore.', 'Deactivate', `window.executeDeactivate('${id}')`);
+};
+
+window.executeDeactivate = async (id) => {
+    try {
+        await executeAdminAction('DEACTIVATE_LICENSE', { license_id: id });
+        window.showToast('License deactivated successfully');
+        window.viewLicense(id);
+    } catch(e) { window.showErrorAlert(e.message); }
 };

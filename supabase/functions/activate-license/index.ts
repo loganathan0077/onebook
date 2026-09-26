@@ -162,7 +162,7 @@ serve(async (req) => {
 
       .eq('license_key_hash', hashedKey)
 
-      .single();
+      .maybeSingle();
 
 
 
@@ -272,7 +272,7 @@ serve(async (req) => {
 
       .eq('status', 'ACTIVE')
 
-      .single();
+      .maybeSingle();
 
 
 

@@ -43,6 +43,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.success) {
+                // mask the key safely
+                let maskedKey = '';
+                const parts = key.split('-');
+                if (parts.length >= 4) {
+                    maskedKey = `${parts[0]}-****-${parts[parts.length-1]}`;
+                } else if (key.length >= 4) {
+                    maskedKey = `****-${key.slice(-4)}`;
+                } else {
+                    maskedKey = '****';
+                }
+                localStorage.setItem('maskedLicenseKey', maskedKey);
+
                 // Save securely via IPC
                 const saveResult = window.electronAPI.saveLicenseSync(data);
                 if (saveResult.success) {
@@ -70,6 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         const transferData = await transferRes.json();
                         if (transferData.success) {
+                            let maskedKey = '';
+                            const parts = key.split('-');
+                            if (parts.length >= 4) {
+                                maskedKey = `${parts[0]}-****-${parts[parts.length-1]}`;
+                            } else if (key.length >= 4) {
+                                maskedKey = `****-${key.slice(-4)}`;
+                            } else {
+                                maskedKey = '****';
+                            }
+                            localStorage.setItem('maskedLicenseKey', maskedKey);
                             const saveResult = window.electronAPI.saveLicenseSync(transferData);
                             if (saveResult.success) {
                                 window.location.href = 'OneBook.html';

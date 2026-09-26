@@ -22,6 +22,15 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return decodeBase64(b64).buffer;
 }
 
+// Helper: hash license key
+async function hashLicenseKey(key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -34,9 +43,9 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { licenseId, deviceId, signature, licensePayload } = body;
+    const { licenseId, deviceId, signature, licensePayload, licenseKey, registeredContact } = body;
 
-    if (!licenseId || !deviceId || !signature || !licensePayload) {
+    if (!licenseId || !deviceId || !signature || !licensePayload || !licenseKey || !registeredContact) {
       return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400
@@ -96,36 +105,89 @@ serve(async (req) => {
       });
     }
 
-    // 3. Verify license and device relationship in DB
-    const { data: device, error: deviceError } = await supabaseClient
-      .from('devices')
-      .select('*')
-      .eq('device_id', deviceId)
-      .eq('license_id', licenseId)
-      .eq('status', 'ACTIVE')
-      .single();
+    // Hash the incoming licenseKey
+    const hashedKey = await hashLicenseKey(licenseKey);
 
-    if (deviceError || !device) {
-      return new Response(JSON.stringify({ success: false, error: "DEVICE_NOT_ACTIVE" }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
-      });
-    }
-
-    const { data: license, error: licenseError } = await supabaseClient
+    // Find license by entered license_key_hash
+    const { data: enteredLicense, error: enteredLicenseError } = await supabaseClient
       .from('licenses')
-      .select('status')
-      .eq('id', licenseId)
-      .single();
+      .select('id, status, business_id')
+      .eq('license_key_hash', hashedKey)
+      .maybeSingle();
 
-    if (licenseError || !license) {
-      return new Response(JSON.stringify({ success: false, error: "License not found" }), {
+    if (enteredLicenseError || !enteredLicense) {
+      return new Response(JSON.stringify({ success: false, error: "License verification failed. Please check your license key and registered email or phone number." }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 404
       });
     }
 
-    // 4. Mark device REVOKED
+    // Compare entered licenseId with current/requested licenseId
+    if (enteredLicense.id !== licenseId) {
+      return new Response(JSON.stringify({ success: false, error: "License verification failed." }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403
+      });
+    }
+
+    // Fetch business to check contact
+    const { data: business, error: businessError } = await supabaseClient
+      .from('businesses')
+      .select('email, phone')
+      .eq('id', enteredLicense.business_id)
+      .maybeSingle();
+
+    if (businessError || !business) {
+      return new Response(JSON.stringify({ success: false, error: "License verification failed. Please check your license key and registered email or phone number." }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404
+      });
+    }
+
+    const contactInput = String(registeredContact).trim();
+    let contactMatch = false;
+
+    // Check email match
+    if (business.email && contactInput.toLowerCase() === business.email.trim().toLowerCase()) {
+      contactMatch = true;
+    }
+
+    // Check phone match
+    if (!contactMatch && business.phone) {
+      const enteredPhone = contactInput.replace(/\D/g, '');
+      const dbPhone = business.phone.replace(/\D/g, '');
+      if (enteredPhone && dbPhone) {
+        if (enteredPhone === dbPhone || (enteredPhone.length >= 10 && dbPhone.length >= 10 && (enteredPhone.endsWith(dbPhone) || dbPhone.endsWith(enteredPhone)))) {
+          contactMatch = true;
+        }
+      }
+    }
+
+    if (!contactMatch) {
+      return new Response(JSON.stringify({ success: false, error: "License verification failed. Please check your license key and registered email or phone number." }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403
+      });
+    }
+
+    // Find ACTIVE device
+    const { data: device, error: deviceError } = await supabaseClient
+      .from('devices')
+      .select('id')
+      .eq('device_id', deviceId)
+      .eq('license_id', licenseId)
+      .eq('status', 'ACTIVE')
+      .limit(1)
+      .maybeSingle();
+
+    if (deviceError || !device) {
+      return new Response(JSON.stringify({ success: false, error: "This computer is not currently active on this license." }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    // 4. Mark device REVOKED (only that specific device row)
     await supabaseClient
       .from('devices')
       .update({ status: 'REVOKED' })

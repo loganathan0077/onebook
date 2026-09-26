@@ -238,6 +238,21 @@ serve(async (req: Request) => {
       await logAudit(supabase, user.id, action, 'SUCCESS', { license_id });
       resultData = lic;
 
+    } else if (action === 'CHANGE_MAX_DEVICES') {
+      if (role === 'SUPPORT') throw new Error('Forbidden');
+      
+      const { license_id, max_devices } = payload;
+      if (!license_id || max_devices === undefined) throw new Error('License ID and max_devices required');
+      
+      const { data: lic, error } = await supabase.from('licenses')
+        .update({ max_devices: parseInt(max_devices, 10) })
+        .eq('id', license_id)
+        .select().single();
+        
+      if (error) throw new Error(`Failed to update max devices: ${error.message}`);
+      await logAudit(supabase, user.id, action, 'SUCCESS', { license_id, max_devices });
+      resultData = lic;
+
     } else if (action === 'RESET_DEVICE' || action === 'REPLACE_DEVICE') {
       const { license_id, device_id } = payload;
       if (!license_id || !device_id) throw new Error('License ID and Device ID required');
