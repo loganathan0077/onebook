@@ -180,52 +180,17 @@ window.searchProductsUnified = function(query, allProducts) {
     return validResults.map(r => r.product);
 };
 
-        if (window.NodeList && !NodeList.prototype.forEach) {
-            NodeList.prototype.forEach = function (callback, thisArg) {
-                thisArg = thisArg || window;
-                for (var i = 0; i < this.length; i++) {
-                    callback.call(thisArg, this[i], i, this);
-                }
-            };
-        }
-    </script>
-    <script>
         (function initOfflineDatabase() {
             if (window.electronAPI) {
-                // Refactored Database Location Logic (Persistent Config First)
-                let folder = null;
-                
-                // 1. Try to get persistent config
-                if (window.electronAPI && window.electronAPI.getDbConfigSync) {
-                    folder = window.electronAPI.getDbConfigSync();
-                }
-                
-                // 2. Migration: If no persistent config, but localStorage has a folder, use it
+                // Ensure a database folder is selected
+                let folder = localStorage.getItem('database_folder');
                 if (!folder) {
-                    folder = localStorage.getItem('database_folder');
-                }
-                
-                // 3. Default: If still no folder, use the default Documents path
-                if (!folder && window.electronAPI && window.electronAPI.getDefaultDbFolderSync) {
-                    folder = window.electronAPI.getDefaultDbFolderSync();
-                    if (folder) {
-                        window.electronAPI.ensureFolderSync(folder);
-                    }
-                }
-
-                // 4. Final fallback (e.g. permission errors getting default path)
-                if (!folder && window.electronAPI && window.electronAPI.selectDirectorySync) {
                     folder = window.electronAPI.selectDirectorySync();
-                }
-
-                // 5. Save to both localStorage and persistent config
-                if (folder) {
-                    localStorage.setItem('database_folder', folder);
-                    if (window.electronAPI && window.electronAPI.setDbConfigSync) {
-                        window.electronAPI.setDbConfigSync(folder);
+                    if (folder) {
+                        localStorage.setItem('database_folder', folder);
+                    } else {
+                        alert('CRITICAL ERROR: You must select a folder to save your database! Please restart the application.');
                     }
-                } else {
-                    alert('CRITICAL ERROR: Unable to determine or create database folder. Please restart or check permissions.');
                 }
 
                 // Override localStorage
@@ -1952,7 +1917,6 @@ input[type="number"] {
     text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8), -1px -1px 2px rgba(0, 0, 0, 0.4); /* Dark shadow ensures it pops on ANY background color, even yellow/orange */
 }
 </style>
-    
 <!-- DEMO MODE CONTROLS -->
     <script>
         const DEMO_MAX_PRODUCTS = 10;
@@ -2001,7 +1965,7 @@ input[type="number"] {
                             </div>
                             <div style="padding: 20px 24px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
                                 <button onclick="document.getElementById('demoLicenseModal').style.display = 'none'" style="padding: 10px 20px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; font-size: 14px; cursor: pointer;">Cancel</button>
-                                <button onclick="window.location.href='license.html'" style="padding: 10px 20px; border-radius: 8px; border: none; background: #007bff; color: white; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">Activate License</button>
+                                <button onclick="window.location.href="license.html"" style="padding: 10px 20px; border-radius: 8px; border: none; background: #007bff; color: white; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">Activate License</button>
                             </div>
                         </div>
                     </div>
@@ -2049,7 +2013,7 @@ input[type="number"] {
 
     
         // Ctrl+D Shortcut for Sale Date
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
                 // Ensure we are on the Record Sale tab before intercepting
                 const salesTab = document.getElementById('sales');
@@ -2116,10 +2080,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
                 <div style="text-align: right; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 15px;"
                     class="header-actions">
-                    
-                    
                     <div id="demoWatermark" style="display: none; background: #fff; color: var(--th-primary); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; border: 2px solid var(--th-primary); box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🔵 DEMO MODE</div>
-                    <button id="demoActivateBtn" onclick="window.location.href='license.html';"  style="display: none; background: #fff; color: var(--th-primary); border: none; padding: 6px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">Activate License</button>
+                    <button id="demoActivateBtn" onclick="window.location.href="license.html";"  style="display: none; background: #fff; color: var(--th-primary); border: none; padding: 6px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">Activate License</button>
                     <span id="userEmail" style="font-size: 0.9em; opacity: 0.9;"></span>
                     <div style="display: flex; gap: 10px;">
                         <button onclick="handleLogout()"
@@ -2695,6 +2657,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <thead style="position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <tr>
                                 <th>Sale Date</th>
+                                <th>Entry Date & Time</th>
                                 <th>Bill No</th>
                                 <th>Subtotal</th>
                                 <th>Discount</th>
@@ -2802,8 +2765,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
                                     <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
                                         <tr>
-                                            <th style="width: 12%">Sale Date</th>
-                                            <th style="width: 14%">Entry Date & Time</th>
+                                            <th style="width: 8%">Sale Date</th>
+                                            <th style="width: 12%">Entry Date & Time</th>
                                             <th style="width: 8%">Bill No</th>
                                             <th style="width: 8%">Counter</th>
                                             <th style="width: 12%">Customer</th>
@@ -2933,12 +2896,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                         let csv = 'Sale Date,Entry Date & Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Customer,Payment Method\n';
 
                         filteredSales.forEach(sale => {
-                            const date = parseSaleDateLocal(sale.date);
+                            const date = new Date(sale.date);
                             // Escape commas
                             const product = `"${sale.productName.replace(/"/g, '""')}"`;
                             const customer = `"${(sale.customerName || '').replace(/"/g, '""')}"`;
 
-                            csv += `${formatDateLocalDMY(sale.date)},${formatCreatedAtLocal(sale.createdAt)},${sale.barcode || 'N/A'},${product},${sale.hsn || ''},${sale.gstRate || 0}%,${sale.unit || 'Piece'},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber || '-'},${customer},${sale.paymentMethod}\n`;
+                            csv += `${date.toLocaleDateString()},${date.toLocaleTimeString()},${sale.barcode || 'N/A'},${product},${sale.hsn || ''},${sale.gstRate || 0}%,${sale.unit || 'Piece'},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber || '-'},${customer},${sale.paymentMethod}\n`;
                         });
 
                         const blob = new Blob([csv], { type: 'text/csv' });
@@ -3743,7 +3706,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
                         <div class="form-group pc-col-amount">
                             <label>Amount (₹) *</label>
-                            <input type="number" id="pcAmount" step="0.01" min="0.01" placeholder="Amount" required>
+                            <input type="number" id="pcAmount" step="0.01" min="0.01" placeholder="Amount" required style="-moz-appearance: textfield;">
                         </div>
                         
                         <!-- Dynamic Fields Container -->
@@ -4273,6 +4236,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div id="licenseInfoDisplay" style="font-size: 14px; line-height: 1.6; color: #334155;">
                                     <p>Loading license information...</p>
                                 </div>
+                                <div id="licenseActionContainer" style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                                </div>
+                                
                             </div>
                         </div>
 
@@ -4667,13 +4633,14 @@ input:focus, select:focus, textarea:focus, button:focus {
         <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
             
             <style>
-                #purchaseModal .form-group { margin-bottom: 8px; }
-                #purchaseModal label { margin-bottom: 2px; font-size: 13px; font-weight: bold; }
-                #purchaseModal input, #purchaseModal select { padding: 4px 8px; height: 32px; font-size: 13px; }
-                #purchaseModal .btn { padding: 4px 12px; font-size: 13px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+                #purchaseModal .form-group { margin-bottom: 15px; }
+                #purchaseModal label { margin-bottom: 6px; font-size: 18px; font-weight: bold; color: #495057; display: block; }
+                #purchaseModal input, #purchaseModal select { padding: 10px 12px; height: 48px; font-size: 20px; width: 100%; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; }
+                #purchaseModal .btn { padding: 10px 16px; font-size: 20px; height: 48px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; }
                 #purchaseFindProductHeader { margin-bottom: 10px !important; }
                 #purchaseFindProductHeader input { height: 32px !important; }
-                #purchaseModal .table th, #purchaseModal .table td { padding: 6px 10px; font-size: 13px; }
+                #purchaseModal .table th, #purchaseModal .table td { padding: 12px 10px; font-size: 18px; vertical-align: middle; }
+                #purchaseModal h2 { font-size: 24px !important; }
                 #purchasePaymentSection { padding: 10px !important; margin-top: 10px !important; }
                 #purchasePaymentSection h4 { margin-bottom: 10px; font-size: 14px; }
             </style>
@@ -4709,19 +4676,19 @@ input:focus, select:focus, textarea:focus, button:focus {
             </div>
 
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div id="purchaseFindProductHeader" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end;">
-                    <div style="flex: 1; position: relative;">
+                <div id="purchaseFindProductHeader" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; flex-wrap: wrap;">
+                    <div style="flex: 1 1 100%; min-width: 100%; position: relative;">
                         <label>Find Product</label>
                         <input type="text" id="purchaseSearchInput" placeholder="Search product by name or barcode..."
                             oninput="searchPurchaseProduct(this.value)" onkeydown="handlePurchaseSearchKeydown(event)" autocomplete="off"
-                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                            style="width: 100%; height: 52px; padding: 12px 15px; font-size: 20px; border: 2px solid #007bff; border-radius: 6px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
                         <div id="purchaseSearchResults"
                             style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; z-index: 1000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         </div>
                     </div>
-                    <button class="btn btn-info" onclick="openScannerModal('purchase')" style="height: 32px;">📷
+                    <button class="btn btn-info" onclick="openScannerModal('purchase')" style="height: 52px; font-size: 16px; font-weight: bold;">📷
                         Scan</button>
-                    <button class="btn btn-success" onclick="showPurchaseAddNewProductForm()" style="height: 32px;">➕
+                    <button class="btn btn-success" onclick="showPurchaseAddNewProductForm()" style="height: 52px; font-size: 16px; font-weight: bold;">➕
                         New Product</button>
                 </div>
 
@@ -4737,9 +4704,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <div style="padding: 20px; overflow-y: auto; flex: 1;">
                             <style>
                                 #purchaseNewProductContainer .form-group { margin-bottom: 15px; }
-                                #purchaseNewProductContainer label { margin-bottom: 6px; font-size: 16px; font-weight: bold; color: #495057; display: block; }
-                                #purchaseNewProductContainer input, #purchaseNewProductContainer select { padding: 10px 12px; height: 48px; font-size: 16px; width: 100%; box-sizing: border-box; }
-                                #purchaseNewProductContainer .btn { padding: 10px 16px; font-size: 16px; height: 48px; font-weight: bold; }
+                                #purchaseNewProductContainer label { margin-bottom: 6px; font-size: 18px; font-weight: bold; color: #495057; display: block; }
+                                #purchaseNewProductContainer input, #purchaseNewProductContainer select { padding: 10px 12px; height: 48px; font-size: 20px; width: 100%; box-sizing: border-box; }
+                                #purchaseNewProductContainer .btn { padding: 10px 16px; font-size: 20px; height: 48px; font-weight: bold; }
                                 #purchaseNewProductContainer .compact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; align-items: end; }
                             </style>
 
@@ -4863,35 +4830,26 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
 
                 <!-- Selected Product Area -->
-                <div id="purchaseSelectedProduct" style="display: none; background: #d4edda; padding: 10px 15px; border-radius: 8px; border: 1px solid #c3e6cb; align-items: center; gap: 15px; flex-wrap: nowrap; overflow-x: auto; margin-bottom: 15px;">
-                    
-                    <div style="flex: 1; min-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: column; justify-content: center;">
-                        <span id="purchaseProductName" style="font-weight: bold; font-size: 1.1em; color: #155724; line-height: 1.2;">Product Name</span>
-                        <small style="color: #155724; font-weight: bold; margin-top: 2px;">In Stock: <span id="purchaseCurrentStock">0</span></small>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-                        <label style="margin: 0; color: #155724;">Qty:</label>
-                        <div class="quantity-controls" style="display: flex;">
-                            <button type="button" class="qty-btn decrease" onclick="adjustPurchaseQty(-1)" style="height: 32px;">-</button>
-                            <input type="number" id="purchaseQty" value="1" min="1" class="qty-value" onkeydown="handlePurchaseFieldKeydown(event, 'purchaseItemPrice')" style="width: 60px; text-align: center; border: 1px solid #c3e6cb; height: 32px; padding: 0;">
-                            <button type="button" class="qty-btn increase" onclick="adjustPurchaseQty(1)" style="height: 32px;">+</button>
+                <div id="purchaseSelectedProduct" style="display: none; background: #d4edda; padding: 15px; border-radius: 8px; border: 1px solid #c3e6cb; margin-bottom: 15px;">
+                    <div style="display: grid; grid-template-columns: minmax(200px, 1fr) 100px 140px 100px 120px 100px; align-items: end; gap: 12px; width: 100%;">
+                        <div style="display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0;">
+                            <span id="purchaseProductName" style="font-weight: bold; font-size: 1.1em; color: #155724; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 6px;">Product Name</span>
+                            <small style="color: #155724; font-weight: bold;">In Stock: <span id="purchaseCurrentStock">0</span></small>
                         </div>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-                        <label style="margin: 0; color: #155724;">Rate (₹):</label>
-                        <input type="number" id="purchaseItemPrice" style="width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #c3e6cb; height: 32px;" onkeydown="handlePurchaseFieldKeydown(event, 'purchaseItemGST')">
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;" class="gst-field">
-                        <label style="margin: 0; color: #155724;">GST (%):</label>
-                        <input type="number" id="purchaseItemGST" style="width: 60px; padding: 5px; border-radius: 4px; border: 1px solid #c3e6cb; height: 32px;" onkeydown="handlePurchaseFieldKeydown(event, 'addBtn')">
-                    </div>
-                    
-                    <div style="display: flex; gap: 5px; flex-shrink: 0;">
-                        <button class="btn btn-success" onclick="addPurchaseItem()" style="height: 32px; display: inline-flex; align-items: center; justify-content: center;">Add to Bill</button>
-                        <button class="btn btn-danger purchase-selection-remove-btn" onclick="cancelPurchaseSelection()" title="Remove Selection" style="height: 32px; display: inline-flex; align-items: center; justify-content: center;">Remove</button>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">Qty</label>
+                            <input type="number" id="purchaseQty" value="1" min="1" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px; -moz-appearance: textfield;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">Rate (₹)</label>
+                            <input type="number" id="purchaseItemPrice" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px;">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;" class="gst-field">
+                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">GST (%)</label>
+                            <input type="number" id="purchaseItemGST" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px;">
+                        </div>
+                        <button id="purchaseAddBtn" class="btn btn-success" onclick="addPurchaseItem()" style="height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; white-space: nowrap; padding: 0 5px; width: 100%;">Add to Bill</button>
+                        <button id="purchaseRemoveBtn" class="btn btn-danger purchase-selection-remove-btn" onclick="cancelPurchaseSelection()" title="Remove Selection" style="height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; white-space: nowrap; padding: 0 5px; width: 100%;">Remove</button>
                     </div>
                 </div>
             </div>
@@ -5004,8 +4962,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             </div>
             <div id="purchaseBillActions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; background: white;">
-                <button class="btn btn-warning" onclick="clearPurchaseCart()">🗑️ Clear Form</button>
-                <button class="btn btn-success" onclick="savePurchase()">💾 Save Bill & Update Inventory</button>
+                <button class="btn btn-warning" id="purchaseClearFormBtn" onclick="clearPurchaseCart()">🗑️ Clear Form</button>
+                <button class="btn btn-success" id="purchaseSaveBillBtn" onclick="savePurchase()">💾 Save Bill & Update Inventory</button>
             </div>
         </div>
     </div>
@@ -5207,12 +5165,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Opening Balance (₹)</label>
-                    <input type="number" id="newSupplierOpeningBalance" placeholder="0.00" step="0.01" min="0">
+                    <input type="number" id="newSupplierOpeningBalance" placeholder="0.00" step="0.01" min="0" style="-moz-appearance: textfield;">
                 </div>
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button class="btn btn-secondary" onclick="closeAddSupplierModal()">❌ Cancel</button>
-                <button class="btn btn-success" onclick="saveSupplier()">💾 Save Supplier</button>
+                <button id="saveSupplierBtn" class="btn btn-success" onclick="saveSupplier()">💾 Save Supplier</button>
             </div>
         </div>
     </div>
@@ -5452,7 +5410,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button class="btn btn-secondary" onclick="closeAddCustomerModal()">❌ Cancel</button>
-                <button class="btn btn-success" onclick="saveCustomer()">💾 Save Customer</button>
+                <button id="saveCustomerBtn" class="btn btn-success" onclick="saveCustomer()">💾 Save Customer</button>
             </div>
         </div>
     </div>
@@ -5753,8 +5711,7 @@ input:focus, select:focus, textarea:focus, button:focus {
     <!-- Toast Notification -->
     <div id="toast"></div>
 
-    <!-- Add this just before 
-</body>
+    <!-- Add this just before </body>
  for modal popup implementation -->
     <!-- Select PO Modal -->
     <div id="selectPOModal" class="modal">
@@ -5768,6 +5725,23 @@ input:focus, select:focus, textarea:focus, button:focus {
             </div>
             <div id="selectPOList" style="display: flex; flex-direction: column; gap: 10px;">
                 <!-- Options injected here -->
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- View Day Closing Modal -->
+    <div id="viewDayClosingModal" class="modal" style="display:none; z-index:3000; align-items:center; justify-content:center; background-color:rgba(0,0,0,0.6);">
+        <div class="modal-content" style="max-width: 500px; text-align: left; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 20px;">👁 Day Closing Details</h2>
+                <button class="modal-close" onclick="document.getElementById('viewDayClosingModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div id="viewDayClosingContent" style="font-size: 14px; line-height: 1.6; color: #333;">
+                <!-- Content injected here -->
+            </div>
+            <div id="viewDayClosingFooter" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="document.getElementById('viewDayClosingModal').style.display='none'">Close</button>
             </div>
         </div>
     </div>
@@ -5917,7 +5891,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Refresh UI components
             updateDashboard();
             updateInventoryTable();
-            // populateProductSelect('updateStockProduct');
 
             console.log('🔄 About to call populateSaleProductSelect()...');
             populateSaleProductSelect();
@@ -6346,7 +6319,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof updateInventoryTable === 'function') updateInventoryTable();
             if (typeof updateTodaysSales === 'function') updateTodaysSales(); // Updates daily sales list
             if (typeof populateProductSelect === 'function') {
-                // populateProductSelect('updateStockProduct');
                 populateSaleProductSelect();
             }
         };
@@ -6562,42 +6534,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         // but for now I'll rely on the user reloading or switching tabs to trigger updates if I hook it right.
         // Actually, I should add a call to updateDraftsDisplay() at the end of the script or in switchTab('sales'))
 
-
-        
-        function parseSaleDateLocal(dateStr) {
-            if (!dateStr) return new Date();
-            if (dateStr.includes('T')) return new Date(dateStr);
-            const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-            }
-            return new Date(dateStr);
-        }
-
-                        function formatCreatedAtLocal(createdAtStr) {
-            if (!createdAtStr) return '-';
-            const d = new Date(createdAtStr);
-            if (Number.isNaN(d.getTime())) return '-';
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            let hours = d.getHours();
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            const strTime = String(hours).padStart(2, '0') + ':' + minutes + ' ' + ampm;
-            return `${day}/${month}/${year} ${strTime}`;
-        }
-
-        function formatDateLocalDMY(dateInput) {
-            const d = parseSaleDateLocal(dateInput);
-            if (Number.isNaN(d.getTime())) return '';
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
 
         function formatDateLocal(dateInput) {
             const date = dateInput instanceof Date ? new Date(dateInput.getTime()) : new Date(dateInput);
@@ -6897,6 +6833,13 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (!document.getElementById('purchaseDate').value) {
                 document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
             }
+            setTimeout(() => {
+                const pDate = document.getElementById('purchaseDate');
+                if (pDate) {
+                    pDate.focus();
+                    pDate.select();
+                }
+            }, 50);
 
             // Invoice Number remains empty until manually auto-generated
 
@@ -6998,6 +6941,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function searchPurchaseProduct(query) {
+            if (typeof purchaseProductSelectedIndex !== 'undefined') purchaseProductSelectedIndex = -1;
             const resultsDiv = document.getElementById('purchaseSearchResults');
             if (!query) {
                 resultsDiv.style.display = 'none';
@@ -7337,6 +7281,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         let selectedSupplierId = null;
 
         function searchSuppliers(query) {
+            if (typeof purchaseSupplierSelectedIndex !== 'undefined') purchaseSupplierSelectedIndex = -1;
             const resultsDiv = document.getElementById('supplierSearchResults');
             if (!query) {
                 resultsDiv.style.display = 'none';
@@ -7518,6 +7463,14 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('newSupplierCountry').value = 'INDIA';
             document.getElementById('newSupplierNotes').value = '';
             document.getElementById('newSupplierOpeningBalance').value = '';
+
+            setTimeout(() => {
+                const el = document.getElementById('newSupplierName');
+                if (el) {
+                    el.focus();
+                    el.select();
+                }
+            }, 50);
 
             if (isEdit) {
                 const supplier = suppliers.find(s => s.id === editId);
@@ -7760,6 +7713,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                     document.getElementById('newCustomerOpeningBalance').value = customer.openingBalance || '';
                 }
             }
+            setTimeout(() => {
+                const nameInput = document.getElementById('newCustomerName');
+                if (nameInput) {
+                    nameInput.focus();
+                    nameInput.select();
+                }
+            }, 50);
         }
 
         function closeAddCustomerModal() {
@@ -7800,10 +7760,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         function saveCustomer() {
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to manage customers.', 'error');
             const editId = document.getElementById('customerEditId').value;
-            if (!editId && isDemoMode() && !canCreateDemoCustomer()) {
-                showDemoLimitMessage('customers');
-                return;
-            }
             const name = document.getElementById('newCustomerName').value.trim().toUpperCase();
             const gstin = document.getElementById('newCustomerGSTIN').value.trim().toUpperCase();
             const phone = document.getElementById('newCustomerPhone').value.trim();
@@ -8242,8 +8198,14 @@ input:focus, select:focus, textarea:focus, button:focus {
             if(typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
             selectedSupplierId = null;
 
-            // Close Modal
-            closePurchaseModal();
+            // Prepare Fresh Bill
+            updatePurchaseTable();
+            setTimeout(() => {
+                document.getElementById('purchaseDate').focus();
+            }, 50);
+            
+            // Do NOT close modal
+            // closePurchaseModal();
 
         }
         // New Product Form Logic (Inline)
@@ -8630,7 +8592,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 /* Ensure background colors print */
                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             `);
-            printWindow.document.write('</style>\n</head><body>');
+            printWindow.document.write('</style></head><body>');
             printWindow.document.write(printContent);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
@@ -8897,13 +8859,28 @@ input:focus, select:focus, textarea:focus, button:focus {
                 activeTab.style.display = 'block'; // Force display to ensure visibility
                 
                 // Specific tab initializations
-                if (tabName === 'inventory' && typeof updateInventoryTable === 'function') updateInventoryTable();
+                if (tabName === 'inventory') {
+                    if (typeof updateInventoryTable === 'function') updateInventoryTable();
+                    setTimeout(() => {
+                        const searchInput = document.getElementById('stockBarcode');
+                        if (searchInput) {
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                    }, 50);
+                }
                 if (tabName === 'reports' && typeof generateSalesChart === 'function') generateSalesChart();
                 if (tabName === 'products' && typeof renderProductTable === 'function') renderProductTable();
                 if (tabName === 'receivables' && typeof renderReceivablesTable === 'function') renderReceivablesTable();
                 if (tabName === 'payables' && typeof renderPayablesTable === 'function') renderPayablesTable();
                 if (tabName === 'pettycash' && typeof initPettyCash === 'function') initPettyCash();
                 if (tabName === 'denomination' && typeof updateDayClosingDisplay === 'function') updateDayClosingDisplay();
+                if (tabName === 'denomination') {
+                    setTimeout(() => {
+                        const input500 = document.getElementById('denom_qty_500');
+                        if (input500) { input500.focus(); input500.select(); }
+                    }, 50);
+                }
                 
                 if (tabName === 'sales') {
                     // Aggressively attempt to focus the Search Product field (solves edge-case race conditions on load/tab switch)
@@ -8945,7 +8922,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                     updateDashboard();
                 } else if (tabName === 'inventory') {
                     updateInventoryTable();
-                    // populateProductSelect('updateStockProduct');
                 } else if (tabName === 'sales') {
                     populateSaleProductSelect();
                     updateTodaysSales();
@@ -9156,18 +9132,18 @@ input:focus, select:focus, textarea:focus, button:focus {
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
             const todaySales = sales.filter(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 saleDate.setHours(0, 0, 0, 0);
                 return saleDate.getTime() === today.getTime();
             });
 
             const weekSales = sales.filter(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 return saleDate >= weekStart;
             });
 
             const monthSales = sales.filter(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 return saleDate >= monthStart;
             });
 
@@ -10597,7 +10573,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         // --- Turbo Keybindings ---
         
         // Add Arrow navigation for Add Item and Summary rows
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             if (e.defaultPrevented) return;
             if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 const activeId = document.activeElement ? document.activeElement.id : null;
@@ -11453,44 +11429,20 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function normalizeSaleDateInput(el) {
-            if (typeof isDemoMode === 'function' && isDemoMode()) {
-                resetSaleDateToToday();
-                return;
-            }
+            if (typeof isDemoMode === 'function' && isDemoMode()) return;
             if (!el.value) return;
             const res = normalizeSaleDate(el.value);
             if (res.valid) {
                 if (typeof isFutureDate === 'function' && isFutureDate(res.iso)) {
-                    showToast('Future dates are not allowed. Please enter today or a previous date.');
+                    showAlert('Future dates are not allowed. Please enter today or a previous date.', '⚠️');
                     resetSaleDateToToday();
-                    updateLiveReceiptPreview(document.getElementById('customSaleDate').value);
                 } else {
                     el.value = res.display;
                     el.dataset.isoDate = res.iso;
-                    // Update receipt preview immediately
-                    updateLiveReceiptPreview(res.display);
-                    // Focus product search
-                    const searchInput = document.getElementById('saleProductSearch');
-                    if (searchInput) {
-                        searchInput.focus();
-                        // Trigger autocomplete if any
-                        if (typeof filterSaleProducts === 'function') filterSaleProducts();
-                    }
                 }
             } else {
-                showToast('Invalid date. Please enter a valid date in DDMMYYYY format.');
+                showAlert('Invalid date. Please enter a valid date in DDMMYYYY format.', '⚠️');
                 resetSaleDateToToday();
-                updateLiveReceiptPreview(document.getElementById('customSaleDate').value);
-            }
-        }
-        
-        function updateLiveReceiptPreview(displayDateStr) {
-            const receiptEl = document.getElementById('saleReceipt');
-            if (receiptEl && receiptEl.style.display === 'block') {
-                const receiptContent = document.getElementById('receiptContent');
-                if (receiptContent) {
-                    receiptContent.innerHTML = receiptContent.innerHTML.replace(/<p>\s*<strong>Date:<\/strong>\s*.*?<\/p>/i, `<p><strong>Date:</strong> ${displayDateStr}</p>`);
-                }
             }
         }
 
@@ -11521,9 +11473,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const day = String(now.getDate()).padStart(2, '0');
                 el.value = `${day}/${month}/${year}`;
                 el.dataset.isoDate = `${year}-${month}-${day}`;
-                if (typeof updateLiveReceiptPreview === 'function') {
-                    updateLiveReceiptPreview(`${day}/${month}/${year}`);
-                }
             }
         }
         
@@ -11531,22 +11480,17 @@ input:focus, select:focus, textarea:focus, button:focus {
         window.addEventListener('DOMContentLoaded', resetSaleDateToToday);
 
         function completeSale() {
-            if (!navigator.onLine) {
-                showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
-            }
-            
-            const saleDate = document.getElementById('recordSalesDate').value || new Date().toISOString().slice(0, 10);
+
             if (typeof isDemoMode === 'function' && isDemoMode()) {
-                const todayStr = new Date().toISOString().slice(0, 10);
-                if (saleDate !== todayStr) {
-                    showAlert('Demo Mode: You can only record sales for the current system date.', 'warning');
-                    document.getElementById('recordSalesDate').value = todayStr;
-                    return;
-                }
-                if (!canCreateDemoSale(todayStr)) {
+                const systemDateStr = new Date().toISOString().slice(0, 10);
+                if (!canCreateDemoSale(systemDateStr)) {
                     showDemoLimitMessage('sales');
                     return;
                 }
+            }
+
+            if (!navigator.onLine) {
+                showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
             if (cart.length === 0) {
                 showAlert('Cart is empty. Please add items first.', '⚠️');
@@ -11709,8 +11653,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 // Create sale records and update stock
                 const saleId = Date.now();
-                const _td = new Date();
-                let saleDate = `${_td.getFullYear()}-${String(_td.getMonth() + 1).padStart(2, '0')}-${String(_td.getDate()).padStart(2, '0')}`;
+                let saleDate = new Date().toISOString();
                 const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
                 if (settings.enableSalesDate) {
                     if (typeof isDemoMode === 'function' && isDemoMode()) {
@@ -11718,10 +11661,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                     } else {
                         const customDateVal = document.getElementById('customSaleDate') ? document.getElementById('customSaleDate').dataset.isoDate : '';
                         if (customDateVal) {
-                            const parts = customDateVal.split('-');
-                            if (parts.length === 3) {
-                                saleDate = customDateVal;
-                            }
+                            // Use custom date but preserve current time for ordering
+                            const now = new Date();
+                            const timePart = now.toISOString().split('T')[1];
+                            saleDate = `${customDateVal}T${timePart}`;
                         }
                     }
                 }
@@ -11758,6 +11701,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             id: saleId + saleItems.length,
                             saleId: saleId, // Group items from same sale
                             receiptNumber: receiptNumber, // Receipt number in format
+                            isDemo: (typeof isDemoMode === 'function' && isDemoMode()),
                             userId: currentUser.id || '',
                             username: currentUser.username || currentUser.name || '',
                             userCode: currentUser.userCode || '-',
@@ -11829,7 +11773,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                     saleId: saleId,
                     receiptNumber: receiptNumber,
                     date: saleDate,
-                    createdAt: saleItems.length > 0 ? saleItems[0].createdAt : new Date().toISOString(),
                     counterCode: currentUserObj.userCode || '-',
                     items: saleItems, // These are just the objects we created
                     customerName: customerName,
@@ -11894,7 +11837,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('addItemForm').reset();
                 if(typeof clearCustomerSelection === 'function') clearCustomerSelection();
                 if(document.getElementById('customerName')) document.getElementById('customerName').value = '';
-                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
                 
                 document.getElementById('otherPaymentAmount').value = '0';
                 document.getElementById('discountAmount').value = '0'; // Reset Discount
@@ -11950,7 +11892,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('saleReceipt').style.display = 'flex';
 
             const receiptContent = document.getElementById('receiptContent');
-            const date = parseSaleDateLocal(lastSaleData.date);
+            const date = new Date(lastSaleData.date);
 
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             
@@ -11984,8 +11926,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     ${mobileStr}
                     ${gstinStr}
                     <hr>
-                    <p><strong>Sale Date:</strong> ${formatDateLocalDMY(lastSaleData.date)}</p>
-                    <p><strong>Entered On:</strong> ${lastSaleData.createdAt ? formatCreatedAtLocal(lastSaleData.createdAt) : '-'}</p>
+                    <p><strong>Date:</strong> ${date.toLocaleDateString()}</p>
+                    <p><strong>Time:</strong> ${date.toLocaleTimeString()}</p>
                     <p><strong>Receipt #:</strong> ${lastSaleData.receiptNumber}</p>
                     <p><strong>Counter:</strong> ${lastSaleData.counterCode || '-'}</p>
                     <div style="text-align: center; margin: 10px 0;">
@@ -12161,10 +12103,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 text-align: right;
                             }
                         </style>
-                        
-</head>
-                    <body>${printContent}
-</body>
+                    </head>
+                    <body>${printContent}</body>
 
                 </html >
             `);
@@ -12189,10 +12129,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
                             th { background-color: #f2f2f2; }
                         </style>
-                        
-</head>
-                    <body>${receiptContent}
-</body>
+                    </head>
+                    <body>${receiptContent}</body>
 
                 </html >
             `);
@@ -12207,7 +12145,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const date = parseSaleDateLocal(lastSaleData.date);
+            const date = new Date(lastSaleData.date);
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
 
             // Format Receipt as text message
@@ -12518,10 +12456,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             body { margin: 0; padding: 0; }
                         }
                     </style>
-                    
-</head>
-                <body>${printContent}
-</body>
+                </head>
+                <body>${printContent}</body>
 
             </html>
             `);
@@ -12595,7 +12531,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             message += `${bName}\n`;
             message += `------------------------------\n`;
             message += `*Invoice No:* ${lastSaleData.receiptNumber}\n`;
-            message += `*Date:* ${parseSaleDateLocal(lastSaleData.date).toLocaleDateString()}\n`;
+            message += `*Date:* ${new Date(lastSaleData.date).toLocaleDateString()}\n`;
             message += `------------------------------\n`;
             message += `*Bill To:* ${cName}\n`;
             if (cGstin !== 'Not Provided') message += `*GSTIN:* ${cGstin}\n`;
@@ -12627,7 +12563,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // Allow Enter key to close receipt
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             const saleReceipt = document.getElementById('saleReceipt');
             if (saleReceipt && saleReceipt.style.display === 'block' && e.key === 'Enter') {
                 e.preventDefault();
@@ -12681,14 +12617,14 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const todaySales = sales.filter(sale => {
                 if (!sale.date) return false;
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 return getLocalDateString(saleDate) === selectedDateString;
             });
 
             const tbody = document.getElementById('todaySalesBody');
 
             if (todaySales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
                 return;
             }
 
@@ -12748,8 +12684,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 return `
                     <tr>
-                        <td>${formatDateLocalDMY(transaction.date)}</td>
-                        <td>${formatCreatedAtLocal(transaction.createdAt)}</td>
+                        <td>${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
+                        <td>${transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                         <td>${transaction.receiptNumber}</td>
                         <td>₹${transaction.subtotal.toFixed(2)}</td>
                         <td>₹${transaction.discount.toFixed(2)}</td>
@@ -12784,7 +12720,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 saleId: firstItem.saleId,
                 receiptNumber: firstItem.receiptNumber,
                 date: firstItem.date,
-                createdAt: firstItem.createdAt,
                 customerName: firstItem.customerName,
                 paymentMethod: firstItem.paymentMethod,
                 subtotal: 0,
@@ -12941,8 +12876,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         }
                     </style>
                     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
-                    
-</head>
+                </head>
                 <body>
                     ${printContent}
                     <script>
@@ -12952,9 +12886,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 window.print();
                             }, 500);
                         };
-                    <\/script>
-                
-</body>
+                    <\/script></body>
 
             </html>
             `);
@@ -13387,7 +13319,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             endDate.setHours(23, 59, 59, 999);
 
             const filteredSales = sales.filter(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 return saleDate >= startDate && saleDate <= endDate;
             });
 
@@ -13586,7 +13518,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const filteredSales = sales.filter(sale => {
                 if (!sale || !sale.date) return false;
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 if (Number.isNaN(saleDate.getTime())) {
                     console.error('Error parsing sale date:', sale.date);
                     return false;
@@ -13609,7 +13541,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
 
             filteredSales.forEach(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 const dateStr = formatDateLocal(saleDate);
 
                 if (salesByDay.hasOwnProperty(dateStr)) {
@@ -13827,7 +13759,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             sales.forEach(sale => {
                 if (sale.date) {
-                    const d = parseSaleDateLocal(sale.date);
+                    const d = new Date(sale.date);
                     if (d < minDate) minDate = d;
                     if (d > maxDate) maxDate = d;
                 }
@@ -13878,7 +13810,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const filteredSales = sales.filter(sale => {
                 if (!sale || !sale.date) return false;
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 const saleTime = saleDate.getTime();
                 return saleTime >= startTime && saleTime <= endTime;
             });
@@ -13886,7 +13818,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Group by Hour (0-23)
             const salesByHour = new Array(24).fill(0);
             filteredSales.forEach(sale => {
-                const hour = parseSaleDateLocal(sale.date).getHours();
+                const hour = new Date(sale.date).getHours();
                 salesByHour[hour]++; // Counting number of sales. Could also sum amount.
             });
 
@@ -13946,7 +13878,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const filteredSales = sales.filter(sale => {
                 if (!sale || !sale.date) return false;
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 const saleTime = saleDate.getTime();
                 return saleTime >= startTime && saleTime <= endTime;
             });
@@ -14428,8 +14360,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             @page { margin: 0; }
                         }
                     </style>
-                    
-</head>
+                </head>
                 <body>
                     <div class="sheet">
                         ${labelsHtml}
@@ -14467,9 +14398,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 window.print();
                             }, 500);
                         };
-                    <\/script>
-                
-</body>
+                    <\/script></body>
 
                 </html>
             `;
@@ -14543,11 +14472,6 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function addProduct(event) {
             event.preventDefault();
-            
-            if (isDemoMode() && !canCreateDemoProduct()) {
-                showDemoLimitMessage('products');
-                return;
-            }
 
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
@@ -14671,9 +14595,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 categorySelect.value = customValue;
             }
 
-            if (isDemoMode()) {
-                product.isDemo = true;
-            }
             products.push(product);
             saveData();
 
@@ -15179,8 +15100,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         .low-stock { color: #dc3545; font-weight: bold; }
                         .footer { margin-top: 30px; text-align: center; color: #666; }
                     </style>
-                    
-</head>
+                </head>
                 <body>
                     <h1>Inventory Report</h1>
                     <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
@@ -15222,9 +15142,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     </table>
                     <div class="footer">
                         <p>Generated on ${new Date().toLocaleString()}</p>
-                    </div>
-                
-</body>
+                    </div></body>
 
                 </html>
             `;
@@ -15343,7 +15261,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const customerAddress = `"${bill.customerAddress.replace(/"/g, '""')}"`;
                 const payment = `"${paymentDisplay.replace(/"/g, '""')}"`;
 
-                csv += `${formatDateLocalDMY(bill.date)},${formatCreatedAtLocal(bill.createdAt)},${bill.receiptNumber},${customerName},${customerGSTIN},${customerAddress},${bill.customerState},${taxTypeDisplay},${bill.subtotal.toFixed(2)},${bill.discount.toFixed(2)},${bill.taxableValue.toFixed(2)},${bill.cgst.toFixed(2)},${bill.sgst.toFixed(2)},${bill.igst.toFixed(2)},${bill.total.toFixed(2)},${payment}\n`;
+                csv += `${sd},${ed},${bill.receiptNumber},${customerName},${customerGSTIN},${customerAddress},${bill.customerState},${taxTypeDisplay},${bill.subtotal.toFixed(2)},${bill.discount.toFixed(2)},${bill.taxableValue.toFixed(2)},${bill.cgst.toFixed(2)},${bill.sgst.toFixed(2)},${bill.igst.toFixed(2)},${bill.total.toFixed(2)},${payment}\n`;
             });
             
             // Append Grand Total Row
@@ -17024,6 +16942,51 @@ input:focus, select:focus, textarea:focus, button:focus {
             return filtered;
         }
 
+        
+        function printDayClosingHistory() {
+            const tableContainer = document.querySelector('#day_closing .table-container');
+            if (!tableContainer || !tableContainer.querySelector('tbody').innerHTML.trim() || tableContainer.querySelector('tbody').innerHTML.includes('No day closing records found')) {
+                showAlert('No records to print for the selected filter.', '⚠️');
+                return;
+            }
+            
+            let businessName = document.getElementById('bizNameDisplay') ? document.getElementById('bizNameDisplay').textContent : 'Business Name';
+            let fromDate = document.getElementById('dcFilterFrom').value;
+            let toDate = document.getElementById('dcFilterTo').value;
+            let dateStr = '';
+            if (fromDate && toDate) dateStr = ` (From: ${new Date(fromDate).toLocaleDateString()} To: ${new Date(toDate).toLocaleDateString()})`;
+            
+            const originalTable = tableContainer.querySelector('table').cloneNode(true);
+            const actionTds = originalTable.querySelectorAll('td:last-child, th:last-child');
+            actionTds.forEach(td => td.remove()); // Remove actions column
+            
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Day Closing History - ${businessName}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                        h2 { text-align: center; margin-bottom: 5px; }
+                        h3 { text-align: center; margin-top: 0; color: #666; font-size: 1.1em; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+                        th { background-color: #f8f9fa; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h2>${businessName}</h2>
+                    <h3>Day Closing History${dateStr}</h3>
+                    ${originalTable.outerHTML}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        }
+        
         function exportDayClosingExcel() {
             let filteredData = getFilteredDayClosings();
             
@@ -17063,6 +17026,283 @@ input:focus, select:focus, textarea:focus, button:focus {
             XLSX.writeFile(wb, `salesapp_Store_Day_Closing_${today}.xlsx`);
         }
 
+        
+        function viewDayClosing(id) {
+            const record = dayClosings.find(d => d.id === id);
+            if (!record) return;
+            
+            const dateObj = new Date(record.date);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            let denomHtml = '';
+            if (record.denominations) {
+                denomHtml = '<h4 style="margin-bottom:10px;">Cash Denominations</h4><table style="width:100%; margin-bottom: 15px; text-align: left; border-collapse: collapse;">';
+                [500, 200, 100, 50, 20, 10, 5, 2, 1].forEach(val => {
+                    if (record.denominations[val] && record.denominations[val].quantity > 0) {
+                        denomHtml += `<tr><td style="padding: 4px; border-bottom: 1px solid #eee;">₹${val} × ${record.denominations[val].quantity}</td><td style="padding: 4px; border-bottom: 1px solid #eee; text-align: right;">₹${record.denominations[val].amount.toFixed(2)}</td></tr>`;
+                    }
+                });
+                denomHtml += '</table>';
+            }
+
+            let statusHtml = '';
+            if (Math.abs(record.difference) < 0.01) statusHtml = '<span style="color: #28a745; font-weight: bold;">Balanced</span>';
+            else if (record.difference > 0) statusHtml = '<span style="color: #17a2b8; font-weight: bold;">Excess</span>';
+            else statusHtml = '<span style="color: #dc3545; font-weight: bold;">Shortage</span>';
+
+            document.getElementById('viewDayClosingContent').innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Date:</strong> <span>${dateStr}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <strong>Time:</strong> <span>${timeStr}</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Opening Cash:</strong> <span>₹${(record.openingCash || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Cash Sales:</strong> <span>₹${(record.cashSales || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Bank / UPI Sales:</strong> <span>₹${(record.bankSales || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Online Sales:</strong> <span>₹${(record.onlineSales || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; font-size: 1.1em;">
+                    <strong>Total Sales:</strong> <span>₹${(record.totalSales || 0).toFixed(2)}</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Expected Cash:</strong> <span>₹${(record.expectedCash || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>Actual Cash Counted:</strong> <span>₹${(record.actualCash || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 1.1em;">
+                    <strong>Difference:</strong> <span>₹${Math.abs(record.difference || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <strong>Status:</strong> <span>${statusHtml}</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+                ${denomHtml}
+                <div style="margin-top: 15px;">
+                    <strong>Notes:</strong><br>
+                    <span style="color: #666; display: inline-block; margin-top: 5px;">${record.notes || '-'}</span>
+                </div>
+            `;
+            
+            const footer = document.getElementById('viewDayClosingFooter');
+            if (footer) {
+                footer.innerHTML = `
+                    <button class="btn btn-primary" onclick="saveSingleDayClosingPDF('${id}')">💾 Save PDF</button>
+                    <button class="btn btn-success" onclick="printSingleDayClosing('${id}')">🖨 Print</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('viewDayClosingModal').style.display='none'">Close</button>
+                `;
+            }
+            const m = document.getElementById('viewDayClosingModal');
+            if(m) {
+                m.style.display = 'flex';
+            }
+    
+        }
+
+        function saveSingleDayClosingPDF(id) {
+            // Save PDF reuses the exact print logic but sets title dynamically
+            const record = dayClosings.find(d => d.id === id);
+            if (!record) return;
+            const dateObj = new Date(record.date);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).replace(':', '-');
+            const pdfName = `Day-Closing-${dateStr.replace(/\//g, '-')}-${timeStr}.pdf`;
+            
+            // Generate print HTML exactly like printSingleDayClosing
+            let businessName = document.getElementById('bizNameDisplay') ? document.getElementById('bizNameDisplay').textContent : 'Business Name';
+            let statusText = '';
+            if (Math.abs(record.difference) < 0.01) statusText = 'BALANCED';
+            else if (record.difference > 0) statusText = 'EXCESS';
+            else statusText = 'SHORTAGE';
+            let denomHtml = '';
+            if (record.denominations) {
+                denomHtml = '<div class="divider"></div><div class="center bold">CASH DENOMINATIONS</div><div class="divider"></div>';
+                [500, 200, 100, 50, 20, 10, 5, 2, 1].forEach(val => {
+                    if (record.denominations[val] && record.denominations[val].quantity > 0) {
+                        denomHtml += `<div class="row"><span>₹${val} × ${record.denominations[val].quantity}</span> <span>₹${record.denominations[val].amount.toFixed(2)}</span></div>`;
+                    }
+                });
+            }
+            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {receiptSize: 'A4'});
+            let bodyStyle = '';
+            let isA4 = (settings.receiptSize === 'A4');
+            if (settings.receiptSize === '58mm') {
+                bodyStyle = 'margin: 0 auto; width: 58mm; max-width: 58mm; padding: 2px; font-family: monospace; font-size: 11px;';
+            } else if (settings.receiptSize === '80mm') {
+                bodyStyle = 'margin: 0 auto; width: 80mm; max-width: 80mm; padding: 5px; font-family: monospace; font-size: 12px;';
+            } else {
+                bodyStyle = 'margin: 0 auto; width: 100%; max-width: 800px; padding: 20px; font-family: Arial, sans-serif; font-size: 14px;';
+                isA4 = true;
+            }
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>${pdfName}</title>
+                    <style>
+                        @media print {
+                            @page { margin: 0; }
+                            body { ${bodyStyle} }
+                        }
+                        body { ${bodyStyle} color: #000; line-height: 1.4; }
+                        .center { text-align: center; }
+                        .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                        .bold { font-weight: bold; }
+                        .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+                        h2 { margin: 0 0 5px 0; font-size: ${isA4 ? '24px' : '16px'}; text-transform: uppercase; }
+                        h3 { margin: 0 0 10px 0; font-size: ${isA4 ? '18px' : '14px'}; text-transform: uppercase; }
+                    </style>
+                </head>
+                <body>
+                    <div class="center">
+                        <h2>${businessName}</h2>
+                        <h3>DAY CLOSING REPORT</h3>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Date: ${dateStr}</span> <span>Time: ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Opening Cash:</span> <span>₹${(record.openingCash || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Cash Sales:</span> <span>₹${(record.cashSales || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Bank / UPI Sales:</span> <span>₹${(record.bankSales || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Online Sales:</span> <span>₹${(record.onlineSales || 0).toFixed(2)}</span></div>
+                    <div class="divider"></div>
+                    <div class="row bold" style="font-size: ${isA4 ? '1.2em' : '1.1em'};"><span>TOTAL SALES:</span> <span>₹${(record.totalSales || 0).toFixed(2)}</span></div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Expected Cash:</span> <span>₹${(record.expectedCash || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Actual Cash Counted:</span> <span>₹${(record.actualCash || 0).toFixed(2)}</span></div>
+                    <div class="row bold" style="font-size: ${isA4 ? '1.1em' : '1em'};"><span>Difference:</span> <span>₹${Math.abs(record.difference || 0).toFixed(2)}</span></div>
+                    <div class="row bold"><span>Status:</span> <span>${statusText}</span></div>
+                    ${denomHtml}
+                    <div class="divider"></div>
+                    <div style="margin-top: 5px;">
+                        <span class="bold">Notes:</span> <span>${record.notes || '-'}</span>
+                    </div>
+                    ${!isA4 ? '<div class="divider"></div>' : ''}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            // Open print dialog immediately so user can save as PDF
+            setTimeout(() => {
+                if(!printWindow.closed) {
+                    printWindow.print();
+                    // Alert user if needed, but modern browsers auto-close print window on save PDF
+                }
+            }, 500);
+        }
+
+
+        function printSingleDayClosing(id) {
+            const record = dayClosings.find(d => d.id === id);
+            if (!record) return;
+            
+            const dateObj = new Date(record.date);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let businessName = document.getElementById('bizNameDisplay') ? document.getElementById('bizNameDisplay').textContent : 'Business Name';
+            
+            let statusText = '';
+            if (Math.abs(record.difference) < 0.01) statusText = 'BALANCED';
+            else if (record.difference > 0) statusText = 'EXCESS';
+            else statusText = 'SHORTAGE';
+
+            let denomHtml = '';
+            if (record.denominations) {
+                denomHtml = '<div class="divider"></div><div class="center bold">CASH DENOMINATIONS</div><div class="divider"></div>';
+                [500, 200, 100, 50, 20, 10, 5, 2, 1].forEach(val => {
+                    if (record.denominations[val] && record.denominations[val].quantity > 0) {
+                        denomHtml += `<div class="row"><span>₹${val} × ${record.denominations[val].quantity}</span> <span>₹${record.denominations[val].amount.toFixed(2)}</span></div>`;
+                    }
+                });
+            }
+
+            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {receiptSize: 'A4'});
+            let bodyStyle = '';
+            let isA4 = (settings.receiptSize === 'A4');
+            
+            if (settings.receiptSize === '58mm') {
+                bodyStyle = 'margin: 0 auto; width: 58mm; max-width: 58mm; padding: 2px; font-family: monospace; font-size: 11px;';
+            } else if (settings.receiptSize === '80mm') {
+                bodyStyle = 'margin: 0 auto; width: 80mm; max-width: 80mm; padding: 5px; font-family: monospace; font-size: 12px;';
+            } else {
+                bodyStyle = 'margin: 0 auto; width: 100%; max-width: 800px; padding: 20px; font-family: Arial, sans-serif; font-size: 14px;';
+                isA4 = true;
+            }
+
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Day Closing Report - ${businessName}</title>
+                    <style>
+                        @media print {
+                            @page { margin: 0; }
+                            body { ${bodyStyle} }
+                        }
+                        body { ${bodyStyle} color: #000; line-height: 1.4; }
+                        .center { text-align: center; }
+                        .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                        .bold { font-weight: bold; }
+                        .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+                        h2 { margin: 0 0 5px 0; font-size: ${isA4 ? '24px' : '16px'}; text-transform: uppercase; }
+                        h3 { margin: 0 0 10px 0; font-size: ${isA4 ? '18px' : '14px'}; text-transform: uppercase; }
+                    </style>
+                </head>
+                <body>
+                    <div class="center">
+                        <h2>${businessName}</h2>
+                        <h3>DAY CLOSING REPORT</h3>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Date: ${dateStr}</span> <span>Time: ${timeStr}</span></div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Opening Cash:</span> <span>₹${(record.openingCash || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Cash Sales:</span> <span>₹${(record.cashSales || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Bank / UPI Sales:</span> <span>₹${(record.bankSales || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Online Sales:</span> <span>₹${(record.onlineSales || 0).toFixed(2)}</span></div>
+                    <div class="divider"></div>
+                    <div class="row bold" style="font-size: ${isA4 ? '1.2em' : '1.1em'};"><span>TOTAL SALES:</span> <span>₹${(record.totalSales || 0).toFixed(2)}</span></div>
+                    <div class="divider"></div>
+                    <div class="row"><span>Expected Cash:</span> <span>₹${(record.expectedCash || 0).toFixed(2)}</span></div>
+                    <div class="row"><span>Actual Cash Counted:</span> <span>₹${(record.actualCash || 0).toFixed(2)}</span></div>
+                    <div class="row bold" style="font-size: ${isA4 ? '1.1em' : '1em'};"><span>Difference:</span> <span>₹${Math.abs(record.difference || 0).toFixed(2)}</span></div>
+                    <div class="row bold"><span>Status:</span> <span>${statusText}</span></div>
+                    ${denomHtml}
+                    <div class="divider"></div>
+                    <div style="margin-top: 5px;">
+                        <span class="bold">Notes:</span> <span>${record.notes || '-'}</span>
+                    </div>
+                    ${!isA4 ? '<div class="divider"></div>' : ''}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            printWindow.onload = function() {
+                printWindow.print();
+                printWindow.close();
+            };
+            
+            // Fallback
+            setTimeout(() => {
+                if(!printWindow.closed) {
+                    printWindow.print();
+                    printWindow.close();
+                }
+            }, 500);
+        }
+
+        
         function renderDayClosingHistory() {
             const tbody = document.getElementById('dayClosingHistoryBody');
             if (!tbody) return;
@@ -17112,8 +17352,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <td>${statusHtml}</td>
                     <td>${record.notes || ''}</td>
                     <td>
-                        <button class="btn btn-sm btn-info" onclick="editDayClosing('${record.id}')">✏️ Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteDayClosing('${record.id}')">🗑️</button>
+                        <button class="btn btn-sm btn-secondary" onclick="viewDayClosing('${record.id}')" title="View" style="padding: 2px 6px;">👁 View</button>
+                        <button class="btn btn-sm btn-info" onclick="editDayClosing('${record.id}')" title="Edit" style="padding: 2px 6px;">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDayClosing('${record.id}')" title="Delete" style="padding: 2px 6px;">🗑</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -17164,11 +17405,58 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // --- Calculator Global Keyboard Support ---
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             
             // --- Cash Denomination Global Keyboard Support ---
             const denomTab = document.getElementById('denomination');
             if (denomTab && denomTab.classList.contains('active')) {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    const actElem = document.activeElement;
+                    if (actElem && actElem.classList.contains('dc-input') && actElem.tagName === 'INPUT') {
+                        e.preventDefault();
+                        
+                        const leftCol = [
+                            'denom_qty_500', 'denom_qty_200', 'denom_qty_100', 'denom_qty_50',
+                            'denom_qty_20', 'denom_qty_10', 'denom_qty_5', 'denom_qty_2', 'denom_qty_1'
+                        ];
+                        const rightCol = [
+                            'dcOpeningCash', 'dcCashSales', 'dcBankSales', 'dcOnlineSales', 'dcNotes', 'dcSaveBtn'
+                        ];
+
+                        let nextId = null;
+
+                        if (leftCol.includes(actElem.id)) {
+                            const idx = leftCol.indexOf(actElem.id);
+                            if (e.key === 'ArrowDown') {
+                                if (idx < leftCol.length - 1) nextId = leftCol[idx + 1];
+                                else nextId = rightCol[0];
+                            } else if (e.key === 'ArrowUp') {
+                                if (idx > 0) nextId = leftCol[idx - 1];
+                                else nextId = leftCol[0]; // Remain at top
+                            } else if (e.key === 'ArrowRight') {
+                                nextId = rightCol[0];
+                            }
+                        } else if (rightCol.includes(actElem.id)) {
+                            const idx = rightCol.indexOf(actElem.id);
+                            if (e.key === 'ArrowDown') {
+                                if (idx < rightCol.length - 1) nextId = rightCol[idx + 1];
+                            } else if (e.key === 'ArrowUp') {
+                                if (idx > 0) nextId = rightCol[idx - 1];
+                            } else if (e.key === 'ArrowLeft') {
+                                nextId = leftCol[0]; // According to requirement, back to 500
+                            }
+                        }
+                        
+                        if (nextId) {
+                            const nextElem = document.getElementById(nextId);
+                            if (nextElem) {
+                                nextElem.focus();
+                                if (nextElem.tagName === 'INPUT') nextElem.select();
+                            }
+                        }
+                    }
+                }
+
                 if (e.key === 'Escape') {
                     e.preventDefault();
                     resetDayClosingForm();
@@ -17308,7 +17596,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         let globalUsbLastScanTime = 0;
 
         // Global POS Keyboard Shortcuts
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             // Global USB Scanner Logic (HID mode)
             if (window.isGlobalUsbScannerActive) {
                 // Ignore modifier keys
@@ -17559,8 +17847,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                             }
                         }
                         break;
-                    case 'KeyM': // Ctrl/Cmd + M → Add New Customer
-                        if (document.getElementById('sales').classList.contains('active')) {
+                    case 'KeyM': // Ctrl/Cmd + M → Add New Customer / Supplier
+                        if (document.activeElement && document.activeElement.id === 'purchaseSupplier') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const query = document.getElementById('purchaseSupplier').value || '';
+                            openAddSupplierModal(query);
+                        } else if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
                             e.stopPropagation();
                             openAddCustomerModal();
@@ -17929,40 +18222,42 @@ input:focus, select:focus, textarea:focus, button:focus {
         // Settings UI logic
 
         function switchSettingsTab(paneId, btnElement) {
-            try {
-                // Hide all panes
-                const panes = document.querySelectorAll('.settings-pane');
-                for(let i=0; i<panes.length; i++) {
-                    panes[i].classList.remove('active');
-                    panes[i].style.display = ''; // Reset any inline display
-                }
-                
-                // Remove active class from all nav items
-                const navs = document.querySelectorAll('.settings-nav-item');
-                for(let i=0; i<navs.length; i++) navs[i].classList.remove('active');
+            // Hide all panes
+            document.querySelectorAll('.settings-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            // Remove active class from all nav items
+            document.querySelectorAll('.settings-nav-item').forEach(btn => {
+                btn.classList.remove('active');
+            });
 
-                // Show selected pane
-                const selectedPane = document.getElementById(paneId);
-                if (selectedPane) {
-                    selectedPane.classList.add('active');
-                }
+            // Show selected pane
+            const selectedPane = document.getElementById(paneId);
+            if (selectedPane) {
+                selectedPane.classList.add('active');
+            }
 
-                if(paneId === 'settings-pane-license') {
-                    if(typeof refreshLicenseUI === 'function') refreshLicenseUI();
+            if(paneId === 'settings-pane-license') {
+                if(typeof refreshLicenseUI === 'function') {
+                    refreshLicenseUI();
                 }
-                if(paneId === 'settings-pane-account') {
-                    if(typeof renderUserManagementTable === 'function') renderUserManagementTable();
-                }
-                if(paneId === 'settings-pane-theme') {
-                    if(typeof renderThemeGrid === 'function') renderThemeGrid();
-                }
+            }
 
-                // Add active class to clicked button
-                if (btnElement) {
-                    btnElement.classList.add('active');
+            if(paneId === 'settings-pane-account') {
+                if(typeof renderUserManagementTable === 'function') {
+                    renderUserManagementTable();
                 }
-            } catch(e) {
-                console.error("Error in switchSettingsTab: ", e);
+            }
+
+            if(paneId === 'settings-pane-theme') {
+                if(typeof renderThemeGrid === 'function') {
+                    renderThemeGrid();
+                }
+            }
+
+            // Add active class to clicked button
+            if (btnElement) {
+                btnElement.classList.add('active');
             }
         }
 
@@ -18655,9 +18950,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         function proceedWithDatabaseSwitch() {
             if (pendingDatabaseFolder) {
                 localStorage.setItem('database_folder', pendingDatabaseFolder);
-                if (window.electronAPI && window.electronAPI.setDbConfigSync) {
-                    window.electronAPI.setDbConfigSync(pendingDatabaseFolder);
-                }
                 window.location.reload();
             }
         }
@@ -18715,8 +19007,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const exportData = sales.flatMap(sale => {
                 return sale.items.map(item => ({
-                    'Sale Date': formatDateLocal(sale.date),
-                    'Entry Date & Time': sale.createdAt ? new Date(sale.createdAt).toLocaleString() : '',
+                    'Date': new Date(sale.date).toLocaleString(),
                     'Invoice/Sale Number': sale.receiptNumber,
                     'Product': item.productName,
                     'Quantity': item.quantity,
@@ -18813,6 +19104,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             setPCTransactionType('expense');
             calculatePCBalances();
             renderPCLedger();
+            setTimeout(() => {
+                const el = document.getElementById('pcDate');
+                if (el) { el.focus(); el.select(); }
+            }, 50);
         }
 
         function setPCTransactionType(type) {
@@ -18871,6 +19166,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                     </div>
                 `;
             }
+            setTimeout(() => {
+                const el = document.getElementById('pcDate');
+                if (el) { el.focus(); el.select(); }
+            }, 50);
         }
 
         function generatePCVoucherNo(type) {
@@ -18944,6 +19243,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             calculatePCBalances();
             renderPCLedger();
             showAlert('Transaction saved successfully!', '✅');
+            window.popupCloseCallback = () => {
+                const el = document.getElementById('pcDate');
+                if (el) { el.focus(); el.select(); }
+            };
         }
 
         function resetPCForm() {
@@ -19241,7 +19544,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
             `;
             const pWin = window.open('', '', 'height=800,width=800');
-            pWin.document.write('<html><head><title>Print Voucher</title>\n</head><body>' + html + '</body></html>');
+            pWin.document.write('<html><head><title>Print Voucher</title></head><body>' + html + '</body></html>');
             pWin.document.close();
             setTimeout(() => { pWin.print(); }, 500);
         }
@@ -19363,7 +19666,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
             `;
             const pWin = window.open('', '', 'height=800,width=1000');
-            pWin.document.write('<html><head><title>Print Report</title>\n</head><body>' + html + '</body></html>');
+            pWin.document.write('<html><head><title>Print Report</title></head><body>' + html + '</body></html>');
             pWin.document.close();
             setTimeout(() => { pWin.print(); }, 500);
         }
@@ -19535,7 +19838,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         let usbScanBuffer = '';
         let usbScanTimeout;
 
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             // Only process if we are on the sales tab
             const salesTab = document.getElementById('sales');
             if (!salesTab || !salesTab.classList.contains('active')) {
@@ -20333,7 +20636,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const customerId = document.getElementById('globalReportCustomerId').value;
 
             globalFilteredSales = sales.filter(sale => {
-                const saleDate = parseSaleDateLocal(sale.date);
+                const saleDate = new Date(sale.date);
                 if (saleDate < start || saleDate > end) return false;
                 
                 if (customerId) {
@@ -20413,7 +20716,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         igst: 0,
                         total: 0,
                         payment: sale.paymentMethod || 'Cash Only',
-                        rawDate: parseSaleDateLocal(sale.date)
+                        rawDate: new Date(sale.date)
                     };
                 }
                 const b = billMap[sale.receiptNumber];
@@ -20453,8 +20756,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 totDisc += b.discount;
                 
                 return `<tr>
-                    <td>${formatDateLocalDMY(b.date)}</td>
-                    <td>${formatCreatedAtLocal(b.createdAt)}</td>
+                    <td>${new Date(b.date).toLocaleDateString('en-GB')}</td>
+                    <td>${b.createdAt ? new Date(b.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                     <td>${b.billNo}</td>
                     <td>${b.counterCode}</td>
                     <td>${b.customer}</td>
@@ -20506,7 +20809,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             items.sort((a, b) => {
                 let valA, valB;
-                if (itemWiseSortColumn === 'date') { valA = parseSaleDateLocal(a.date); valB = parseSaleDateLocal(b.date); }
+                if (itemWiseSortColumn === 'date') { valA = new Date(a.date); valB = new Date(b.date); }
                 else if (itemWiseSortColumn === 'product') { valA = a.productName; valB = b.productName; }
                 else if (itemWiseSortColumn === 'qty') { valA = a.quantity; valB = b.quantity; }
                 else if (itemWiseSortColumn === 'total') { valA = a.total; valB = b.total; }
@@ -20517,7 +20820,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
 
             if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" class="text-center">No items found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center">No items found.</td></tr>`;
                 document.getElementById('itemWiseTotals').innerHTML = '';
                 return;
             }
@@ -20528,8 +20831,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 totQty += i.quantity;
                 totSales += i.total;
                 return `<tr>
-                    <td>${formatDateLocalDMY(i.date)}</td>
-                    <td>${formatCreatedAtLocal(i.createdAt)}</td>
+                    <td>${new Date(i.date).toLocaleDateString('en-GB')}</td>
+                    <td>${i.createdAt ? new Date(i.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                     <td>${i.productName}</td>
                     <td>${i.barcode || '-'}</td>
                     <td>${i.hsn || '-'}</td>
@@ -20560,7 +20863,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const summaryMap = {};
             
             globalFilteredSales.forEach(sale => {
-                const d = parseSaleDateLocal(sale.date);
+                const d = new Date(sale.date);
                 let key = '';
                 if (period === 'daily') {
                     key = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -20608,7 +20911,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
             
             Object.keys(globalBillDiscMap).forEach(billNo => {
-                const d = parseSaleDateLocal(globalBillDiscMap[billNo].date);
+                const d = new Date(globalBillDiscMap[billNo].date);
                 let key = '';
                 if (period === 'daily') key = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 else if (period === 'weekly') {
@@ -20735,8 +21038,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else if (type === 'items') {
                 let csv = 'Sale Date,Entry Date & Time,Barcode,Product,HSN,GST%,Unit,Quantity,Unit Price,Total,Bill No,Counter,Customer,Payment Method\\n';
                 globalFilteredSales.forEach(sale => {
-                    const d = parseSaleDateLocal(sale.date);
-                    csv += `${d.toLocaleDateString()},${d.toLocaleTimeString()},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},${sale.counterCode || '-'},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
+                    const d = new Date(sale.date);
+                    const sd = d.toLocaleDateString('en-GB');
+                    const ed = sale.createdAt ? new Date(sale.createdAt).toLocaleString('en-GB') : 'N/A';
+                    csv += `${sd},${ed},${sale.barcode||''},"${sale.productName}",${sale.hsn||''},${sale.gstRate||0}%,${sale.unit||''},${sale.quantity},${sale.price},${sale.total},${sale.receiptNumber},${sale.counterCode || '-'},"${sale.customerName||'Walk-in Customer'}",${sale.paymentMethod}\\n`;
                 });
                 triggerCSVDownload(csv, 'item_wise_sales');
             }
@@ -21781,13 +22086,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                             th { background-color: #f2f2f2; }
                             .no-print { display: none !important; }
                         </style>
-                        
-</head>
+                    </head>
                     <body>
                         <h2 style="text-align: center;">Account Statement</h2>
-                        ${content}
-                    
-</body>
+                        ${content}</body>
 
                 </html>
             `);
@@ -22105,25 +22407,211 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
     </script>
 
+    <!-- Global Arrow Navigation feature -->
+    <script>
+    document.addEventListener('keydown', function(e) { 
+        const active = document.activeElement;
+        
+        // --- 1. NEW AUTOCOMPLETE PRIORITY HANDLER ---
+        // This runs in capture phase and evaluates BEFORE any normal form navigation
+        if (active && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+            let dropdown = null;
+            let activeIndexVar = '';
+            
+            // Map inputs to their respective custom dropdown elements and global state index names
+            if (active.id === 'purchaseSupplier') {
+                dropdown = document.getElementById('supplierSearchResults');
+                activeIndexVar = 'purchaseSupplierSelectedIndex';
+            } else if (active.id === 'purchaseSearchInput') {
+                dropdown = document.getElementById('purchaseSearchResults');
+                activeIndexVar = 'purchaseProductSelectedIndex';
+            } else if (active.id === 'newCustomerName' || active.id === 'newCustomerGSTIN' || active.id === 'newCustomerPhone') {
+                dropdown = document.getElementById('customerSearchResults') || document.getElementById('saleCustomerDropdown') || document.querySelector('#addCustomerModal div[id*="Dropdown"]');
+                activeIndexVar = 'customerSuggestionSelectedIndex';
+            } else if (active.id === 'saleCustomerSearch') {
+                dropdown = document.getElementById('saleCustomerDropdown');
+                activeIndexVar = 'saleCustomerSelectedIndex';
+            } else if (active.id === 'saleProductSearch') {
+                dropdown = document.getElementById('saleProductDropdown');
+                activeIndexVar = 'saleProductSelectedIndex';
+            }
+            
+            // If the active input has a visible autocomplete dropdown with options
+            if (dropdown && dropdown.style.display !== 'none' && dropdown.innerHTML.trim() !== '') {
+                const items = Array.from(dropdown.children).filter(el => el.tagName === 'DIV');
+                if (items.length > 0) {
+                    if (typeof window[activeIndexVar] === 'undefined') window[activeIndexVar] = -1;
+                    
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        window[activeIndexVar] = Math.min(window[activeIndexVar] + 1, items.length - 1);
+                        items.forEach((el, i) => { el.style.background = (i === window[activeIndexVar]) ? '#007bff' : 'white'; el.style.color = (i === window[activeIndexVar]) ? 'white' : 'black'; });
+                        return;
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        window[activeIndexVar] = Math.max(window[activeIndexVar] - 1, 0);
+                        items.forEach((el, i) => { el.style.background = (i === window[activeIndexVar]) ? '#007bff' : 'white'; el.style.color = (i === window[activeIndexVar]) ? 'white' : 'black'; });
+                        return;
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        if (window[activeIndexVar] >= 0 && items[window[activeIndexVar]]) {
+                            items[window[activeIndexVar]].click();
+                        } else if (items[0]) {
+                            items[0].click();
+                        }
+                        
+                        // Execute focus transition ONLY after successful selection
+                        if (active.id === 'purchaseSupplier' || active.id === 'purchaseSearchInput') {
+                            setTimeout(() => { const next = document.getElementById('purchaseSearchInput'); if (next) next.focus(); }, 50);
+                        } else if (active.id === 'newCustomerName') {
+                            setTimeout(() => { const next = document.getElementById('newCustomerGSTIN'); if (next) next.focus(); }, 50);
+                        }
+                        
+                        // Close dropdown and reset state
+                        dropdown.style.display = 'none';
+                        window[activeIndexVar] = -1;
+                        return;
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        dropdown.style.display = 'none';
+                        window[activeIndexVar] = -1;
+                        return;
+                    }
+                }
+            }
+        }
+        
+                // --- 1.5. EXPLICIT PURCHASE MODAL NAVIGATION ---
+        if (!e.defaultPrevented && ['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && active && active.closest('#purchaseModal')) {
+            // Let the number/text fields natively navigate text cursor with left/right
+            if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                return;
+            }
+            
+            const explicitOrder = [
+                'purchaseDate',
+                'purchaseInvoiceNumber',
+                'purchaseSupplier',
+                'purchaseSearchInput'
+            ];
+
+            const productRow = document.getElementById('purchaseSelectedProduct');
+            if (productRow && productRow.style.display !== 'none') {
+                explicitOrder.push('purchaseQty', 'purchaseItemPrice', 'purchaseItemGST', 'purchaseAddBtn');
+            }
+
+            explicitOrder.push(
+                'purchaseDiscount',
+                'purchaseOtherCharges',
+                'purchasePaymentMethod',
+                'purchaseSaveBillBtn'
+            );
+
+            const currentIndex = explicitOrder.indexOf(active.id);
+            if (currentIndex > -1) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                
+                let nextIndex = currentIndex;
+                
+                if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    if (active.id === 'purchaseAddBtn' && e.key === 'Enter') {
+                        document.getElementById('purchaseAddBtn').click();
+                        return;
+                    } else if (active.id === 'purchaseSaveBillBtn' && e.key === 'Enter') {
+                        document.getElementById('purchaseSaveBillBtn').click();
+                        return;
+                    } else {
+                        nextIndex = currentIndex + 1;
+                    }
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    nextIndex = currentIndex - 1;
+                }
+
+                if (nextIndex >= 0 && nextIndex < explicitOrder.length && nextIndex !== currentIndex) {
+                    const nextEl = document.getElementById(explicitOrder[nextIndex]);
+                    if (nextEl) {
+                        nextEl.focus();
+                        if (nextEl.select) nextEl.select();
+                    }
+                }
+                return;
+            }
+        }
+        
+        // --- 2. EXISTING GLOBAL FORM NAVIGATION ---
+        if (e.defaultPrevented) return;
+        
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            const active = document.activeElement;
+            
+            // Only proceed if focused on an interactive element
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'BUTTON' || active.tagName === 'TEXTAREA')) {
+                
+                // Let specific comboboxes handle their own dropdown navigation for Up/Down
+                const comboboxes = ['saleCustomerSearch', 'saleProductSearch', 'purchaseSearchInput', 'paymentMethodSearch', 'saleUnitSearch', 'quickSaleBarcode', 'stockBarcode', 'inventorySearchInput', 'customerSearch'];
+                if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && comboboxes.includes(active.id)) {
+                    return; // Let the specific handler deal with it
+                }
+                
+                // For text/number inputs, let Left/Right arrows move the text cursor natively
+                if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                    return; 
+                }
+                
+                // Also let Calculator handle its own grid
+                if (document.getElementById('calculator') && document.getElementById('calculator').classList.contains('active')) {
+                    if (active.classList.contains('calc-btn') || active.id === 'calcDisplay') {
+                        return;
+                    }
+                }
+
+                // Determine context (active modal or active tab)
+                let context = document.querySelector('.tab-content.active');
+                
+                // Check Modals (they should take precedence over tabs)
+                const openModals = document.querySelectorAll('.modal, #purchaseNewProductContainer');
+                for (let m of openModals) {
+                    if (m.style.display === 'block' || m.style.display === 'flex' || window.getComputedStyle(m).display !== 'none') {
+                        context = m;
+                        if (m.contains(active)) {
+                            context = m;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!context || !context.contains(active)) return;
+                
+                // Get all focusable elements
+                const focusable = Array.from(context.querySelectorAll('input:not([type="hidden"]):not([disabled]), select:not([disabled]), button:not([disabled]), textarea:not([disabled])'))
+                    .filter(el => {
+                        return el.offsetWidth > 0 && el.offsetHeight > 0;
+                    });
+                    
+                const index = focusable.indexOf(active);
+                if (index > -1) {
+                    let nextIndex = index;
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                        nextIndex = index + 1;
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        nextIndex = index - 1;
+                    }
+                    
+                    if (nextIndex >= 0 && nextIndex < focusable.length) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        focusable[nextIndex].focus();
+                        if (focusable[nextIndex].select) {
+                            focusable[nextIndex].select();
+                        }
+                    }
+                }
+            }
+        }
+    }, true);
+    </script>
 <script>
-    if (window.electronAPI && window.electronAPI.onLicenseGraceWarning) {
-        window.electronAPI.onLicenseGraceWarning((daysLeft) => {
-            const banner = document.createElement('div');
-            banner.style.position = 'fixed';
-            banner.style.top = '0';
-            banner.style.left = '0';
-            banner.style.width = '100%';
-            banner.style.backgroundColor = '#ffcc00';
-            banner.style.color = '#333';
-            banner.style.textAlign = 'center';
-            banner.style.padding = '10px';
-            banner.style.zIndex = '999999';
-            banner.style.fontWeight = 'bold';
-            banner.innerHTML = 'Please connect to the internet soon. Offline access expires in ' + daysLeft + ' days.';
-            document.body.appendChild(banner);
-        });
-    }
-    
     function refreshLicenseUI() {
         const display = document.getElementById('licenseInfoDisplay');
         if (!display) return;
@@ -22146,7 +22634,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             return;
         }
 
-        if (info.mode === 'DEMO') { info.status = 'DEMO'; }
         let statusColor = '#dc3545';
         if (info.status === 'ACTIVE') statusColor = '#28a745';
         else if (info.status === 'TRIAL') statusColor = '#ffc107';
@@ -22206,20 +22693,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             actionButtonHtml = '<button class="btn btn-danger" onclick="if(typeof promptSurrenderLicense === \'function\') promptSurrenderLicense(); else alert(\'Surrender not implemented in this view.\');" style="width: 100%; font-weight: bold; background-color: #dc3545; border-color: #dc3545; padding: 10px; border-radius: 6px; color: white; cursor: pointer; margin-top: 25px;">Surrender License</button>';
         }
 
-        const maskedKey = (typeof info.maskedKey !== 'undefined' && info.maskedKey) ? info.maskedKey : localStorage.getItem('maskedLicenseKey');
-        let statusDisplay = `<td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
-            <div style="color: ${statusColor}; font-weight: bold;">${info.status}</div>`;
-        
+        let maskedKeyDisplay = '';
         if (info.status !== 'DEMO') {
-            const displayKey = maskedKey ? maskedKey : 'Requires Reactivation';
-            statusDisplay += `<div style="font-size: 12px; color: #64748b; margin-top: 4px;">${displayKey}</div>`;
+            let mk = localStorage.getItem('maskedLicenseKey');
+            if (info.key) {
+                const parts = info.key.split('-');
+                if (parts.length >= 3) {
+                    mk = parts[0] + '-****-' + parts[parts.length-1];
+                }
+            }
+            if (!mk) {
+                if ((info.status === 'TRIAL' || info.status === 'ACTIVE') && info.deviceStatus === 'ACTIVE' && info.mode === 'LICENSED') {
+                    mk = 'OB-****-XXXX';
+                } else {
+                    mk = 'Requires Reactivation';
+                }
+            }
+            maskedKeyDisplay = `<div style="font-size: 12px; color: #64748b; margin-top: 4px;">${mk}</div>`;
         }
-        statusDisplay += `</td>`;
 
         display.innerHTML = `
             ${warningHtml}
             <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
-                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; width: 160px; color: #64748b;">License Status / Key</td>${statusDisplay}</tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; width: 160px; color: #64748b;">License Status / Key</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;"><div style="color: ${statusColor}; font-weight: bold;">${info.status}</div>${maskedKeyDisplay}</td></tr>
                 <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Plan</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${planText}</td></tr>
                 <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Expires</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${expiryDateStr}</td></tr>
                 <tr><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: #64748b;">Days Remaining</td><td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">${daysRemainingStr}</td></tr>
@@ -22231,8 +22727,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             ${actionButtonHtml}
         `;
     }
-</script>
-    
+    </script>
+        
     <div id="verifyLicenseKeyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
         <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h3 style="margin-top: 0; color: #1e293b;">Surrender License</h3>
@@ -22334,7 +22830,7 @@ async function executeSecureSurrender() {
 <script>
 window.inventorySelectedIndex = -1;
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
     // Check if Inventory tab is currently active/visible
     const inventoryTab = document.getElementById('inventory');
     if (!inventoryTab || !inventoryTab.classList.contains('active')) return;
@@ -22449,7 +22945,7 @@ window.selectInventoryRowKeyboard = function(productId) {
 };
 </script>
 <script>
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
     const purchaseTab = document.getElementById('purchaseparties');
     if (!purchaseTab || !purchaseTab.classList.contains('active')) return;
     
@@ -22491,7 +22987,7 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 <script>
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
 
     // SETTINGS SHORTCUTS
     const settingsTab = document.getElementById('settings');
@@ -22626,7 +23122,7 @@ document.addEventListener('keydown', function(e) {
         // =========================================================================
         // RECORD SALE - CENTRALIZED KEYBOARD NAVIGATION
         // =========================================================================
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
             const salesTab = document.getElementById('sales');
             if (!salesTab || !salesTab.classList.contains('active')) return;
             
@@ -22963,7 +23459,7 @@ document.addEventListener('keydown', function(e) {
 
 <!-- Modal Navigation Script -->
 <script>
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
     const isPurchaseModal = document.getElementById('purchaseNewProductContainer') && document.getElementById('purchaseNewProductContainer').style.display === 'flex';
     const isProductModal = document.getElementById('newProductModal') && document.getElementById('newProductModal').style.display === 'flex';
     const isEditModal = document.getElementById('editProductModal') && document.getElementById('editProductModal').style.display === 'flex';
@@ -23109,7 +23605,7 @@ document.addEventListener('keydown', function(e) {
 
 <script>
 // Label Settings Modal Keyboard Navigation
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
     const modal = document.getElementById('labelSettingsModal');
     if (!modal || modal.style.display === 'none') return;
 
@@ -23193,6 +23689,333 @@ document.addEventListener('keydown', function(e) {
     }
 }, true);
 </script>
+    <script>
+        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
+            const invTab = document.getElementById('inventory');
+            if (!invTab || !invTab.classList.contains('active')) return;
+
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+            
+            const ae = document.activeElement;
+            if (!ae) return;
+            
+            const inputs = ['stockBarcode', 'addStockQuantity', 'updateStockPrice', 'inventorySearch', 'expiryFilter'];
+            if (!inputs.includes(ae.id)) return;
+            
+            // Allow text navigation if typing
+            if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && ae.type === 'text') {
+                if (e.key === 'ArrowLeft' && ae.selectionStart > 0) return;
+                if (e.key === 'ArrowRight' && ae.selectionEnd < ae.value.length) return;
+            }
+
+            let nextId = null;
+            
+            if (ae.id === 'stockBarcode') {
+                const dropdown = document.getElementById('stockBarcodeDropdown');
+                const isDropdownActive = dropdown && dropdown.style.display !== 'none' && dropdown.children.length > 0;
+                
+                // CRITICAL: Do NOT steal ArrowUp/ArrowDown if the suggestions dropdown is visible!
+                if (isDropdownActive && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                    return; // Abort global navigation, let the dropdown logic handle it
+                }
+                
+                if (e.key === 'ArrowRight') nextId = 'addStockQuantity';
+                if (e.key === 'ArrowDown') nextId = 'inventorySearch';
+            } else if (ae.id === 'addStockQuantity') {
+                if (e.key === 'ArrowLeft') nextId = 'stockBarcode';
+                if (e.key === 'ArrowRight') nextId = 'updateStockPrice';
+                if (e.key === 'ArrowDown') nextId = 'inventorySearch';
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); // stop number increment
+            } else if (ae.id === 'updateStockPrice') {
+                if (e.key === 'ArrowLeft') nextId = 'addStockQuantity';
+                if (e.key === 'ArrowDown') nextId = 'expiryFilter';
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); // stop number increment
+            } else if (ae.id === 'inventorySearch') {
+                if (e.key === 'ArrowUp') nextId = 'stockBarcode';
+                if (e.key === 'ArrowRight') nextId = 'expiryFilter';
+            } else if (ae.id === 'expiryFilter') {
+                if (e.key === 'ArrowLeft') nextId = 'inventorySearch';
+                if (e.key === 'ArrowUp') nextId = 'updateStockPrice';
+            }
+            
+            if (nextId) {
+                e.preventDefault();
+                const nextElem = document.getElementById(nextId);
+                if (nextElem) {
+                    nextElem.focus();
+                    if (nextElem.tagName === 'INPUT') nextElem.select();
+                }
+            }
+        });
+    </script>
+
+    <script>
+        document.getElementById('addCustomerModal').addEventListener('keydown', function(e) {
+            if (e.defaultPrevented) return;
+            
+            // 1. Check Autocomplete Priority
+            // Detect if a custom autocomplete dropdown is actively showing inside the modal
+            const activeDropdown = Array.from(document.querySelectorAll('#addCustomerModal div[id*="Dropdown"], #addCustomerModal div[id*="SearchResults"], #addCustomerModal datalist')).find(d => d.style && d.style.display !== 'none' && d.children.length > 0);
+            if (activeDropdown && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+                // Allow the autocomplete script to handle it
+                return;
+            }
+
+            if (this.style.display === 'none') return;
+            
+            // Escape to close
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeAddCustomerModal();
+                // Focus back to opener (Sale Customer Search or whatever)
+                const saleCustomerSearch = document.getElementById('saleCustomerSearch');
+                if (saleCustomerSearch) saleCustomerSearch.focus();
+                return;
+            }
+
+            const active = document.activeElement;
+            const fields = [
+                'newCustomerName', 'newCustomerGSTIN', 'newCustomerPhone', 
+                'newCustomerAddress', 'newCustomerState', 'newCustomerCountry', 
+                'newCustomerNotes', 'newCustomerOpeningBalance', 'saveCustomerBtn'
+            ];
+            
+            const idx = fields.indexOf(active.id);
+            if (idx === -1) return;
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (active.id === 'saveCustomerBtn') {
+                    active.click();
+                } else {
+                    const nextId = fields[idx + 1];
+                    if (nextId) {
+                        const el = document.getElementById(nextId);
+                        el.focus();
+                        if(el.tagName === 'INPUT') el.select();
+                    }
+                }
+                return;
+            }
+
+            // Arrow navigation
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                
+                // Allow left/right for text editing
+                if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && active.type === 'text') {
+                    if (e.key === 'ArrowLeft' && active.selectionStart > 0) return;
+                    if (e.key === 'ArrowRight' && active.selectionEnd < active.value.length) return;
+                }
+                
+                // Allow left/right for tel editing
+                if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && active.type === 'tel') {
+                    if (e.key === 'ArrowLeft' && active.selectionStart > 0) return;
+                    if (e.key === 'ArrowRight' && active.selectionEnd < active.value.length) return;
+                }
+
+                e.preventDefault(); // Stop scrolling or number increment
+
+                let nextId = null;
+
+                if (e.key === 'ArrowDown') {
+                    nextId = fields[Math.min(idx + 1, fields.length - 1)];
+                } else if (e.key === 'ArrowUp') {
+                    nextId = fields[Math.max(idx - 1, 0)];
+                } else if (e.key === 'ArrowRight') {
+                    if (active.id === 'newCustomerGSTIN') nextId = 'newCustomerPhone';
+                    else if (active.id === 'newCustomerState') nextId = 'newCustomerCountry';
+                    else nextId = fields[Math.min(idx + 1, fields.length - 1)];
+                } else if (e.key === 'ArrowLeft') {
+                    if (active.id === 'newCustomerPhone') nextId = 'newCustomerGSTIN';
+                    else if (active.id === 'newCustomerCountry') nextId = 'newCustomerState';
+                    else nextId = fields[Math.max(idx - 1, 0)];
+                }
+
+                if (nextId) {
+                    const el = document.getElementById(nextId);
+                    if (el) {
+                        el.focus();
+                        if (el.tagName === 'INPUT') el.select();
+                    }
+                }
+            }
+        });
+
+        document.getElementById('addSupplierModal').addEventListener('keydown', function(e) {
+            if (e.defaultPrevented) return;
+            
+            // 1. Check Autocomplete Priority
+            // Detect if a custom autocomplete dropdown is actively showing inside the modal
+            const activeDropdown = Array.from(document.querySelectorAll('#addSupplierModal div[id*="Dropdown"], #addSupplierModal div[id*="SearchResults"], #addSupplierModal datalist')).find(d => d.style && d.style.display !== 'none' && d.children.length > 0);
+            if (activeDropdown && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+                // Allow the autocomplete script to handle it
+                return;
+            }
+
+            if (this.style.display === 'none') return;
+            
+            // Escape to close
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if(typeof closeAddSupplierModal === 'function') closeAddSupplierModal();
+                // Focus back to opener (Supplier field in purchase bill)
+                const purchaseSupplier = document.getElementById('purchaseSupplier');
+                if (purchaseSupplier) purchaseSupplier.focus();
+                return;
+            }
+
+            const active = document.activeElement;
+            const fields = [
+                'newSupplierName', 'newSupplierGSTIN', 'newSupplierPhone', 
+                'newSupplierAddress', 'newSupplierState', 'newSupplierCountry', 
+                'newSupplierNotes', 'newSupplierOpeningBalance', 'saveSupplierBtn'
+            ];
+            
+            const idx = fields.indexOf(active.id);
+            if (idx === -1) return;
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (active.id === 'saveSupplierBtn') {
+                    active.click();
+                } else {
+                    const nextId = fields[idx + 1];
+                    if (nextId) {
+                        const el = document.getElementById(nextId);
+                        el.focus();
+                        if(el.tagName === 'INPUT') el.select();
+                    }
+                }
+                return;
+            }
+
+            // Arrow navigation
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                
+                // Allow left/right for text editing
+                if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && active.type === 'text') {
+                    if (e.key === 'ArrowLeft' && active.selectionStart > 0) return;
+                    if (e.key === 'ArrowRight' && active.selectionEnd < active.value.length) return;
+                }
+                
+                // Allow left/right for tel editing
+                if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && active.type === 'tel') {
+                    if (e.key === 'ArrowLeft' && active.selectionStart > 0) return;
+                    if (e.key === 'ArrowRight' && active.selectionEnd < active.value.length) return;
+                }
+                
+                e.preventDefault(); // Stop scrolling or number increment
+
+                let nextId = null;
+
+                if (e.key === 'ArrowDown') {
+                    nextId = fields[Math.min(idx + 1, fields.length - 1)];
+                } else if (e.key === 'ArrowUp') {
+                    nextId = fields[Math.max(idx - 1, 0)];
+                } else if (e.key === 'ArrowRight') {
+                    if (active.id === 'newSupplierGSTIN') nextId = 'newSupplierPhone';
+                    else if (active.id === 'newSupplierState') nextId = 'newSupplierCountry';
+                    else nextId = fields[Math.min(idx + 1, fields.length - 1)];
+                } else if (e.key === 'ArrowLeft') {
+                    if (active.id === 'newSupplierPhone') nextId = 'newSupplierGSTIN';
+                    else if (active.id === 'newSupplierCountry') nextId = 'newSupplierState';
+                    else nextId = fields[Math.max(idx - 1, 0)];
+                }
+
+                if (nextId) {
+                    const el = document.getElementById(nextId);
+                    if (el) {
+                        el.focus();
+                        if (el.tagName === 'INPUT') el.select();
+                    }
+                }
+            }
+        });
+    </script>
+
+    <script>
+        // FLAWLESS PETTY CASH NAVIGATION
+        document.getElementById('pettycash').addEventListener('focusin', function(e) {
+            if (e.target && e.target.tagName === 'SELECT') {
+                e.target.dataset.pickerOpen = '';
+                e.target.dataset.hasChanged = '';
+            }
+        });
+
+        document.getElementById('pettycash').addEventListener('change', function(e) {
+            if (e.target && e.target.tagName === 'SELECT') {
+                e.target.dataset.hasChanged = 'true';
+                e.target.dataset.pickerOpen = '';
+            }
+        });
+
+        document.getElementById('pettycash').addEventListener('keydown', function(e) {
+            if (e.defaultPrevented) return;
+            if (!this.classList.contains('active')) return;
+
+            const active = document.activeElement;
+            if (!active) return;
+
+            let fields = [];
+            if (typeof currentPCType !== 'undefined') {
+                if (currentPCType === 'expense' || currentPCType === 'income') {
+                    fields = ['pcDate', 'pcAmount', 'pcAccount', 'pcCategory', 'pcDescription', 'pcRemarks', 'pcSaveBtn'];
+                } else if (currentPCType === 'transfer') {
+                    fields = ['pcDate', 'pcAmount', 'pcFromAccount', 'pcToAccount', 'pcDescription', 'pcRemarks', 'pcSaveBtn'];
+                }
+            }
+
+            const idx = fields.indexOf(active.id);
+            if (idx === -1) return;
+
+            if (e.key === 'Enter') {
+                if (active.tagName === 'SELECT') {
+                    if (active.dataset.pickerOpen === 'true') {
+                        // 1. It was open. User pressed Enter to commit.
+                        active.dataset.pickerOpen = '';
+                        // Do NOT prevent default so native commit happens.
+                        // Wait briefly then move focus.
+                        const nextId = fields[idx + 1];
+                        if (nextId) {
+                            setTimeout(() => {
+                                const el = document.getElementById(nextId);
+                                if (el) { el.focus(); if(el.tagName==='INPUT') el.select(); }
+                            }, 50);
+                        }
+                        return;
+                    } else if (active.dataset.hasChanged === 'true') {
+                        // 2. It was closed, but user already selected via typing.
+                        e.preventDefault();
+                        const nextId = fields[idx + 1];
+                        if (nextId) {
+                            const el = document.getElementById(nextId);
+                            if (el) { el.focus(); if(el.tagName==='INPUT') el.select(); }
+                        }
+                        return;
+                    } else {
+                        // 3. It was closed and untouched. User wants to open it!
+                        e.preventDefault();
+                        active.dataset.pickerOpen = 'true';
+                        try { active.showPicker(); } catch(err) {}
+                        return;
+                    }
+                }
+
+                // Normal inputs
+                e.preventDefault();
+                if (active.id === 'pcSaveBtn') {
+                    active.click();
+                } else {
+                    const nextId = fields[idx + 1];
+                    if (nextId) {
+                        const el = document.getElementById(nextId);
+                        if (el) { el.focus(); if(el.tagName==='INPUT') el.select(); }
+                    }
+                }
+                return;
+            }
+        });
+    </script>
 </body>
 
 </html>
