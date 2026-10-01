@@ -1,7 +1,7 @@
 {
     "name": "onebook",
     "productName": "OneBook",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Desktop Application for Shermon Sales",
     "main": "main.js",
     "scripts": {
@@ -56,7 +56,10 @@
             "license.js",
             "onebooklogo.png",
             "package.json",
-            "node_modules/**/*"
+            "node_modules/**/*",
+            "icon-512.png",
+            "manifest.json",
+            "service-worker.js"
         ]
     },
     "dependencies": {

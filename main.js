@@ -40,9 +40,9 @@ function createWindow() {
 
     const mode = checkLicense();
     if (mode === 'DEMO') {
-        win.loadFile('license.html');
+        win.loadFile(path.join(__dirname, 'license.html'));
     } else {
-        win.loadFile('OneBook.html');
+        win.loadFile(path.join(__dirname, 'OneBook.html'));
     }
 
     

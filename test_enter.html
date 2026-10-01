@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="cart"></div>
+<script>
+let cart = [{qty: 1, disc: 0}, {qty: 1, disc: 0}];
+
+function render() {
+    let html = '';
+    cart.forEach((c, i) => {
+        html += `<input id="qty-${i}" value="${c.qty}" onkeydown="kd(event, ${i}, 'qty')">`;
+        html += `<input id="disc-${i}" value="${c.disc}" onkeydown="kd(event, ${i}, 'disc')">`;
+        html += `<br>`;
+    });
+    document.getElementById('cart').innerHTML = html;
+}
+
+function kd(e, i, type) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (type === 'qty') {
+            cart[i].qty = e.target.value;
+            render();
+            document.getElementById(`disc-${i}`).focus();
+        } else {
+            cart[i].disc = e.target.value;
+            render();
+            if (i+1 < cart.length) document.getElementById(`qty-${i+1}`).focus();
+        }
+    }
+}
+
+render();
+</script>
+</body>
+</html>
