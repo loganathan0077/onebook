@@ -6858,6 +6858,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                             suppliers = backupData.suppliers || [];
                             customers = backupData.customers || [];
                             negativeChangeCount = backupData.negativeChangeCount || 0;
+                            let users = backupData.users || [];
+                            let partyPayments = backupData.partyPayments || [];
+                            let masterCategories = backupData.masterCategories || [];
+                            let masterUnits = backupData.masterUnits || [];
 
                             // Restore to localStorage
                             localStorage.setItem('products', JSON.stringify(products));
@@ -6869,6 +6873,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                             localStorage.setItem('purchaseOrders', JSON.stringify(purchaseOrders));
                             localStorage.setItem('suppliers', JSON.stringify(suppliers));
                             localStorage.setItem('customers', JSON.stringify(customers));
+                            localStorage.setItem('users', JSON.stringify(users));
+                            localStorage.setItem('partyPayments', JSON.stringify(partyPayments));
+                            localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
+                            localStorage.setItem('masterUnits', JSON.stringify(masterUnits));
                             
                             calculatorHistory = backupData.calculatorHistory || [];
                             dayClosings = backupData.dayClosings || [];
