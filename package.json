@@ -36,12 +36,28 @@
             "shortcutName": "OneBook",
             "uninstallDisplayName": "OneBook",
             "createDesktopShortcut": "always",
-            "createStartMenuShortcut": true
+            "createStartMenuShortcut": true,
+            "artifactName": "OneBook-Setup-${version}.${ext}"
         },
         "mac": {
             "target": "dmg",
             "icon": "onebooklogo.png"
-        }
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "index.html",
+            "OneBook.html",
+            "final.html",
+            "login.html",
+            "license.html",
+            "styles.css",
+            "license.css",
+            "license.js",
+            "onebooklogo.png",
+            "package.json",
+            "node_modules/**/*"
+        ]
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.116.0",
