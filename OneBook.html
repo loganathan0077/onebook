@@ -2268,7 +2268,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: 20px; z-index: 50; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: 20px; z-index: 200; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
@@ -2490,7 +2490,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
                                     <div class="form-group">
                                         <label>Payment Method</label>
-                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('cashReceived').focus();}" style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white; appearance: auto;">
+                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('cashReceived').focus();}" style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white; ">
                                             <option value="cash" selected>Cash Only</option>
                                             <option value="card">Card</option>
                                             <option value="upi">UPI</option>
