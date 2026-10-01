@@ -129,6 +129,15 @@ window.searchProductsUnified = function(query, allProducts) {
         // Exact name priority
         if (name === query.toLowerCase().trim()) score += 800;
         
+        // Variant exact match priority
+        if (window.hasVariants(p)) {
+            p.variants.forEach(v => {
+                if (String(v.barcode||'').toLowerCase() === query.toLowerCase().trim()) score += 1000;
+                else if (String(v.barcode||'').toLowerCase().includes(query.toLowerCase().trim())) score += 500;
+                if (String(v.variantName||'').toLowerCase() === query.toLowerCase().trim()) score += 700;
+            });
+        }
+        
         tokens.forEach(token => {
             let tokenMatched = false;
             
@@ -163,6 +172,18 @@ window.searchProductsUnified = function(query, allProducts) {
             if (!isNaN(token) && priceStr === token) {
                 tokenMatched = true;
                 score += 30; // Price match is a strong signal if user types exactly the price
+            }
+            
+            // Variant checking
+            if (window.hasVariants(p)) {
+                p.variants.forEach(v => {
+                    const vName = String(v.variantName||'').toLowerCase();
+                    const vBar = String(v.barcode||'').toLowerCase();
+                    const vPrice = String(v.sellingPrice||'');
+                    if (vBar.includes(token)) { tokenMatched = true; score += 10; }
+                    if (vName.includes(token)) { tokenMatched = true; score += 15; }
+                    if (!isNaN(token) && vPrice === token) { tokenMatched = true; score += 30; }
+                });
             }
             
             if (!tokenMatched) allTokensMatch = false;
@@ -2165,6 +2186,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <h2 class="section-title" style="margin: 0;">Current Inventory Status</h2>
                     <div class="responsive-actions" style="display: flex; gap: 10px;">
                         <button class="btn btn-warning" onclick="handleAddInventoryFromInventory()">➕ Add Inventory</button>
+                        <button class="btn btn-info" onclick="openGlobalAddVariantModal()">➕ Add Variant</button>
                         <button id="createPOBtn" class="btn btn-primary" onclick="startNewPO()">📝 Create PO</button>
                         <button class="btn btn-secondary" onclick="openPOHistoryModal()">📜 PO History</button>
                         <button class="btn btn-success" onclick="exportInventoryCSV()">📥 Export CSV</button>
@@ -4820,6 +4842,71 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <input type="text" id="newProductDescription" placeholder="Optional product description">
                                 </div>
                             </div>
+
+                            <!-- Variant Section -->
+                            <div style="margin-top: 15px;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                                    <input type="checkbox" id="newProductHasVariants" onchange="toggleVariantUI()" style="width: 24px; height: 24px; margin: 0;">
+                                    ☑ This product has variants
+                                </label>
+                            </div>
+                            
+                            <div id="variantSection" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h5 style="margin: 0; color: #333; font-weight: bold; font-size: 18px;">Product Variants</h5>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button type="button" class="btn btn-info btn-sm" onclick="addNewProductVariant()" title="Add Variant" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;">+</button>
+                                    </div>
+                                </div>
+                                <div class="compact-grid" style="grid-template-columns: repeat(6, 1fr);">
+                                    <div class="form-group" style="grid-column: span 2;">
+                                        <label>Variant Name</label>
+                                        <input type="text" id="varName" placeholder="e.g. XL, Red, ₹10" onkeydown="handleVariantKeydown(event, 'varBarcode')">
+                                    </div>
+                                    <div class="form-group" style="grid-column: span 2;">
+                                        <label>Barcode</label>
+                                        <div style="display: flex; gap: 5px;">
+                                            <input type="text" id="varBarcode" placeholder="Scan/Enter" onkeydown="handleVariantKeydown(event, 'varBuyPrice')" style="flex:1;">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('varBarcode').value = 'VAR-' + Date.now()" style="padding: 0 10px; height: 48px;">⚡</button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group buying-price-feature">
+                                        <label>Buy Price (₹)</label>
+                                        <input type="number" id="varBuyPrice" placeholder="0.00" onkeydown="handleVariantKeydown(event, 'varSellPrice')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Sell Price (₹)</label>
+                                        <input type="number" id="varSellPrice" placeholder="0.00" onkeydown="handleVariantKeydown(event, 'varStock')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Stock</label>
+                                        <input type="number" id="varStock" placeholder="0" value="0" onkeydown="handleVariantKeydown(event, 'varMinStock')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Min Stock</label>
+                                        <input type="number" id="varMinStock" placeholder="0" value="0" onkeydown="handleVariantKeydown(event, 'btnAddVar')">
+                                    </div>
+                                    <button id="btnAddVar" style="display:none;" onclick="addNewProductVariant()"></button>
+                                </div>
+                                
+                                <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 15px; background: white;">
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 16px;">
+                                        <thead style="background: #e9ecef;">
+                                            <tr>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Variant</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Barcode</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Buy Price</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Sell Price</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Stock</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="variantsTableBody">
+                                            <tr id="noVariantsRow"><td colspan="6" style="padding: 15px; text-align: center; color: #666; font-style: italic;">No variants added yet. Add variants above.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                         
                         <div style="padding: 10px 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; background: #f8f9fa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
@@ -5888,9 +5975,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 console.warn('⚠️ NO PRODUCTS FOUND IN LOCALSTORAGE!');
             }
 
+            isDataLoaded = true;
             // Refresh UI components
             updateDashboard();
             updateInventoryTable();
+            if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+            if (typeof renderPayablesTable === 'function') renderPayablesTable();
 
             console.log('🔄 About to call populateSaleProductSelect()...');
             populateSaleProductSelect();
@@ -6186,9 +6276,38 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // Initialize data structure
         let products = JSON.parse(localStorage.getItem('products')) || [];
+
+        // --- Product Variant Helper Functions ---
+        window.hasVariants = function(product) {
+            return product && Array.isArray(product.variants) && product.variants.length > 0;
+        };
+        
+        window.getProductVariants = function(product) {
+            if (window.hasVariants(product)) {
+                return product.variants;
+            }
+            return [];
+        };
+        
+        window.getVariantById = function(product, variantId) {
+            if (window.hasVariants(product)) {
+                return product.variants.find(v => String(v.id) === String(variantId)) || null;
+            }
+            return null;
+        };
+        
+        window.getVariantDisplayName = function(product, variant) {
+            if (!product) return 'Unknown Product';
+            if (variant && variant.variantName) {
+                return `${product.name} - ${variant.variantName}`;
+            }
+            return product.name || 'Unknown Product';
+        };
+
         let calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
         let dayClosings = JSON.parse(localStorage.getItem('dayClosings')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let isDataLoaded = false;
         let stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
         let purchaseOrders = JSON.parse(localStorage.getItem('purchaseOrders')) || [];
         let categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
@@ -6953,33 +7072,72 @@ input:focus, select:focus, textarea:focus, button:focus {
                 resultsDiv.style.display = 'none';
                 return;
             }
+            
+            let displayItems = [];
+            matches.forEach(p => {
+                if (window.hasVariants(p)) {
+                    p.variants.forEach(v => {
+                        displayItems.push({
+                            parent: p,
+                            variant: v,
+                            displayName: window.getVariantDisplayName(p, v),
+                            barcode: v.barcode,
+                            stock: v.stock
+                        });
+                    });
+                } else {
+                    displayItems.push({
+                        parent: p,
+                        variant: null,
+                        displayName: p.name,
+                        barcode: p.barcode,
+                        stock: p.stock
+                    });
+                }
+            });
+            displayItems = displayItems.slice(0, 15);
+            
             purchaseSearchHighlightIndex = -1;
-            resultsDiv.innerHTML = matches.map((p, index) => `
-                <div class="search-result-item" id="ps-result-${index}" onclick="selectPurchaseProduct(${p.id})">
-                    <strong>${p.name}</strong><br>
-                    <small>Barcode: ${p.barcode} | Stock: ${p.stock}</small>
+            resultsDiv.innerHTML = displayItems.map((item, index) => {
+                const varParam = item.variant ? `'${item.variant.id}'` : 'null';
+                return `
+                <div class="search-result-item" id="ps-result-${index}" onclick="selectPurchaseProduct('${item.parent.id}', ${varParam})">
+                    <strong>${item.displayName}</strong><br>
+                    <small>Barcode: ${item.barcode || '-'} | Stock: ${item.stock}</small>
                 </div>
-            `).join('');
+                `;
+            }).join('');
             resultsDiv.style.display = 'block';
         }
 
         // Select Product
-        function selectPurchaseProduct(id) {
-            selectedPurchaseProduct = products.find(p => p.id == id);
-            if (selectedPurchaseProduct) {
-                document.getElementById('purchaseProductName').textContent = selectedPurchaseProduct.name;
-                document.getElementById('purchaseCurrentStock').textContent = selectedPurchaseProduct.stock || 0;
-                document.getElementById('purchaseSelectedProduct').style.display = 'flex';
-                document.getElementById('purchaseSearchResults').style.display = 'none';
-                document.getElementById('purchaseSearchInput').value = ''; // Clear search
-                document.getElementById('purchaseQty').value = 1;
-                // Default to Cost Price
-                document.getElementById('purchaseItemPrice').value = selectedPurchaseProduct.costPrice || 0;
-                const gstInput = document.getElementById('purchaseItemGST');
-                if (gstInput) gstInput.value = selectedPurchaseProduct.gstRate || 0;
-                // Focus qty
-                document.getElementById('purchaseQty').focus();
+        function selectPurchaseProduct(id, variantId = null) {
+            const parent = products.find(p => String(p.id) === String(id));
+            if (!parent) return;
+            
+            let variant = null;
+            if (variantId) {
+                variant = window.getVariantById(parent, variantId);
             }
+            
+            selectedPurchaseProduct = parent;
+            window.selectedPurchaseVariant = variant;
+            
+            document.getElementById('purchaseProductName').textContent = window.getVariantDisplayName(parent, variant);
+            document.getElementById('purchaseCurrentStock').textContent = variant ? (variant.stock || 0) : (parent.stock || 0);
+            
+            document.getElementById('purchaseSelectedProduct').style.display = 'flex';
+            document.getElementById('purchaseSearchResults').style.display = 'none';
+            document.getElementById('purchaseSearchInput').value = ''; // Clear search
+            document.getElementById('purchaseQty').value = 1;
+            
+            // Default to Cost Price / Buy Price
+            document.getElementById('purchaseItemPrice').value = variant ? (variant.buyingPrice || 0) : (parent.costPrice || 0);
+            
+            const gstInput = document.getElementById('purchaseItemGST');
+            if (gstInput) gstInput.value = parent.gstRate || 0;
+            
+            document.getElementById('purchaseQty').focus();
         }
 
         // Add to Cart
@@ -7007,7 +7165,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
-            const existing = purchaseCart.find(i => i.productId === selectedPurchaseProduct.id);
+            const existing = purchaseCart.find(i => 
+                String(i.productId) === String(selectedPurchaseProduct.id) && 
+                String(i.variantId) === String(window.selectedPurchaseVariant ? window.selectedPurchaseVariant.id : 'undefined')
+            );
+            
             if (existing) {
                 existing.qty += qty;
                 existing.price = price;
@@ -7015,9 +7177,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 existing.total = existing.qty * price;
             } else {
                 purchaseCart.push({
-                    productId: selectedPurchaseProduct.id, // Store ID link
-                    barcode: selectedPurchaseProduct.barcode,
-                    name: selectedPurchaseProduct.name,
+                    productId: selectedPurchaseProduct.id,
+                    variantId: window.selectedPurchaseVariant ? window.selectedPurchaseVariant.id : undefined,
+                    variantName: window.selectedPurchaseVariant ? window.selectedPurchaseVariant.variantName : undefined,
+                    barcode: window.selectedPurchaseVariant ? window.selectedPurchaseVariant.barcode : selectedPurchaseProduct.barcode,
+                    name: window.getVariantDisplayName(selectedPurchaseProduct, window.selectedPurchaseVariant),
                     qty: qty,
                     price: price,
                     total: qty * price,
@@ -8162,16 +8326,28 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const productIndex = products.findIndex(p => p.id === item.productId);
                 if (productIndex !== -1) {
                     const qtyToAdd = parseFloat(item.qty || item.quantity || 0);
-                    products[productIndex].stock = parseFloat((products[productIndex].stock + qtyToAdd).toFixed(3));
-                    
-                    // Master product buying price synchronization
-                    if (item.price !== undefined && item.price !== null) {
-                        products[productIndex].costPrice = parseFloat(item.price);
+                    let productRef = products[productIndex];
+                    let variantRef = null;
+                    if (item.variantId) {
+                        variantRef = window.getVariantById(productRef, item.variantId);
+                    }
+
+                    if (variantRef) {
+                        variantRef.stock = parseFloat(((variantRef.stock || 0) + qtyToAdd).toFixed(3));
+                        if (item.price !== undefined && item.price !== null) {
+                            variantRef.buyingPrice = parseFloat(item.price);
+                        }
+                    } else {
+                        productRef.stock = parseFloat(((productRef.stock || 0) + qtyToAdd).toFixed(3));
+                        if (item.price !== undefined && item.price !== null) {
+                            productRef.costPrice = parseFloat(item.price);
+                        }
                     }
                     
                     stockHistory.push({
                         date: record.date,
                         productId: item.productId,
+                        variantId: item.variantId || undefined,
                         productName: item.name || item.productName || 'Unknown Product',
                         type: 'purchase',
                         quantity: qtyToAdd,
@@ -8272,6 +8448,225 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
+        // --- Variant UI Logic ---
+        let currentNewProductVariants = [];
+
+        function toggleVariantUI() {
+            const hasVariants = document.getElementById('newProductHasVariants').checked;
+            
+            // Variants are additive: do NOT hide parent-level fields.
+            // Only toggle the variant section visibility.
+            document.getElementById('variantSection').style.display = hasVariants ? 'block' : 'none';
+        }
+
+        function handleVariantKeydown(e, nextId) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (nextId === 'btnAddVar') {
+                    addNewProductVariant();
+                } else {
+                    const nextEl = document.getElementById(nextId);
+                    if (nextEl) nextEl.focus();
+                }
+            }
+        }
+
+        function isBarcodeGloballyUnique(barcode) {
+            if (!barcode) return true;
+            barcode = String(barcode).trim();
+            for (const p of products) {
+                if (p.barcode && String(p.barcode).trim() === barcode) return false;
+                if (window.hasVariants(p)) {
+                    for (const v of p.variants) {
+                        if (v.barcode && String(v.barcode).trim() === barcode) return false;
+                    }
+                }
+            }
+            for (const v of currentNewProductVariants) {
+                if (v.barcode && String(v.barcode).trim() === barcode) return false;
+            }
+            return true;
+        }
+
+        function addNewProductVariant() {
+            const name = document.getElementById('varName').value.trim();
+            const barcode = document.getElementById('varBarcode').value.trim();
+            const buyPrice = parseFloat(document.getElementById('varBuyPrice').value) || 0;
+            const sellPrice = parseFloat(document.getElementById('varSellPrice').value) || 0;
+            const stock = parseInt(document.getElementById('varStock').value) || 0;
+            const minStock = parseInt(document.getElementById('varMinStock').value) || 0;
+            
+            if (!name) {
+                showAlert('Variant Name is required.', '⚠️');
+                return;
+            }
+            
+            const parentNameEl = document.getElementById('newProductName');
+            const parentNameVal = parentNameEl ? parentNameEl.value.trim() : 'Current Product';
+            const parentName = parentNameEl ? parentNameEl.value.trim().toLowerCase() : '';
+
+            const lowerName = name.toLowerCase();
+            if (currentNewProductVariants.some(v => v.variantName.toLowerCase() === lowerName)) {
+                showAlert(`Variant ${name} already exists for ${parentNameVal}.`, '⚠️');
+                return;
+            }
+            
+            if (parentName) {
+                const existingParent = products.find(p => p.name.trim().toLowerCase() === parentName);
+                if (existingParent && window.hasVariants(existingParent)) {
+                    if (existingParent.variants.some(v => String(v.variantName).toLowerCase() === lowerName)) {
+                        showAlert(`Variant ${name} already exists for ${existingParent.name}.`, '⚠️');
+                        return;
+                    }
+                }
+            }
+            
+            if (barcode && !isBarcodeGloballyUnique(barcode)) {
+                showAlert('Barcode already exists globally!', '⚠️');
+                return;
+            }
+            
+            const newVariant = {
+                id: 'var-' + Date.now(),
+                variantName: name,
+                barcode: barcode,
+                buyingPrice: buyPrice,
+                sellingPrice: sellPrice,
+                stock: stock,
+                minimumStock: minStock
+            };
+            
+            currentNewProductVariants.push(newVariant);
+            renderVariantsTable();
+            
+            document.getElementById('varName').value = '';
+            document.getElementById('varBarcode').value = '';
+            document.getElementById('varName').focus();
+        }
+
+        function copyNewProductVariant() {
+            // Open "Copy Existing Variant" modal unconditionally
+            document.getElementById('copyExistingVariantModal').style.display = 'flex';
+            document.getElementById('copyExistingSearchInput').value = '';
+            document.getElementById('copyExistingSearchResults').innerHTML = '<div style="padding:10px; color:#666; font-style: italic;">Search for a product that already has variants.</div>';
+            document.getElementById('copyExistingVariantSelection').style.display = 'none';
+            setTimeout(() => document.getElementById('copyExistingSearchInput').focus(), 100);
+        }
+        
+        // --- Copy Existing Variant Logic ---
+        let currentCopyProduct = null;
+        
+        function searchExistingVariantProduct(query) {
+            const resultsDiv = document.getElementById('copyExistingSearchResults');
+            if (!query) {
+                resultsDiv.innerHTML = '<div style="padding:10px; color:#666; font-style: italic;">Search for a product that already has variants.</div>';
+                return;
+            }
+            // Use unified search
+            const matches = searchProductsUnified(query, products).filter(p => window.hasVariants(p)).slice(0, 10);
+            
+            if (matches.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding:10px; color:#666; color: #dc3545; font-weight: bold;">No products with variants found.</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = matches.map(p => `
+                <div class="search-result-item" onclick="selectExistingVariantProduct('${p.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
+                    <strong>${p.name}</strong>
+                    <br><small>${p.variants.length} variants</small>
+                </div>
+            `).join('');
+        }
+        
+        function selectExistingVariantProduct(id) {
+            currentCopyProduct = products.find(p => String(p.id) === String(id));
+            if (!currentCopyProduct) return;
+            
+            document.getElementById('copyExistingSearchResults').innerHTML = '';
+            const variantDiv = document.getElementById('copyExistingVariantSelection');
+            variantDiv.style.display = 'block';
+            
+            variantDiv.innerHTML = `
+                <h5 style="margin-top:0;">Select Variant from ${currentCopyProduct.name}</h5>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+                    ${currentCopyProduct.variants.map(v => `
+                        <div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; display:flex; justify-content:space-between;" onclick="executeCopyVariant('${v.id}')">
+                            <span>${window.getVariantDisplayName(currentCopyProduct, v)}</span>
+                            <span>₹${v.sellingPrice || 0}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function executeCopyVariant(variantId) {
+            if (!currentCopyProduct) return;
+            const variant = window.getVariantById(currentCopyProduct, variantId);
+            if (!variant) return;
+            
+            if (window.isCopyingForInventory) {
+                document.getElementById('addVariantBuyPrice').value = variant.buyingPrice || 0;
+                document.getElementById('addVariantSellPrice').value = variant.sellingPrice || 0;
+                document.getElementById('addVariantStock').value = 0;
+                document.getElementById('addVariantMinStock').value = variant.minimumStock || 0;
+                document.getElementById('addVariantBarcode').value = 'DDS-' + Date.now().toString().slice(-7);
+                document.getElementById('copyExistingVariantModal').style.display = 'none';
+                window.isCopyingForInventory = false;
+                document.getElementById('addVariantName').focus();
+            } else {
+                document.getElementById('varBuyPrice').value = variant.buyingPrice || 0;
+                document.getElementById('varSellPrice').value = variant.sellingPrice || 0;
+                document.getElementById('varStock').value = 0; // DO NOT copy stock
+                document.getElementById('varMinStock').value = variant.minimumStock || 0;
+                document.getElementById('varBarcode').value = 'DDS-' + Date.now().toString().slice(-7);
+                document.getElementById('varName').value = variant.variantName;
+                document.getElementById('copyExistingVariantModal').style.display = 'none';
+                document.getElementById('varName').focus();
+                document.getElementById('varName').select();
+            }
+        }
+        
+
+        function renderVariantsTable() {
+            const tbody = document.getElementById('variantsTableBody');
+            if (currentNewProductVariants.length === 0) {
+                tbody.innerHTML = '<tr id="noVariantsRow"><td colspan="6" style="padding: 10px; text-align: center; color: #666; font-style: italic;">No variants added yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = currentNewProductVariants.map((v, index) => `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">${v.variantName}</td>
+                    <td style="padding: 10px;">${v.barcode || '-'}</td>
+                    <td style="padding: 10px;">₹${v.buyingPrice.toFixed(2)}</td>
+                    <td style="padding: 10px;">₹${v.sellingPrice.toFixed(2)}</td>
+                    <td style="padding: 10px;">${v.stock}</td>
+                    <td style="padding: 10px;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeVariant(${index})" style="padding: 4px 8px;">🗑</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function removeVariant(index) {
+            currentNewProductVariants.splice(index, 1);
+            renderVariantsTable();
+        }
+
+        // Hook into open modal to reset
+        const origShowPurchaseAddNewProductForm = window.showPurchaseAddNewProductForm;
+        window.showPurchaseAddNewProductForm = function() {
+            currentNewProductVariants = [];
+            renderVariantsTable();
+            const checkbox = document.getElementById('newProductHasVariants');
+            if (checkbox) {
+                checkbox.checked = false;
+                toggleVariantUI();
+            }
+            if (origShowPurchaseAddNewProductForm) {
+                origShowPurchaseAddNewProductForm();
+            }
+        };
+
         function addNewProductToPurchase() {
             try {
                 const barcodeEl = document.getElementById('newProductBarcode');
@@ -8361,9 +8756,15 @@ input:focus, select:focus, textarea:focus, button:focus {
                     });
                 }
 
-                // Check duplicate barcode
-                if (barcode && products.some(p => p.barcode === barcode)) {
-                    showAlert('Barcode already exists!', '⚠️');
+                const hasVariants = document.getElementById('newProductHasVariants') && document.getElementById('newProductHasVariants').checked;
+                
+                if (!hasVariants && barcode && !isBarcodeGloballyUnique(barcode)) {
+                    showAlert('Barcode already exists globally!', '⚠️');
+                    return;
+                }
+                
+                if (hasVariants && currentNewProductVariants.length === 0) {
+                    showAlert('Please add at least one variant!', '⚠️');
                     return;
                 }
                 // 2. Fuzzy Name Check (≥ 0.65 Match)
@@ -8384,45 +8785,55 @@ input:focus, select:focus, textarea:focus, button:focus {
                     
                     if (newProd) {
                         // Update existing
-                        newProd.barcode = barcode || newProd.barcode;
+                        if (!hasVariants) {
+                            newProd.barcode = barcode || newProd.barcode;
+                            newProd.price = sellingPrice;
+                            newProd.costPrice = costPrice;
+                            newProd.stock = (parseInt(newProd.stock) || 0) + stock;
+                            newProd.minStock = minStock;
+                        }
                         newProd.category = category;
                         newProd.unit = unit;
                         if (newProd.expiryDays !== expiryDays) {
                             newProd.expiryDays = expiryDays;
                             newProd.expiryDate = expiryDate;
                         }
-                        newProd.price = sellingPrice;
-                        newProd.costPrice = costPrice;
                         newProd.hsn = hsn;
                         newProd.gstRate = gstRate;
-                        newProd.stock = (parseInt(newProd.stock) || 0) + stock;
-                        newProd.minStock = minStock;
                         if (desc) newProd.description = desc;
                         if (supplier) newProd.supplier = supplier;
                         if (packSizes.length > 0) newProd.packSizes = packSizes;
                         if (imageBase64) newProd.image = imageBase64;
+                        
+                        if (hasVariants) {
+                            if (!newProd.variants) newProd.variants = [];
+                            newProd.variants.push(...currentNewProductVariants);
+                        }
                     } else {
                         // Create new
                         newProd = {
                             id: Date.now(),
-                            barcode: barcode || 'Manual-' + Date.now(),
+                            barcode: hasVariants ? '' : (barcode || 'Manual-' + Date.now()),
                             name: name,
                             category: category,
                             unit: unit,
                             expiryDays: expiryDays,
                             expiryDate: expiryDate,
-                            price: sellingPrice,
-                            costPrice: costPrice,
+                            price: hasVariants ? 0 : sellingPrice,
+                            costPrice: hasVariants ? 0 : costPrice,
                             hsn: hsn,
                             gstRate: gstRate,
-                            stock: stock,
-                            minStock: minStock,
+                            stock: hasVariants ? 0 : stock,
+                            minStock: hasVariants ? 0 : minStock,
                             description: desc,
                             supplier: supplier,
                             packSizes: packSizes,
                             image: imageBase64,
                             isFavourite: false
                         };
+                        if (hasVariants) {
+                            newProd.variants = [...currentNewProductVariants];
+                        }
                         products.push(newProd);
                     }
 
@@ -9023,18 +9434,35 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function loadProductByBarcode(barcode, mode) {
-            const product = products.find(p => p.barcode === barcode);
+            let foundProduct = null;
+            let foundVariant = null;
 
-            if (product) {
+            for (let p of products) {
+                if (p.barcode === barcode) {
+                    foundProduct = p;
+                    break;
+                }
+                if (window.hasVariants(p)) {
+                    let v = p.variants.find(v => v.barcode === barcode);
+                    if (v) {
+                        foundProduct = p;
+                        foundVariant = v;
+                        break;
+                    }
+                }
+            }
+
+            if (foundProduct) {
                 if (mode === 'sale') {
-                    if (product.stock <= 0) {
-                        showAlert(`Product ${product.name} is out of stock!`, '❌');
+                    let effStock = foundVariant ? (foundVariant.stock || 0) : (foundProduct.stock || 0);
+                    if (effStock <= 0) {
+                        showAlert(`Product ${window.getVariantDisplayName(foundProduct, foundVariant)} is out of stock!`, '❌');
                         document.getElementById('quickSaleBarcode').value = '';
                         return;
                     }
-                    selectBarcodeProduct(product);
+                    selectBarcodeProduct(foundProduct, foundVariant);
                 } else if (mode === 'stock') {
-                    selectStockBarcodeProduct(product);
+                    selectStockBarcodeProduct(foundProduct, foundVariant);
                 }
             } else {
                 showAlert(`Product with barcode ${barcode} not found. Please add it first.`, '⚠️');
@@ -9043,11 +9471,27 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
         function quickAddToSale(barcode) {
-            const product = products.find(p => p.barcode === barcode);
-            if (product) {
+            let foundProduct = null;
+            let foundVariant = null;
+
+            for (let p of products) {
+                if (p.barcode === barcode) {
+                    foundProduct = p;
+                    break;
+                }
+                if (window.hasVariants(p)) {
+                    let v = p.variants.find(v => v.barcode === barcode);
+                    if (v) {
+                        foundProduct = p;
+                        foundVariant = v;
+                        break;
+                    }
+                }
+            }
+            if (foundProduct) {
                 switchTab('sales');
                 setTimeout(() => {
-                    onSaleProductChange(product.id);
+                    onSaleProductChange(foundProduct.id, foundVariant ? foundVariant.id : null);
                 }, 100);
             }
         }
@@ -9376,20 +9820,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             const sortedProducts = getSortedProducts(filteredProducts);
 
             tbody.innerHTML = sortedProducts.map(product => {
-                // Inline stock status logic since getStockStatus helper is missing
-                let stockStatus = '';
-                let statusText = '';
-                if (product.stock <= 0) {
-                    stockStatus = 'stock-low';
-                    statusText = '🔴 Out of Stock';
-                } else if (product.stock <= product.minStock) {
-                    stockStatus = 'stock-low';
-                    statusText = '🟡 Low Stock';
-                } else {
-                    stockStatus = 'stock-ok';
-                    statusText = '🟢 In Stock';
-                }
-
                 let displayDiscount = '<span style="color:#aaa;">—</span>';
                 if (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") {
                     displayDiscount = '<strong>' + product.productDiscount + '%</strong>';
@@ -9403,28 +9833,121 @@ input:focus, select:focus, textarea:focus, button:focus {
                     expiryDisplay = `${formattedDate}`;
                 }
 
-                const totalValue = (product.price * product.stock).toFixed(2);
+                if (window.hasVariants(product)) {
+                    let rows = '';
+                    // Determine if parent has its own meaningful inventory (stock > 0 or price > 0 or barcode)
+                    const parentHasOwnInventory = (product.stock > 0) || (product.price > 0) || product.barcode;
+                    
+                    if (parentHasOwnInventory) {
+                        let pStock = product.stock || 0;
+                        let pMinStock = product.minStock || 0;
+                        let pStockStatus = pStock <= 0 ? 'stock-low' : (pStock <= pMinStock ? 'stock-low' : 'stock-ok');
+                        let pStatusText = pStock <= 0 ? '🔴 Out of Stock' : (pStock <= pMinStock ? '🟡 Low Stock' : '🟢 In Stock');
+                        let pTotalValue = ((product.price || 0) * pStock).toFixed(2);
+                        rows += `
+                        <tr data-product-id="${product.id}">
+                            <td>${product.barcode || 'N/A'}</td>
+                            <td>${product.name}</td>
+                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
+                            <td>${product.category || 'Uncategorized'}</td>
+                            <td class="expiry-tracking-feature">${expiryDisplay}</td>
+                            <td class="${pStockStatus}">${pStock}</td>
+                            <td>₹${(product.price || 0).toFixed(2)}</td>
+                            <td>${displayDiscount}</td>
+                            <td>₹${pTotalValue}</td>
+                            <td class="${pStockStatus}">${pStatusText}</td>
+                            <td>
+                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
+                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
+                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
+                            </td>
+                        </tr>`;
+                    } else {
+                        // Variant-only parent: show a lightweight header row with + Variant action
+                        rows += `
+                        <tr data-product-id="${product.id}" style="background-color: #f8f9fa;">
+                            <td style="color:#999;">—</td>
+                            <td><strong>${product.name}</strong> <span style="color:#888; font-size:12px;">(${product.variants.length} variant${product.variants.length > 1 ? 's' : ''})</span></td>
+                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
+                            <td>${product.category || 'Uncategorized'}</td>
+                            <td class="expiry-tracking-feature">—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>
+                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
+                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
+                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
+                            </td>
+                        </tr>`;
+                    }
 
-                return `
-                <tr data-product-id="${product.id}" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
-                    <td>${product.barcode || 'N/A'}</td>
-                    <td>${product.name}</td>
-                    ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
-                    ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
-                    <td>${product.category || 'Uncategorized'}</td>
-                    <td class="expiry-tracking-feature">${expiryDisplay}</td>
-                    <td class="${stockStatus}">${product.stock}</td>
-                    <td>₹${product.price.toFixed(2)}</td>
-                    <td>${displayDiscount}</td>
-                    <td>₹${totalValue}</td>
-                    <td class="${stockStatus}">${statusText}</td>
-                    <td>
-                        <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
-                        ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
-                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
-                    </td>
-                </tr>
-            `}).join('');
+                    // Render each variant as an independent flat row
+                    product.variants.forEach(v => {
+                        let vStock = parseInt(v.stock) || 0;
+                        let vMinStock = parseInt(v.minimumStock) || 0;
+                        let stockStatus = vStock <= 0 ? 'stock-low' : (vStock <= vMinStock ? 'stock-low' : 'stock-ok');
+                        let statusText = vStock <= 0 ? '🔴 Out of Stock' : (vStock <= vMinStock ? '🟡 Low Stock' : '🟢 In Stock');
+                        let totalValue = ((v.sellingPrice || 0) * vStock).toFixed(2);
+                        let vDisplayName = window.getVariantDisplayName(product, v);
+                        rows += `
+                        <tr data-product-id="${product.id}" data-variant-id="${v.id}">
+                            <td>${v.barcode || '-'}</td>
+                            <td>${vDisplayName}</td>
+                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
+                            <td>${product.category || 'Uncategorized'}</td>
+                            <td class="expiry-tracking-feature">—</td>
+                            <td class="${stockStatus}">${vStock}</td>
+                            <td>₹${(v.sellingPrice || 0).toFixed(2)}</td>
+                            <td>—</td>
+                            <td>₹${totalValue}</td>
+                            <td class="${stockStatus}">${statusText}</td>
+                            <td>
+                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryVariant('${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
+                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete">Del</button>` : ''}
+                            </td>
+                        </tr>`;
+                    });
+
+                    return rows;
+                } else {
+                    let stockStatus = '';
+                    let statusText = '';
+                    if (product.stock <= 0) {
+                        stockStatus = 'stock-low';
+                        statusText = '🔴 Out of Stock';
+                    } else if (product.stock <= product.minStock) {
+                        stockStatus = 'stock-low';
+                        statusText = '🟡 Low Stock';
+                    } else {
+                        stockStatus = 'stock-ok';
+                        statusText = '🟢 In Stock';
+                    }
+                    const totalValue = (product.price * product.stock).toFixed(2);
+                    
+                    return `
+                    <tr data-product-id="${product.id}" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
+                        <td>${product.barcode || 'N/A'}</td>
+                        <td>${product.name}</td>
+                        ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
+                        ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
+                        <td>${product.category || 'Uncategorized'}</td>
+                        <td class="expiry-tracking-feature">${expiryDisplay}</td>
+                        <td class="${stockStatus}">${product.stock}</td>
+                        <td>₹${product.price.toFixed(2)}</td>
+                        <td>${displayDiscount}</td>
+                        <td>₹${totalValue}</td>
+                        <td class="${stockStatus}">${statusText}</td>
+                        <td>
+                            <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
+                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
+                            ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
+                        </td>
+                    </tr>`;
+                }
+            }).join('');
         }
 
         function filterInventoryTable() {
@@ -9468,7 +9991,11 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
             }
-            const productId = parseInt(document.getElementById('updateStockProductId').value);
+            const productIdStr = document.getElementById('updateStockProductId').value;
+            const productId = !isNaN(parseInt(productIdStr)) ? parseInt(productIdStr) : productIdStr;
+            const variantIdField = document.getElementById('updateStockVariantId');
+            const variantId = variantIdField ? variantIdField.value : '';
+            
             const qtyStr = document.getElementById('addStockQuantity').value;
             const priceStr = document.getElementById('updateStockPrice').value;
             
@@ -9498,8 +10025,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const product = products.find(p => p.id === productId);
+            const product = products.find(p => String(p.id) === String(productId));
             if (product) {
+                let variantRef = null;
+                if (variantId) {
+                    variantRef = window.getVariantById(product, variantId);
+                }
+
                 if (hasQuantity) {
                     if (product.quantityType === 'decimal') {
                         const prec = product.decimalPrecision || 0.01;
@@ -9515,20 +10047,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                         }
                     }
 
-                    product.stock = parseFloat((product.stock + quantity).toFixed(3));
+                    if (variantRef) {
+                        variantRef.stock = parseFloat(((variantRef.stock || 0) + quantity).toFixed(3));
+                    } else {
+                        product.stock = parseFloat(((product.stock || 0) + quantity).toFixed(3));
+                    }
 
                     stockHistory.push({
                         date: new Date().toISOString(),
-                        productId: productId,
-                        productName: product.name,
+                        productId: product.id,
+                        variantId: variantId || undefined,
+                        productName: window.getVariantDisplayName(product, variantRef),
                         type: 'addition',
                         quantity: quantity,
-                        newStock: product.stock
+                        newStock: variantRef ? variantRef.stock : product.stock
                     });
                 }
                 
                 if (hasPrice) {
-                    product.price = parseFloat(price.toFixed(2));
+                    if (variantRef) {
+                        variantRef.sellingPrice = parseFloat(price.toFixed(2));
+                    } else {
+                        product.price = parseFloat(price.toFixed(2));
+                    }
                 }
 
                 saveData();
@@ -9536,39 +10077,22 @@ input:focus, select:focus, textarea:focus, button:focus {
                 updateDashboard();
 
                 document.getElementById('updateStockProductId').value = '';
+                if(variantIdField) variantIdField.value = '';
                 document.getElementById('stockBarcode').value = '';
                 document.getElementById('addStockQuantity').value = '';
                 if(document.getElementById('updateStockPrice')) document.getElementById('updateStockPrice').value = '';
                 if(document.getElementById('addStockUnit')) document.getElementById('addStockUnit').innerText = '';
                 document.getElementById('stockBarcodeClear').style.display = 'none';
                 
-                let msg = `Successfully updated ${product.name}!`;
-                if(hasQuantity && hasPrice) msg = `Successfully added ${quantity} units and updated price to ₹${price} for ${product.name}`;
-                else if(hasQuantity) msg = `Successfully added ${quantity} units to ${product.name}`;
-                else if(hasPrice) msg = `Successfully updated price to ₹${price} for ${product.name}`;
-                
+                const dispName = window.getVariantDisplayName(product, variantRef);
+                let msg = `Successfully updated ${dispName}!`;
+                if(hasQuantity && hasPrice) msg = `Successfully added ${quantity} units and updated price to ₹${price} for ${dispName}`;
+                else if(hasQuantity) msg = `Successfully added ${quantity} units to ${dispName}`;
+                else if(hasPrice) msg = `Successfully updated price to ₹${price} for ${dispName}`;
+
                 showAlert(msg, '✅');
-                
-                // Return focus for continuous data entry when modal closes
-                window.popupCloseCallback = function() {
-                    const searchEl = document.getElementById('stockBarcode');
-                    if(searchEl) searchEl.focus();
-                };
             }
         }
-
-        // Cart Management Functions
-        let comboboxSelectedIndex = -1;
-        
-        // Payment Combobox State
-        let paymentMethodsList = [
-            { value: 'cash', text: 'Cash Only' },
-            { value: 'card', text: 'Card' },
-            { value: 'upi', text: 'UPI' },
-            { value: 'credit', text: 'Credit' },
-            { value: 'mixed', text: 'Mixed (Cash + UPI/Balance)' }
-        ];
-        let paymentComboboxSelectedIndex = -1;
 
         function populatePaymentMethodSelect(searchTerm = '') {
             const dropdown = document.getElementById('paymentMethodDropdown');
@@ -9776,20 +10300,34 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (prompt) prompt.style.display = 'none';
             }
 
-            filteredProducts.forEach((product, index) => {
+            let displayItems = [];
+            filteredProducts.forEach(p => {
+                if (window.hasVariants(p)) {
+                    p.variants.forEach(v => {
+                        displayItems.push({ parent: p, variant: v, displayName: window.getVariantDisplayName(p, v), barcode: v.barcode, stock: v.stock });
+                    });
+                } else {
+                    displayItems.push({ parent: p, variant: null, displayName: p.name, barcode: p.barcode, stock: p.stock });
+                }
+            });
+            displayItems = displayItems.slice(0, 15);
+
+            displayItems.forEach((itemObj, index) => {
+                const product = itemObj.parent;
+                const variant = itemObj.variant;
                 const item = document.createElement('div');
                 item.className = 'custom-dropdown-item';
                 
-                let displayText = product.name;
-                if (product.barcode && product.barcode !== 'N/A') {
-                    displayText += ` | ${product.barcode}`;
+                let displayText = itemObj.displayName;
+                if (itemObj.barcode && itemObj.barcode !== 'N/A') {
+                    displayText += ` | ${itemObj.barcode}`;
                 }
-                displayText += ` (Stock: ${product.stock})`;
+                displayText += ` (Stock: ${itemObj.stock})`;
                 item.textContent = displayText;
                 item.dataset.id = product.id;
                 
                 item.onclick = function() {
-                    onSaleProductChange(product.id);
+                    onSaleProductChange(product.id, variant ? variant.id : null);
                 };
                 dropdown.appendChild(item);
             });
@@ -10062,19 +10600,32 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
 
             dropdown.innerHTML = '';
-            matchingProducts.forEach((product, index) => {
+            
+            let displayItems = [];
+            matchingProducts.forEach(p => {
+                if (window.hasVariants(p)) {
+                    p.variants.forEach(v => {
+                        displayItems.push({ parent: p, variant: v, displayName: window.getVariantDisplayName(p, v), barcode: v.barcode, stock: v.stock, price: v.sellingPrice });
+                    });
+                } else {
+                    displayItems.push({ parent: p, variant: null, displayName: p.name, barcode: p.barcode, stock: p.stock, price: p.price });
+                }
+            });
+            displayItems = displayItems.slice(0, 15);
+
+            displayItems.forEach((itemObj, index) => {
                 const item = document.createElement('div');
                 item.className = 'custom-dropdown-item';
                 
                 let html = `<div style="display: flex; flex-direction: column;">`;
-                html += `<div style="font-weight: 500;">${product.barcode} - ${product.name}</div>`;
-                html += `<div style="font-size: 0.85em; color: #666;">Stock: ${product.stock} | Price: ₹${product.price}</div>`;
+                html += `<div style="font-weight: 500;">${itemObj.barcode} - ${itemObj.displayName}</div>`;
+                html += `<div style="font-size: 0.85em; color: #666;">Stock: ${itemObj.stock} | Price: ₹${itemObj.price}</div>`;
                 html += `</div>`;
                 
                 item.innerHTML = html;
                 
                 item.onclick = function() {
-                    selectBarcodeProduct(product);
+                    selectBarcodeProduct(itemObj.parent, itemObj.variant);
                     dropdown.style.display = 'none';
                 };
                 
@@ -10093,7 +10644,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function selectBarcodeProduct(product) {
+        function selectBarcodeProduct(product, variant = null) {
             // Clear barcode input
             document.getElementById('quickSaleBarcode').value = '';
             document.getElementById('quickSaleBarcodeClear').style.display = 'none';
@@ -10102,7 +10653,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('saleQuantity').value = 1;
             
             // Re-use existing Add Item to Sale logic (sets Product, Price, Units, and moves focus to Units/Quantity)
-            onSaleProductChange(product.id);
+            onSaleProductChange(product.id, variant ? variant.id : null);
         }
 
         // --- Stock Barcode Autocomplete ---
@@ -10119,6 +10670,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const searchInput = document.getElementById('stockBarcode');
             searchInput.value = '';
             document.getElementById('updateStockProductId').value = '';
+            const vid = document.getElementById('updateStockVariantId');
+            if (vid) vid.value = '';
             document.getElementById('stockBarcodeClear').style.display = 'none';
             document.getElementById('stockBarcodeDropdown').style.display = 'none';
             searchInput.focus();
@@ -10142,19 +10695,53 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
 
             dropdown.innerHTML = '';
-            matchingProducts.forEach((product, index) => {
+            let displayItems = [];
+            
+            const tokens = searchTerm.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+            
+            matchingProducts.forEach(p => {
+                if (window.hasVariants(p)) {
+                    p.variants.forEach(v => {
+                        const dName = window.getVariantDisplayName(p, v);
+                        const vBar = v.barcode || '';
+                        
+                        // Check if ALL tokens match this specific variant's name, parent name, or barcode
+                        let allTokensMatchVariant = true;
+                        if (tokens.length > 0) {
+                            for (let token of tokens) {
+                                if (!dName.toLowerCase().includes(token) && !vBar.toLowerCase().includes(token) && !p.name.toLowerCase().includes(token)) {
+                                    allTokensMatchVariant = false;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Also if the query is an exact barcode match, only show that variant
+                        if (searchTerm.trim() === vBar) allTokensMatchVariant = true;
+                        
+                        if (allTokensMatchVariant) {
+                            displayItems.push({ parent: p, variant: v, displayName: dName, barcode: v.barcode, stock: v.stock, price: v.sellingPrice });
+                        }
+                    });
+                } else {
+                    displayItems.push({ parent: p, variant: null, displayName: p.name, barcode: p.barcode, stock: p.stock, price: p.price });
+                }
+            });
+            displayItems = displayItems.slice(0, 15);
+
+            displayItems.forEach((itemObj, index) => {
                 const item = document.createElement('div');
                 item.className = 'custom-dropdown-item';
                 
                 let html = `<div style="display: flex; flex-direction: column;">`;
-                html += `<div style="font-weight: 500;">${product.barcode ? product.barcode + ' - ' : ''}${product.name}</div>`;
-                html += `<div style="font-size: 0.85em; color: #666;">Stock: ${product.stock} | Price: ₹${product.price}</div>`;
+                html += `<div style="font-weight: 500;">${itemObj.barcode ? itemObj.barcode + ' - ' : ''}${itemObj.displayName}</div>`;
+                html += `<div style="font-size: 0.85em; color: #666;">Stock: ${itemObj.stock || 0} | Price: ₹${itemObj.price || 0}</div>`;
                 html += `</div>`;
                 
                 item.innerHTML = html;
                 
                 item.onclick = function() {
-                    selectStockBarcodeProduct(product);
+                    selectStockBarcodeProduct(itemObj.parent, itemObj.variant);
                     dropdown.style.display = 'none';
                 };
                 
@@ -10173,17 +10760,27 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function selectStockBarcodeProduct(product) {
+        function selectStockBarcodeProduct(product, variant = null) {
             // Set the value in the input visually
-            document.getElementById('stockBarcode').value = `${product.barcode ? product.barcode + ' - ' : ''}${product.name}`;
+            const bc = variant ? variant.barcode : product.barcode;
+            document.getElementById('stockBarcode').value = `${bc ? bc + ' - ' : ''}${window.getVariantDisplayName(product, variant)}`;
             document.getElementById('stockBarcodeClear').style.display = 'block';
             
             // Set the hidden ID
             document.getElementById('updateStockProductId').value = product.id;
             
+            let variantIdField = document.getElementById('updateStockVariantId');
+            if(!variantIdField) {
+                variantIdField = document.createElement('input');
+                variantIdField.type = 'hidden';
+                variantIdField.id = 'updateStockVariantId';
+                document.getElementById('updateStockProductId').parentNode.appendChild(variantIdField);
+            }
+            variantIdField.value = variant ? variant.id : '';
+            
             // Set the price and unit if elements exist
             const priceEl = document.getElementById('updateStockPrice');
-            if(priceEl) priceEl.value = product.price || '';
+            if(priceEl) priceEl.value = variant ? (variant.sellingPrice || '') : (product.price || '');
             const unitEl = document.getElementById('addStockUnit');
             if(unitEl) unitEl.innerText = product.unit || 'Piece';
             
@@ -10313,7 +10910,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function onSaleProductChange(productId) {
+        function onSaleProductChange(productId, variantId = null) {
             try {
                 if (!productId) return;
                 
@@ -10333,11 +10930,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                 unitSelect.innerHTML = '<option value="">Select Unit...</option>';
                 priceInput.value = '';
 
-                const product = products.find(p => p.id === productId);
+                const product = products.find(p => String(p.id) === String(productId));
                 if (!product) {
                     console.error("Selected product not found:", productId);
                     return;
                 }
+                
+                let variant = null;
+                if (variantId) {
+                    variant = window.getVariantById(product, variantId);
+                }
+                window.selectedSaleVariant = variant;
                 
                 const saleQtyInput = document.getElementById('saleQuantity');
                 if (saleQtyInput) {
@@ -10352,18 +10955,19 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 }
 
-                if (product.stock <= 0) {
+                const effStock = variant ? (variant.stock || 0) : (product.stock || 0);
+                if (effStock <= 0) {
                     if (prompt) prompt.style.display = 'block';
                 }
 
-                console.log("Product selected:", product.name);
+                console.log("Product selected:", window.getVariantDisplayName(product, variant));
                 
                 currentProductUnits = []; // Reset units array
 
                 // Add Base Unit
                 const baseText = `${product.unit || 'Piece'} (Base)`;
                 const baseOption = new Option(baseText, 'base');
-                baseOption.dataset.price = product.price;
+                baseOption.dataset.price = variant ? (variant.sellingPrice || 0) : (product.price || 0);
                 baseOption.dataset.quantity = 1;
                 unitSelect.add(baseOption);
                 currentProductUnits.push({ value: 'base', text: baseText });
@@ -10508,20 +11112,23 @@ input:focus, select:focus, textarea:focus, button:focus {
             const unitQuantity = parseFloat(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
             const totalBaseQuantityNeeded = quantity * unitQuantity;
 
-            // Check if product already in cart (same product AND same unit)
-            const existingItemIndex = cart.findIndex(item => item.productId === productId && item.unit === unitName);
+            // Check if product already in cart (same product, same unit, same variant)
+            const targetVariantId = window.selectedSaleVariant ? window.selectedSaleVariant.id : undefined;
+            const existingItemIndex = cart.findIndex(item => item.productId === productId && item.unit === unitName && String(item.variantId) === String(targetVariantId));
 
-            // Calculate total stock used by this product in cart (across all units)
+            // Calculate total stock used by this product/variant in cart
             const currentStockInCart = cart
-                .filter(item => item.productId === productId)
+                .filter(item => item.productId === productId && String(item.variantId) === String(targetVariantId))
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
-            if (currentStockInCart + totalBaseQuantityNeeded > product.stock) {
+            const effStock = window.selectedSaleVariant ? (window.selectedSaleVariant.stock || 0) : (product.stock || 0);
+
+            if (currentStockInCart + totalBaseQuantityNeeded > effStock) {
                 window.popupCloseCallback = () => {
                     const sq = document.getElementById('saleQuantity');
                     if (sq) { sq.focus(); sq.select(); }
                 };
-                showAlert(`Insufficient stock! Available: ${product.stock} ${product.unit || 'Units'}. You are trying to sell ${currentStockInCart + totalBaseQuantityNeeded}.`, '⚠️');
+                showAlert(`Insufficient stock! Available: ${effStock} ${product.unit || 'Units'}. You are trying to sell ${currentStockInCart + totalBaseQuantityNeeded}.`, '⚠️');
                 return;
             }
 
@@ -10532,8 +11139,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 let effDisc = getEffectiveDiscount(product);
                 cart.push({
                     productId: productId,
-                    productName: product.name,
-                    barcode: product.barcode,
+                    variantId: targetVariantId,
+                    variantName: window.selectedSaleVariant ? window.selectedSaleVariant.variantName : undefined,
+                    productName: window.getVariantDisplayName(product, window.selectedSaleVariant),
+                    barcode: window.selectedSaleVariant ? window.selectedSaleVariant.barcode : product.barcode,
                     unit: unitName,
                     price: unitPrice,
                     quantity: quantity,
@@ -11709,6 +12318,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             date: saleDate,
                             createdAt: new Date().toISOString(),
                             productId: item.productId,
+                            variantId: item.variantId || undefined,
+                            variantName: item.variantName || undefined,
                             productName: item.productName,
                             barcode: item.barcode,
                             unit: item.unit || 'Piece',
@@ -11792,12 +12403,24 @@ input:focus, select:focus, textarea:focus, button:focus {
                 saleItems.forEach(sale => {
                     const productIndex = products.findIndex(p => p.id === sale.productId);
                     if (productIndex !== -1) {
-                        products[productIndex].stock -= (sale.quantity * (sale.baseQuantity || 1));
+                        const qtyToDeduct = (sale.quantity * (sale.baseQuantity || 1));
+                        const productRef = products[productIndex];
+                        let variantRef = null;
+                        if (sale.variantId) {
+                            variantRef = window.getVariantById(productRef, sale.variantId);
+                        }
+                        
+                        if (variantRef) {
+                            variantRef.stock = parseFloat(((variantRef.stock || 0) - qtyToDeduct).toFixed(3));
+                        } else {
+                            productRef.stock = parseFloat(((productRef.stock || 0) - qtyToDeduct).toFixed(3));
+                        }
                         
                         // Add to stock history
                         stockHistory.push({
                             date: sale.date,
                             productId: sale.productId,
+                            variantId: sale.variantId || undefined,
                             productName: sale.productName,
                             type: 'sale',
                             quantity: sale.quantity,
@@ -15055,6 +15678,134 @@ input:focus, select:focus, textarea:focus, button:focus {
             editProduct(id);
         }
 
+        function editInventoryVariant(productId, variantId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+            const variant = window.getVariantById(product, variantId);
+            if (!variant) return;
+
+            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            const buyTrack = settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false;
+
+            const displayName = window.getVariantDisplayName(product, variant);
+            const buyPriceField = buyTrack ? `
+                <div class="form-group">
+                    <label>Buying Price (₹)</label>
+                    <input type="number" id="editVarBuyPrice" value="${variant.buyingPrice || 0}" min="0" step="0.01">
+                </div>` : '';
+            
+            const modalHtml = `
+                <div id="editVariantModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px;">
+                    <div style="background:white;border-radius:8px;width:100%;max-width:480px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+                        <h4 style="margin-top:0;margin-bottom:5px;">Edit Variant</h4>
+                        <h5 style="margin-top:0;color:#555;margin-bottom:20px;">${displayName}</h5>
+                        <div class="form-group">
+                            <label>Variant Name</label>
+                            <input type="text" id="editVarName" value="${variant.variantName}">
+                        </div>
+                        <div class="form-group">
+                            <label>Barcode</label>
+                            <input type="text" id="editVarBarcode" value="${variant.barcode || ''}">
+                        </div>
+                        ${buyPriceField}
+                        <div class="form-group">
+                            <label>Selling Price (₹)</label>
+                            <input type="number" id="editVarSellPrice" value="${variant.sellingPrice || 0}" min="0" step="0.01">
+                        </div>
+                        <div style="display:flex;gap:15px;">
+                            <div class="form-group" style="flex:1;">
+                                <label>Stock</label>
+                                <input type="number" id="editVarStock" value="${variant.stock || 0}">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>Minimum Stock</label>
+                                <input type="number" id="editVarMinStock" value="${variant.minimumStock || 0}">
+                            </div>
+                        </div>
+                        <div style="margin-top:20px;text-align:right;display:flex;justify-content:flex-end;gap:10px;">
+                            <button class="btn btn-secondary" onclick="document.getElementById('editVariantModalOverlay').remove()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveEditedVariant('${productId}','${variantId}')">Save</button>
+                        </div>
+                    </div>
+                </div>`;
+            
+            // Remove any existing overlay first
+            const existing = document.getElementById('editVariantModalOverlay');
+            if (existing) existing.remove();
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Escape to close
+            const handler = function(e) {
+                if (e.key === 'Escape') {
+                    const overlay = document.getElementById('editVariantModalOverlay');
+                    if (overlay) overlay.remove();
+                    document.removeEventListener('keydown', handler);
+                }
+            };
+            document.addEventListener('keydown', handler);
+        }
+
+        function saveEditedVariant(productId, variantId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+            const variant = window.getVariantById(product, variantId);
+            if (!variant) return;
+
+            const name = document.getElementById('editVarName').value.trim();
+            const barcode = document.getElementById('editVarBarcode').value.trim();
+            const buyPriceEl = document.getElementById('editVarBuyPrice');
+            const buyPrice = buyPriceEl ? (parseFloat(buyPriceEl.value) || 0) : (variant.buyingPrice || 0);
+            const sellPrice = parseFloat(document.getElementById('editVarSellPrice').value) || 0;
+            const stock = parseInt(document.getElementById('editVarStock').value) || 0;
+            const minStock = parseInt(document.getElementById('editVarMinStock').value) || 0;
+
+            if (!name) {
+                showAlert('Variant Name is required.', '⚠️');
+                return;
+            }
+
+            // Duplicate check (case-insensitive, excluding self)
+            const lowerName = name.toLowerCase().trim();
+            const duplicate = product.variants.find(v => String(v.id) !== String(variantId) && String(v.variantName).toLowerCase().trim() === lowerName);
+            if (duplicate) {
+                showAlert(`Variant ${name} already exists for ${product.name}.`, '⚠️');
+                return;
+            }
+
+            // Barcode uniqueness check (excluding self)
+            if (barcode && barcode !== variant.barcode && !isBarcodeGloballyUnique(barcode)) {
+                showAlert('Barcode already exists globally!', '⚠️');
+                return;
+            }
+
+            variant.variantName = name;
+            variant.barcode = barcode;
+            variant.buyingPrice = buyPrice;
+            variant.sellingPrice = sellPrice;
+            variant.stock = stock;
+            variant.minimumStock = minStock;
+
+            saveData();
+            updateInventoryTable();
+            document.getElementById('editVariantModalOverlay').remove();
+            showAlert(`Variant ${name} updated successfully!`, '✅');
+        }
+
+        function deleteInventoryVariant(productId, variantId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+            const variant = window.getVariantById(product, variantId);
+            if (!variant) return;
+
+            const displayName = window.getVariantDisplayName(product, variant);
+            showConfirm(`Are you sure you want to delete variant "${displayName}"?`, () => {
+                product.variants = product.variants.filter(v => String(v.id) !== String(variantId));
+                saveData();
+                updateInventoryTable();
+                showAlert(`Variant "${displayName}" deleted successfully!`, '✅');
+            });
+        }
+
         function exportInventoryCSV() {
             if (products.length === 0) {
                 showAlert('No inventory data to export', '⚠️');
@@ -15344,7 +16095,30 @@ input:focus, select:focus, textarea:focus, button:focus {
             btnContainer.innerHTML = `<button id="alertOkBtn" class="btn btn-primary" onclick="closePopup()">OK</button>`;
             document.getElementById('popupModal').style.display = 'flex';
 
-            // Auto-focus OK button for Enter key support
+            // Handle Enter key and prevent double submission
+            const oldKeydown = window._modalKeydownHandler;
+            if (oldKeydown) document.removeEventListener('keydown', oldKeydown, true);
+
+            const modalKeydown = function(e) {
+                if (document.getElementById('popupModal').style.display !== 'none') {
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closePopup();
+                        document.removeEventListener('keydown', modalKeydown, true);
+                        window._modalKeydownHandler = null;
+                    }
+                } else {
+                    // Cleanup if modal was closed some other way
+                    document.removeEventListener('keydown', modalKeydown, true);
+                    window._modalKeydownHandler = null;
+                }
+            };
+            
+            window._modalKeydownHandler = modalKeydown;
+            document.addEventListener('keydown', modalKeydown, true);
+
+            // Auto-focus OK button for visual feedback
             setTimeout(() => {
                 const btn = document.getElementById('alertOkBtn');
                 if (btn) btn.focus();
@@ -21061,17 +21835,26 @@ input:focus, select:focus, textarea:focus, button:focus {
         function renderReceivablesTable() {
             const tbody = document.getElementById('receivablesTableBody');
             if (!tbody) return;
+            
+            if (typeof isDataLoaded !== 'undefined' && !isDataLoaded && sales.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Loading receivables...</td></tr>`;
+                return;
+            }
+            
             const search = (document.getElementById('receivablesSearch').value || '').toLowerCase();
             const statusFilter = document.getElementById('receivablesStatusFilter').value;
 
             // Group sales by receiptNumber to get total bill amounts for credit sales
             const creditBills = {};
             sales.forEach(sale => {
-                if (sale.paymentMethod === 'credit') {
+                const hasCredit = sale.paymentStatus && sale.paymentStatus !== 'fully_paid' || (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
+                const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
+                
+                if (isCredit) {
                     if (!creditBills[sale.receiptNumber]) {
                         creditBills[sale.receiptNumber] = {
                             date: sale.date,
-                            invoice: sale.receiptNumber,
+                            invoice: sale.receiptNumber || '',
                             customer: sale.customerName || 'Unknown',
                             customerId: sale.customerId || '',
                             totalAmount: 0,
@@ -21084,7 +21867,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                     creditBills[sale.receiptNumber].totalAmount = sale.totalAmount || sale.subtotal + sale.totalTax; // approximate total if not explicitly set
                     // Recompute total accurately based on price*qty
-                    // actually total is sale.total for the item, so sum it up:
                     if(sale.total) {
                         creditBills[sale.receiptNumber].totalAmount = 0; // reset and sum
                     }
@@ -21093,7 +21875,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             // Second pass for accurate total
             sales.forEach(sale => {
-                if (sale.paymentMethod === 'credit' && creditBills[sale.receiptNumber]) {
+                const hasCredit = sale.paymentStatus && sale.paymentStatus !== 'fully_paid' || (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
+                const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
+                
+                if (isCredit && creditBills[sale.receiptNumber]) {
                     creditBills[sale.receiptNumber].totalAmount += sale.total;
                     // Keep the latest payment tracking fields
                     creditBills[sale.receiptNumber].amountPaid = sale.amountPaid;
@@ -21103,7 +21888,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
 
             let filtered = Object.values(creditBills).filter(bill => {
-                const matchSearch = bill.customer.toLowerCase().includes(search) || bill.invoice.toLowerCase().includes(search);
+                const matchSearch = String(bill.customer || '').toLowerCase().includes(search) || String(bill.invoice || '').toLowerCase().includes(search);
                 let matchStatus = true;
                 if (statusFilter === 'unpaid') {
                     matchStatus = bill.paymentStatus !== 'fully_paid';
@@ -21149,6 +21934,12 @@ input:focus, select:focus, textarea:focus, button:focus {
         function renderPayablesTable() {
             const tbody = document.getElementById('payablesTableBody');
             if (!tbody) return;
+            
+            if (typeof isDataLoaded !== 'undefined' && !isDataLoaded && purchases.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Loading payables...</td></tr>`;
+                return;
+            }
+            
             const search = (document.getElementById('payablesSearch').value || '').toLowerCase();
             const statusFilter = document.getElementById('payablesStatusFilter').value;
 
@@ -21157,7 +21948,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const isCredit = (p.outstandingAmount !== undefined && p.paymentStatus) || hasCredit;
                 if (!isCredit && p.totalAmount === p.amountPaid) return false; // Filter out legacy cash purchases
                 
-                const matchSearch = (p.supplier || '').toLowerCase().includes(search) || (p.invoiceNumber || '').toLowerCase().includes(search);
+                const matchSearch = String(p.supplier || '').toLowerCase().includes(search) || String(p.invoiceNumber || '').toLowerCase().includes(search);
                 let matchStatus = true;
                 if (statusFilter === 'unpaid') {
                     matchStatus = p.paymentStatus !== 'fully_paid';
@@ -24016,6 +24807,294 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             }
         });
     </script>
-</body>
 
-</html>
+    <!-- Copy Existing Variant Modal -->
+    <div id="copyExistingVariantModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; padding: 20px; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 8px; width: 100%; max-width: 500px; padding: 20px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h4 style="margin-top: 0;">Copy Existing Variant</h4>
+            <div class="form-group">
+                <input type="text" id="copyExistingSearchInput" placeholder="Search product name / barcode..." oninput="searchExistingVariantProduct(this.value)" autocomplete="off">
+                <div id="copyExistingSearchResults" style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; background: white;"></div>
+            </div>
+            
+            <div id="copyExistingVariantSelection" style="display:none; margin-top: 15px;"></div>
+            
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-secondary" onclick="document.getElementById('copyExistingVariantModal').style.display='none'; window.isCopyingForInventory=false;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        window.toggleVariantRows = function(productId) {
+            const rows = document.querySelectorAll('.var-row-' + productId);
+            const icon = document.getElementById('icon-var-' + productId);
+            let isHidden = false;
+            rows.forEach(r => {
+                if (r.style.display === 'none') { r.style.display = ''; isHidden = true; } 
+                else { r.style.display = 'none'; }
+            });
+            if (icon) icon.textContent = isHidden ? '[-]' : '[+]';
+        };
+    </script>
+
+    <!-- Add Variant from Inventory Modal -->
+    <div id="addVariantModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; padding: 20px; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 8px; width: 100%; max-width: 500px; padding: 20px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h4 style="margin-top: 0; margin-bottom: 5px;">Add Variant</h4>
+            <h5 id="addVariantProductName" style="margin-top: 0; color: #555; margin-bottom: 20px;"></h5>
+            
+            <input type="hidden" id="addVariantParentId">
+            
+            <div class="form-group">
+                <label>Variant Name</label>
+                <input type="text" id="addVariantName" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantBarcode').focus();" placeholder="e.g. L, Red, etc.">
+            </div>
+            
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Barcode</label>
+                    <input type="text" id="addVariantBarcode" onkeypress="if(event.key === 'Enter') { const bp = document.getElementById('addVariantBuyPrice'); if(bp && bp.offsetParent !== null) { bp.focus(); } else { document.getElementById('addVariantSellPrice').focus(); } }" placeholder="Scan or Auto Generate">
+                </div>
+                <div style="display: flex; align-items: flex-end; padding-bottom: 2px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('addVariantBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="height: 38px;">⚡</button>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group buying-price-feature" style="flex: 1;">
+                    <label>Buying Price (₹)</label>
+                    <input type="number" id="addVariantBuyPrice" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantSellPrice').focus();" min="0" step="0.01">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Selling Price (₹)</label>
+                    <input type="number" id="addVariantSellPrice" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantStock').focus();" min="0" step="0.01">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Opening Stock</label>
+                    <input type="number" id="addVariantStock" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantMinStock').focus();" value="0">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Minimum Stock</label>
+                    <input type="number" id="addVariantMinStock" onkeypress="if(event.key === 'Enter') submitAddVariant();" value="0">
+                </div>
+            </div>
+            
+
+            
+            <div style="margin-top: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeAddVariantModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitAddVariant()">Add Variant</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function openAddVariantModal(productId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+            document.getElementById('addVariantParentId').value = product.id;
+            document.getElementById('addVariantProductName').textContent = 'Product: ' + product.name;
+            document.getElementById('addVariantName').value = '';
+            document.getElementById('addVariantBarcode').value = 'DDS-' + Date.now().toString().slice(-7);
+            document.getElementById('addVariantBuyPrice').value = '';
+            document.getElementById('addVariantSellPrice').value = '';
+            document.getElementById('addVariantStock').value = '0';
+            document.getElementById('addVariantMinStock').value = '0';
+            document.getElementById('addVariantModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('addVariantName').focus(), 100);
+        }
+
+        function closeAddVariantModal() {
+            document.getElementById('addVariantModal').style.display = 'none';
+        }
+
+        function submitAddVariant() {
+            const parentId = document.getElementById('addVariantParentId').value;
+            const parent = products.find(p => String(p.id) === String(parentId));
+            if (!parent) return;
+            
+            if (!parent.variants) parent.variants = [];
+            
+            const name = document.getElementById('addVariantName').value.trim();
+            const barcode = document.getElementById('addVariantBarcode').value.trim();
+            const buyPrice = parseFloat(document.getElementById('addVariantBuyPrice').value) || 0;
+            const sellPrice = parseFloat(document.getElementById('addVariantSellPrice').value) || 0;
+            const stock = parseInt(document.getElementById('addVariantStock').value) || 0;
+            const minStock = parseInt(document.getElementById('addVariantMinStock').value) || 0;
+            
+            if (!name) {
+                showAlert('Variant Name is required.', '⚠️');
+                return;
+            }
+            
+            const lowerName = name.toLowerCase();
+            if (parent.variants.some(v => String(v.variantName).toLowerCase() === lowerName)) {
+                showAlert(`Variant ${name} already exists for ${parent.name}.`, '⚠️');
+                return;
+            }
+            
+            if (barcode && !isBarcodeGloballyUnique(barcode)) {
+                showAlert('Barcode already exists globally!', '⚠️');
+                return;
+            }
+            
+            const newVariant = {
+                id: 'var-' + Date.now(),
+                variantName: name,
+                barcode: barcode,
+                buyingPrice: buyPrice,
+                sellingPrice: sellPrice,
+                stock: stock,
+                minimumStock: minStock
+            };
+            
+            parent.variants.push(newVariant);
+            
+            if (stock > 0) {
+                stockHistory.push({
+                    date: new Date().toISOString(),
+                    productId: parent.id,
+                    variantId: newVariant.id,
+                    productName: window.getVariantDisplayName(parent, newVariant),
+                    type: 'addition',
+                    quantity: stock,
+                    newStock: stock
+                });
+            }
+            
+            saveData();
+            updateInventoryTable();
+            closeAddVariantModal();
+            showAlert(`Variant ${name} added successfully to ${parent.name}.`, '✅');
+        }
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const addVarModal = document.getElementById('addVariantModal');
+                if (addVarModal && addVarModal.style.display === 'flex') {
+                    closeAddVariantModal();
+                }
+            }
+        });
+        
+        function openCopyExistingVariantData() {
+            window.isCopyingForInventory = true;
+            document.getElementById('copyExistingVariantModal').style.display = 'flex';
+            document.getElementById('copyExistingSearchInput').value = '';
+            document.getElementById('copyExistingSearchResults').innerHTML = '<div style="padding:10px; color:#666; font-style: italic;">Search for a product that already has variants.</div>';
+            document.getElementById('copyExistingVariantSelection').style.display = 'none';
+            setTimeout(() => document.getElementById('copyExistingSearchInput').focus(), 100);
+        }
+    </script>
+
+    <!-- Global Add Variant Search Modal -->
+    <div id="globalAddVariantSearchModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; padding: 20px; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 8px; width: 100%; max-width: 500px; padding: 20px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h4 style="margin-top: 0; margin-bottom: 5px;">Add Variant</h4>
+            <div style="margin-bottom: 15px; color: #555;">Search Existing Product</div>
+            <div class="form-group">
+                <input type="text" id="globalAddVariantSearchInput" placeholder="Search product name / barcode..." oninput="searchGlobalAddVariantProduct(this.value)" autocomplete="off">
+                <div id="globalAddVariantSearchResults" style="max-height: 250px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; background: white;"></div>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-secondary" onclick="document.getElementById('globalAddVariantSearchModal').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let globalAddVariantSelectedIndex = -1;
+
+        function openGlobalAddVariantModal() {
+            document.getElementById('globalAddVariantSearchModal').style.display = 'flex';
+            document.getElementById('globalAddVariantSearchInput').value = '';
+            document.getElementById('globalAddVariantSearchResults').innerHTML = '';
+            globalAddVariantSelectedIndex = -1;
+            setTimeout(() => document.getElementById('globalAddVariantSearchInput').focus(), 100);
+        }
+
+        function searchGlobalAddVariantProduct(query) {
+            const resultsDiv = document.getElementById('globalAddVariantSearchResults');
+            globalAddVariantSelectedIndex = -1;
+            if (!query) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            const matches = searchProductsUnified(query, products).slice(0, 10);
+            
+            if (matches.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding:10px; color:#666;">No products found</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = matches.map((p, idx) => {
+                const varCount = window.hasVariants(p) ? p.variants.length : 0;
+                const varText = varCount === 1 ? '1 variant' : (varCount > 1 ? varCount + ' variants' : 'No variants');
+                return `
+                <div class="search-result-item global-var-item" data-id="${p.id}" onclick="selectGlobalAddVariantProduct('${p.id}')" onmouseover="highlightGlobalVarItem(${idx})" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; transition: background 0.2s;">
+                    <strong>${p.name}</strong>
+                    <br><small style="color: #666;">${varText}</small>
+                </div>
+            `}).join('');
+        }
+
+        function highlightGlobalVarItem(index) {
+            const items = document.querySelectorAll('#globalAddVariantSearchResults .global-var-item');
+            items.forEach((item, i) => {
+                if (i === index) {
+                    item.style.backgroundColor = '#e9ecef';
+                } else {
+                    item.style.backgroundColor = 'transparent';
+                }
+            });
+            globalAddVariantSelectedIndex = index;
+        }
+
+        const globalSearchInput = document.getElementById('globalAddVariantSearchInput');
+        if (globalSearchInput) {
+            globalSearchInput.addEventListener('keydown', function(e) {
+                const items = document.querySelectorAll('#globalAddVariantSearchResults .global-var-item');
+                if (items.length === 0) {
+                    if (e.key === 'Escape') {
+                        document.getElementById('globalAddVariantSearchModal').style.display = 'none';
+                    }
+                    return;
+                }
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    globalAddVariantSelectedIndex++;
+                    if (globalAddVariantSelectedIndex >= items.length) globalAddVariantSelectedIndex = 0;
+                    highlightGlobalVarItem(globalAddVariantSelectedIndex);
+                    items[globalAddVariantSelectedIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    globalAddVariantSelectedIndex--;
+                    if (globalAddVariantSelectedIndex < 0) globalAddVariantSelectedIndex = items.length - 1;
+                    highlightGlobalVarItem(globalAddVariantSelectedIndex);
+                    items[globalAddVariantSelectedIndex].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (globalAddVariantSelectedIndex >= 0 && globalAddVariantSelectedIndex < items.length) {
+                        const productId = items[globalAddVariantSelectedIndex].getAttribute('data-id');
+                        selectGlobalAddVariantProduct(productId);
+                    }
+                } else if (e.key === 'Escape') {
+                    document.getElementById('globalAddVariantSearchModal').style.display = 'none';
+                }
+            });
+        }
+        
+        function selectGlobalAddVariantProduct(productId) {
+            document.getElementById('globalAddVariantSearchModal').style.display = 'none';
+            setTimeout(() => {
+                openAddVariantModal(productId);
+            }, 100);
+        }
+    </script>
+</body>

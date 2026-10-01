@@ -63,51 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showError(saveResult.error || 'Failed to save license locally.');
                 }
-            } else if (data.error === "Device limit exceeded" && data.transferAvailable) {
-                setLoading(false);
-                const confirmTransfer = confirm("This license is currently active on another computer. Move it to this computer?");
-                if (confirmTransfer) {
-                    setLoading(true);
-                    try {
-                        const transferRes = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/transfer-license', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                licenseKey: key,
-                                deviceId: machineId,
-                                deviceName: 'OneBook POS',
-                                operatingSystem: navigator.platform,
-                                appVersion: '1.0.0'
-                            })
-                        });
-                        const transferData = await transferRes.json();
-                        if (transferData.success) {
-                            let maskedKey = '';
-                            const parts = key.split('-');
-                            if (parts.length >= 4) {
-                                maskedKey = `${parts[0]}-****-${parts[parts.length-1]}`;
-                            } else if (key.length >= 4) {
-                                maskedKey = `****-${key.slice(-4)}`;
-                            } else {
-                                maskedKey = '****';
-                            }
-                            localStorage.setItem('maskedLicenseKey', maskedKey);
-                            const saveResult = window.electronAPI.saveLicenseSync(transferData);
-                            if (saveResult.success) {
-                                window.location.href = 'OneBook.html';
-                            } else {
-                                showError(saveResult.error || 'Failed to save license locally.');
-                            }
-                        } else {
-                            showError(transferData.error || 'Transfer failed.');
-                        }
-                    } catch (err) {
-                        console.error('Transfer error:', err);
-                        showError('Network error during transfer.');
-                    } finally {
-                        setLoading(false);
-                    }
-                }
+            } else if (data.error === "Device limit exceeded") {
+                showError("This license key is already activated on another device. You must release the existing activation or transfer the license before using it here.");
+            } else if (data.error === "Invalid license key") {
+                showError("Invalid license key. Please check the key and try again.");
             } else {
                 showError(data.error || 'Activation failed.');
             }
