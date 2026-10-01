@@ -42,7 +42,9 @@ function createWindow() {
     if (mode === 'DEMO') {
         win.loadFile(path.join(__dirname, 'license.html'));
     } else {
-        win.loadFile(path.join(__dirname, 'OneBook.html'));
+        win.webContents.session.clearCache();
+
+        win.loadFile(path.join(__dirname, 'OneBook.html'), { query: { t: Date.now().toString() } });
     }
 
     
