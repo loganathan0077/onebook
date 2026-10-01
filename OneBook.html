@@ -2268,7 +2268,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; z-index: 50; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
@@ -2450,7 +2450,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </div>
                                     <div class="form-group">
                                         <label>Courier Charges (₹)</label>
-                                        <input type="number" id="courierCharges" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('paymentMethodSearch').focus();}">
+                                        <input type="number" id="courierCharges" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('paymentMethod').focus();}">
                                     </div>
                                 </div>
                                 
@@ -2490,12 +2490,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
                                     <div class="form-group">
                                         <label>Payment Method</label>
-                                        <div class="combobox-container" style="width: 100%;">
-                                            <input type="text" id="paymentMethodSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterPaymentMethods()" value="Cash Only" onfocus="this.select()">
-                                            <span class="combobox-clear" id="paymentMethodClear" onclick="clearPaymentMethodSelection()" title="Clear selection" style="display: block;">×</span>
-                                            <div id="paymentMethodDropdown" class="custom-dropdown" style="display: none; width: 100%;"></div>
-                                        </div>
-                                        <select id="paymentMethod" onchange="togglePaymentFields()" style="display: none;">
+                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('cashReceived').focus();}" style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white; appearance: auto;">
                                             <option value="cash" selected>Cash Only</option>
                                             <option value="card">Card</option>
                                             <option value="upi">UPI</option>
@@ -10138,8 +10133,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             dropdown.style.display = 'block';
         }
 
-        function filterPaymentMethods() {
-            const searchTerm = document.getElementById('paymentMethodSearch').value;
+        function /* filterPaymentMethods removed */ {
+            const searchTerm = document.getElementById('paymentMethod').value;
             const clearBtn = document.getElementById('paymentMethodClear');
             
             if (searchTerm.length > 0) {
@@ -10152,7 +10147,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function onPaymentMethodSelection(value, text) {
-            const searchInput = document.getElementById('paymentMethodSearch');
+            const searchInput = document.getElementById('paymentMethod');
             const selectElem = document.getElementById('paymentMethod');
             const dropdown = document.getElementById('paymentMethodDropdown');
 
@@ -10175,7 +10170,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function clearPaymentMethodSelection() {
-            const searchInput = document.getElementById('paymentMethodSearch');
+            const searchInput = document.getElementById('paymentMethod');
             const selectElem = document.getElementById('paymentMethod');
             
             searchInput.value = '';
@@ -10190,7 +10185,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // Add blur listener to auto-select if user types but doesn't click
         document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('paymentMethodSearch');
+            const searchInput = document.getElementById('paymentMethod');
             if (searchInput) {
                 searchInput.addEventListener('blur', () => {
                     setTimeout(() => {
@@ -11198,7 +11193,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 
                 const sequences = [
                     ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'],
-                    ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethodSearch']
+                    ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethod']
                 ];
                 
                 // Jump from Add Item row downwards
@@ -11233,7 +11228,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Jump from Summary row upwards
                 if (e.key === 'ArrowUp' && sequences[1].includes(activeId)) {
                     // Let the combobox dropdown handle its own ArrowUp
-                    if (activeId === 'saleCustomerSearch' || activeId === 'paymentMethodSearch') {
+                    if (activeId === 'saleCustomerSearch' || activeId === 'paymentMethod') {
                         const dropdown = document.getElementById(activeId === 'saleCustomerSearch' ? 'customerSearchResults' : 'paymentMethodDropdown');
                         if (dropdown && dropdown.style.display !== 'none') return;
                     }
@@ -11270,7 +11265,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             }
                             
                             try {
-                                if (el.type === 'number' || activeId === 'paymentMethodSearch') {
+                                if (el.type === 'number' || activeId === 'paymentMethod') {
                                     atBoundary = true;
                                 } else if (e.key === 'ArrowRight' && el.selectionEnd === el.value.length) {
                                     atBoundary = true;
@@ -11306,7 +11301,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     const el = document.activeElement;
                     if (el.tagName === 'INPUT' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
                         try {
-                            if (el.type !== 'number' && activeId !== 'paymentMethodSearch') {
+                            if (el.type !== 'number' && activeId !== 'paymentMethod') {
                                 if (e.key === 'ArrowRight' && el.selectionEnd !== el.value.length) atBoundary = false;
                                 if (e.key === 'ArrowLeft' && el.selectionStart !== 0) atBoundary = false;
                             }
@@ -11364,62 +11359,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // --- Payment Section Navigation ---
             
-            // Payment Method Combobox Navigation
-            const payMethodSearch = document.getElementById('paymentMethodSearch');
-            payMethodSearch.addEventListener('keydown', function(e) {
-                const dropdown = document.getElementById('paymentMethodDropdown');
-                let items = dropdown.querySelectorAll('.custom-dropdown-item');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (dropdown.style.display !== 'block' || items.length === 0) {
-                        filterPaymentMethods();
-                        items = dropdown.querySelectorAll('.custom-dropdown-item');
-                        if (items.length > 0) {
-                            paymentComboboxSelectedIndex = 0;
-                            updateComboboxSelection(items, paymentComboboxSelectedIndex);
-                        }
-                    } else if (items.length > 0) {
-                        paymentComboboxSelectedIndex = (paymentComboboxSelectedIndex + 1) % items.length;
-                        updateComboboxSelection(items, paymentComboboxSelectedIndex);
-                    }
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (dropdown.style.display === 'block' && items.length > 0) {
-                        if (paymentComboboxSelectedIndex === -1) paymentComboboxSelectedIndex = items.length;
-                        paymentComboboxSelectedIndex = (paymentComboboxSelectedIndex - 1 + items.length) % items.length;
-                        updateComboboxSelection(items, paymentComboboxSelectedIndex);
-                    }
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (dropdown.style.display !== 'block') {
-                        const cashInput = document.getElementById('customerAmount');
-                        if (cashInput && document.getElementById('customerAmountGroup').style.display !== 'none') {
-                            cashInput.focus();
-                            cashInput.select();
-                        } else {
-                            document.getElementById('btnCompleteSale').focus();
-                        }
-                    } else if (paymentComboboxSelectedIndex >= 0 && items.length > paymentComboboxSelectedIndex) {
-                        items[paymentComboboxSelectedIndex].click();
-                    } else if (items.length > 0) {
-                        items[0].click(); // Auto select first if Enter pressed
-                    }
-                } else if (e.key === ' ') {
-                    if (dropdown.style.display !== 'block') {
-                        e.preventDefault();
-                        filterPaymentMethods();
-                        items = dropdown.querySelectorAll('.custom-dropdown-item');
-                        if (items.length > 0) {
-                           paymentComboboxSelectedIndex = 0;
-                           updateComboboxSelection(items, paymentComboboxSelectedIndex);
-                        }
-                    }
-                } else if (e.key === 'Escape') {
-                    dropdown.style.display = 'none';
-                }
-            });
-        }
+            }
 
         // Call setup on load
         document.addEventListener('DOMContentLoaded', setupSalesKeybindings);
@@ -12473,7 +12413,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('discountAmount').value = '0'; // Reset Discount
                 document.getElementById('courierCharges').value = '0'; // Reset Courier
                 document.getElementById('paymentMethod').value = 'cash';
-                document.getElementById('paymentMethodSearch').value = 'Cash Only'; // Update combobox input
+                 // Update combobox input
                 
                 updateCartDisplay();
                 togglePaymentFields();
@@ -23348,7 +23288,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'BUTTON' || active.tagName === 'TEXTAREA')) {
                 
                 // Let specific comboboxes handle their own dropdown navigation for Up/Down
-                const comboboxes = ['saleCustomerSearch', 'saleProductSearch', 'purchaseSearchInput', 'paymentMethodSearch', 'saleUnitSearch', 'quickSaleBarcode', 'stockBarcode', 'inventorySearchInput', 'customerSearch'];
+                const comboboxes = ['saleCustomerSearch', 'saleProductSearch', 'purchaseSearchInput', 'paymentMethod', 'saleUnitSearch', 'quickSaleBarcode', 'stockBarcode', 'inventorySearchInput', 'customerSearch'];
                 if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && comboboxes.includes(active.id)) {
                     return; // Let the specific handler deal with it
                 }
@@ -23941,7 +23881,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 if (activeId === 'saleProductSearch') dropdownId = 'saleProductDropdown';
                 if (activeId === 'saleUnitSearch') dropdownId = 'saleUnitDropdown';
                 if (activeId === 'saleCustomerSearch') dropdownId = 'customerSearchResults';
-                if (activeId === 'paymentMethodSearch') dropdownId = 'paymentMethodDropdown';
+                if (activeId === 'paymentMethod') dropdownId = 'paymentMethodDropdown';
                 if (dropdownId) {
                     const dropdown = document.getElementById(dropdownId);
                     if (dropdown && dropdown.style.display !== 'none') return; // let native handle it
@@ -24080,7 +24020,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 
                 let atBoundary = false;
                 try {
-                    if (activeElem.type === 'number' || activeElem.tagName === 'BUTTON' || activeId === 'paymentMethodSearch') {
+                    if (activeElem.type === 'number' || activeElem.tagName === 'BUTTON' || activeId === 'paymentMethod') {
                         atBoundary = true;
                     } else if (e.key === 'ArrowRight' && activeElem.selectionEnd === activeElem.value.length) {
                         atBoundary = true;
@@ -24093,7 +24033,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 
                 const sequences = [
                     ['quickSaleBarcode', 'btnScanBarcode', 'saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'],
-                    ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethodSearch']
+                    ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethod']
                 ];
                 
                 for (let seq of sequences) {
@@ -24193,7 +24133,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                     }
                 }
                 
-                const summaryIds = ['saleCustomerSearch', 'btnAddCustomerMain', 'discountAmount', 'courierCharges', 'paymentMethodSearch', 'customerAmount'];
+                const summaryIds = ['saleCustomerSearch', 'btnAddCustomerMain', 'discountAmount', 'courierCharges', 'paymentMethod', 'customerAmount'];
                 if (summaryIds.includes(activeId)) {
                     if (e.key === 'ArrowUp') {
                         e.preventDefault();
