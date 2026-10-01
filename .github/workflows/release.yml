@@ -22,6 +22,17 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Verify Tag matches package.json version
+        shell: bash
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Error: Tag version (v$TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
+            exit 1
+          fi
+          echo "Version match verified: $TAG_VERSION"
+
       - name: Install dependencies
         run: npm install
 
@@ -30,10 +41,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create stable filename for website
+        shell: bash
+        run: cp dist/OneBook-Setup-*.exe dist/OneBook-Setup-latest.exe
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/OneBook-Setup-*.exe
+          files: |
+            dist/OneBook-Setup-*.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
