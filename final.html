@@ -8426,16 +8426,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         let customerSearchFocusedIndex = -1;
 
         function handleCustomerSearchKeydown(event) {
-            if (event.key === 'Enter' && event.ctrlKey) {
-                const activeCustId = document.getElementById('activeCustomerId').value;
-                if (activeCustId) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openAddCustomerModal(null, activeCustId);
-                }
-                return;
-            }
-
             const dropdown = document.getElementById('customerSearchResults');
             
             // Flow: Search Customer -> Discount when Enter is pressed on empty field or after selection
@@ -24855,6 +24845,16 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT EDIT
             // -------------------------------------------------------------
             if (e.key === 'Enter' && e.ctrlKey) {
+                // Record Sale -> Customer Edit
+                if (activeId === 'saleCustomerSearch') {
+                    const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
+                    if (activeCustId) {
+                        e.preventDefault();
+                        if (typeof openAddCustomerModal === 'function') openAddCustomerModal(null, activeCustId);
+                        return;
+                    }
+                }
+
                 const dropdown = document.getElementById('saleProductDropdown');
                 if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
                     const items = dropdown.querySelectorAll('.custom-dropdown-item');
