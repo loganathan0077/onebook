@@ -24715,7 +24715,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         window.isCartInputEnterFocusing = false;
         window.handleCartInputKeydown = function(e, index, type) {
             if (e.key === 'Enter') {
-                if (e.ctrlKey) return; // Let Ctrl+Enter bubble up for Product Edit
+                if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return; // Let modifiers bubble up
                 e.preventDefault();
                 e.stopPropagation();
                 
@@ -24831,7 +24831,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // ALT+ENTER TO QUICKLY ADD INVENTORY / STOCK
             // -------------------------------------------------------------
             if (e.key === 'Enter' && e.altKey) {
-                const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'quickSaleBarcode'];
+                const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'quickSaleBarcode', 'btnSaleAddItem'];
                 if (addItemIds.includes(activeId)) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -24844,7 +24844,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // -------------------------------------------------------------
             // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT EDIT
             // -------------------------------------------------------------
-            if (e.key === 'Enter' && e.ctrlKey) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 // Record Sale -> Customer Edit
                 if (activeId === 'saleCustomerSearch') {
                     const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
@@ -24889,7 +24889,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // -------------------------------------------------------------
             // NAKED ENTER ON CART ROW (Focuses Qty)
             // -------------------------------------------------------------
-            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && typeof cart !== 'undefined' && cart.length > 0) {
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.metaKey && typeof cart !== 'undefined' && cart.length > 0) {
                 const isInputOrButton = activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA' || activeElem.tagName === 'SELECT' || activeElem.tagName === 'BUTTON' || activeElem.isContentEditable);
                 if (!isInputOrButton) {
                     let currentIdx = typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 ? window.focusedCartRowIndex : (typeof selectedCartRowIndex !== 'undefined' ? selectedCartRowIndex : -1);
