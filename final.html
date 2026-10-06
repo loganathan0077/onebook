@@ -2490,7 +2490,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
                                     <div class="form-group">
                                         <label>Payment Method</label>
-                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('cashReceived').focus();}" style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white;">
+                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()"  style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white;">
                                             <option value="cash" selected>Cash Only</option>
                                             <option value="card">Card</option>
                                             <option value="upi">UPI</option>
@@ -4563,6 +4563,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <label>Product Name</label>
                             <input type="text" id="editProductName" required placeholder="e.g., Blue Ballpoint Pen" oninput="const vpd=document.getElementById('editVarParentDisplay'); if(vpd) vpd.value=this.value.trim();">
                         </div>
+                        <div class="form-group">
+                            <label>Variant</label>
+                            <input type="text" id="editProductVariant" placeholder="e.g., 0.7mm">
+                        </div>
                         <div class="form-group gst-field" style="display:none;">
                             <label>HSN/SAC Code</label>
                             <input type="text" id="editProductHSN" placeholder="e.g. 4820">
@@ -4723,6 +4727,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <label style="font-weight:600;">Barcode</label>
                     <div style="display:flex; gap:6px;">
                         <input type="text" id="evBarcode" style="flex:1; padding:8px; font-size:15px; box-sizing:border-box;">
+                        <button type="button" title="Scan" onclick="openScannerModal('evBarcode')" style="background:#17a2b8; color:#fff; border:none; border-radius:4px; padding:0 10px; cursor:pointer; font-size:14px;">📷</button>
                         <button type="button" title="Auto-generate" onclick="document.getElementById('evBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="background:#6c757d; color:#fff; border:none; border-radius:4px; padding:0 10px; cursor:pointer; font-size:14px;">&#x26A1;</button>
                     </div>
                 </div>
@@ -4937,6 +4942,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <label>Product Name</label>
                                     <input type="text" id="newProductName" required placeholder="e.g., Blue Ballpoint Pen" oninput="const vpd=document.getElementById('varParentDisplay'); if(vpd) vpd.value=this.value.trim();">
                                 </div>
+                                <div class="form-group">
+                                    <label>Variant</label>
+                                    <input type="text" id="newProductVariant" placeholder="e.g., 0.7mm">
+                                </div>
                                 <div class="form-group gst-field" style="display:none;">
                                     <label>HSN/SAC Code</label>
                                     <input type="text" id="newProductHSN" placeholder="e.g. 4820">
@@ -5055,7 +5064,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                             <label>Barcode</label>
                                             <div style="display: flex; gap: 5px;">
                                                 <input type="text" id="varBarcode" placeholder="Scan/Enter" onkeydown="handleVariantKeydown(event, 'varSellPrice')" style="flex:1;">
-                                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('varBarcode').value = 'VAR-' + Date.now()" style="padding: 0 10px; height: 48px;">⚡</button>
+                                                <button type="button" class="btn btn-info btn-sm" onclick="openScannerModal('varBarcode')" style="padding: 0 10px; height: 48px;" title="Scan">📷</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('varBarcode').value = 'VAR-' + Date.now()" style="padding: 0 10px; height: 48px;" title="Auto-generate">⚡</button>
                                             </div>
                                         </div>
                                     </div>
@@ -6531,6 +6541,32 @@ input:focus, select:focus, textarea:focus, button:focus {
         // Initialize data structure
         let products = JSON.parse(localStorage.getItem('products')) || [];
 
+        // MIGRATION: Fix products where Simple Variant and Advanced Variants were accidentally combined
+        let needsSaveMigration = false;
+        products.forEach(p => {
+            if (p.variant && p.variant.trim() !== '' && Array.isArray(p.variants) && p.variants.length > 0) {
+                const svName = p.variant.trim();
+                const exists = p.variants.some(v => String(v.variantName).toLowerCase().trim() === svName.toLowerCase());
+                if (!exists) {
+                    p.variants.unshift({
+                        id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+                        variantName: svName,
+                        barcode: p.barcode || 'VAR-' + Date.now().toString().slice(-7),
+                        buyingPrice: p.costPrice || 0,
+                        sellingPrice: p.price || 0,
+                        stock: p.stock || 0,
+                        minimumStock: p.minStock || 0,
+                        unit: p.unit || 'Piece'
+                    });
+                }
+                p.variant = '';
+                needsSaveMigration = true;
+            }
+        });
+        if (needsSaveMigration) {
+            localStorage.setItem('products', JSON.stringify(products));
+        }
+
         // --- Product Variant Helper Functions ---
         window.hasVariants = function(product) {
             return product && Array.isArray(product.variants) && product.variants.length > 0;
@@ -6552,10 +6588,16 @@ input:focus, select:focus, textarea:focus, button:focus {
         
         window.getVariantDisplayName = function(product, variant) {
             if (!product) return 'Unknown Product';
+            let name = product.name || 'Unknown Product';
+            
             if (variant && variant.variantName) {
-                return `${product.name} - ${variant.variantName}`;
+                return `${name} - ${variant.variantName}`;
             }
-            return product.name || 'Unknown Product';
+            
+            if (product.variant && product.variant.trim()) {
+                name += ' ' + product.variant.trim();
+            }
+            return name;
         };
 
         let calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
@@ -8719,6 +8761,12 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Variants are additive: do NOT hide parent-level fields.
             // Only toggle the variant section visibility.
             document.getElementById('variantSection').style.display = hasVariants ? 'block' : 'none';
+            if (hasVariants) {
+                const varBarcodeEl = document.getElementById('varBarcode');
+                if (varBarcodeEl && !varBarcodeEl.value) {
+                    varBarcodeEl.value = 'VAR-' + Date.now();
+                }
+            }
         }
 
         function handleVariantKeydown(e, nextId) {
@@ -8858,7 +8906,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // Reset variant form fields
             document.getElementById('varName').value = '';
-            document.getElementById('varBarcode').value = '';
+            document.getElementById('varBarcode').value = 'VAR-' + Date.now();
             document.getElementById('varSellPrice').value = '';
             document.getElementById('varBuyPrice').value = '';
             document.getElementById('varDiscount').value = '0';
@@ -9112,6 +9160,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 });
 
+                // Ensure main variant is included in variants array if hasVariants is true
+                if (hasVariants) {
+                    let tempVarVal = typeof variantVal !== "undefined" ? variantVal : (document.getElementById("newProductVariant") ? document.getElementById("newProductVariant").value.trim() : "");
+                    if (tempVarVal) {
+                        const exists = currentNewProductVariants.some(v => v.variantName.toLowerCase().replace(/\s+/g, ' ').trim() === tempVarVal.toLowerCase().replace(/\s+/g, ' ').trim());
+                        if (!exists) {
+                            currentNewProductVariants.unshift({
+                                id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                                variantName: tempVarVal,
+                                barcode: barcode || 'VAR-' + Date.now().toString().slice(-7),
+                                buyingPrice: costPrice || 0,
+                                sellingPrice: sellingPrice || 0,
+                                stock: stock || 0,
+                                minimumStock: minStock || 0,
+                                productDiscount: productDiscount || 0,
+                                hsn: hsn || '',
+                                category: category || '',
+                                unit: unit || 'Piece'
+                            });
+                        }
+                    }
+                }
+
                 const proceedToAdd = () => {
                     // Check if updating existing
                     let newProd = products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -9141,6 +9212,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         
                         if (hasVariants) {
                             if (!newProd.variants) newProd.variants = [];
+                            // append new variants
                             newProd.variants.push(...currentNewProductVariants);
                         }
                     } else {
@@ -9149,6 +9221,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             id: Date.now(),
                             barcode: hasVariants ? '' : (barcode || 'Manual-' + Date.now()),
                             name: name,
+                            variant: (hasVariants ? "" : (typeof variantVal !== "undefined" ? variantVal : (document.getElementById("newProductVariant") ? document.getElementById("newProductVariant").value.trim() : ""))),
                             category: category,
                             unit: unit,
                             expiryDays: expiryDays,
@@ -9765,6 +9838,12 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else if (currentScanMode === 'purchase') {
                 document.getElementById('purchaseSearchInput').value = barcode;
                 searchPurchaseProduct(barcode);
+            } else if (currentScanMode === 'varBarcode') {
+                document.getElementById('varBarcode').value = barcode;
+            } else if (currentScanMode === 'evBarcode') {
+                document.getElementById('evBarcode').value = barcode;
+            } else if (currentScanMode === 'addVariantBarcode') {
+                document.getElementById('addVariantBarcode').value = barcode;
             }
 
             closeScannerModal();
@@ -10172,64 +10251,30 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 if (window.hasVariants(product)) {
                     let rows = '';
-                    // Determine if parent has its own meaningful inventory (stock > 0 or price > 0 or barcode)
-                    const parentHasOwnInventory = (product.stock > 0) || (product.price > 0) || product.barcode;
                     
-                    if (parentHasOwnInventory) {
-                        let pStock = product.stock || 0;
-                        let pMinStock = product.minStock || 0;
-                        let pStockStatus = pStock <= 0 ? 'stock-low' : (pStock <= pMinStock ? 'stock-low' : 'stock-ok');
-                        let pStatusText = pStock <= 0 ? '🔴 Out of Stock' : (pStock <= pMinStock ? '🟡 Low Stock' : '🟢 In Stock');
-                        let pTotalValue = ((product.price || 0) * pStock).toFixed(2);
-                        rows += `
-                        <tr data-product-id="${product.id}">
-                            <td>${product.barcode || 'N/A'}</td>
-                            <td>${product.name}</td>
-                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
-                            <td>${product.category || 'Uncategorized'}</td>
-                            <td class="expiry-tracking-feature">${expiryDisplay}</td>
-                            <td class="${pStockStatus}">${pStock}</td>
-                            <td>₹${(product.price || 0).toFixed(2)}</td>
-                            <td>${displayDiscount}</td>
-                            <td>₹${pTotalValue}</td>
-                            <td class="${pStockStatus}">${pStatusText}</td>
-                            <td>
-                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
-                                <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
-                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
-                            </td>
-                        </tr>`;
-                    } else {
-                        // Variant-only parent: show a lightweight header row with + Variant action
-                        rows += `
-                        <tr data-product-id="${product.id}" style="background-color: #f8f9fa;">
-                            <td style="color:#999;">—</td>
-                            <td><strong>${product.name}</strong> <span style="color:#888; font-size:12px;">(${product.variants.length} variant${product.variants.length > 1 ? 's' : ''})</span></td>
-                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
-                            <td>${product.category || 'Uncategorized'}</td>
-                            <td class="expiry-tracking-feature">—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>
-                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
-                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
-                            </td>
-                        </tr>`;
+                    let variantsToRender = product.variants;
+                    if (searchTerm) {
+                        const parentMatches = (product.name && product.name.toLowerCase().includes(searchTerm)) || 
+                                              (product.barcode && String(product.barcode).toLowerCase().includes(searchTerm));
+                        if (!parentMatches) {
+                            variantsToRender = product.variants.filter(v => 
+                                (v.variantName && v.variantName.toLowerCase().includes(searchTerm)) ||
+                                (v.barcode && String(v.barcode).toLowerCase().includes(searchTerm))
+                            );
+                        }
                     }
 
                     // Render each variant as an independent flat row
-                    product.variants.forEach(v => {
+                    variantsToRender.forEach(v => {
                         let vStock = parseInt(v.stock) || 0;
                         let vMinStock = parseInt(v.minimumStock) || 0;
                         let stockStatus = vStock <= 0 ? 'stock-low' : (vStock <= vMinStock ? 'stock-low' : 'stock-ok');
                         let statusText = vStock <= 0 ? '🔴 Out of Stock' : (vStock <= vMinStock ? '🟡 Low Stock' : '🟢 In Stock');
                         let totalValue = ((v.sellingPrice || 0) * vStock).toFixed(2);
                         let vDisplayName = window.getVariantDisplayName(product, v);
+                        
+                        const isMainVariant = product.variants.length > 0 && String(v.id) === String(product.variants[0].id);
+                        
                         rows += `
                         <tr data-product-id="${product.id}" data-variant-id="${v.id}">
                             <td>${v.barcode || '-'}</td>
@@ -10243,6 +10288,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <td>₹${totalValue}</td>
                             <td class="${stockStatus}">${statusText}</td>
                             <td>
+                                ${isMainVariant ? `<button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>` : ''}
                                 <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}','${v.id}')" title="PO">PO</button>
                                 ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryVariant('${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
                                 ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete">Del</button>` : ''}
@@ -10526,13 +10572,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                 searchInput.addEventListener('blur', () => {
                     setTimeout(() => {
                         const currentText = searchInput.value.toLowerCase().trim();
-                        const match = paymentMethodsList.find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
+                        const match = (typeof paymentMethodsList !== 'undefined' ? paymentMethodsList : []).find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
                         if (match) {
                             onPaymentMethodSelection(match.value, match.text);
                         } else {
                             // Revert to current select value if invalid text
                             const selectElem = document.getElementById('paymentMethod');
-                            const validMatch = paymentMethodsList.find(m => m.value === selectElem.value);
+                            const validMatch = (typeof paymentMethodsList !== 'undefined' ? paymentMethodsList : []).find(m => m.value === selectElem.value);
                             if (validMatch) searchInput.value = validMatch.text;
                         }
                     }, 200); // small delay to allow click event on dropdown to fire first
@@ -10633,19 +10679,21 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Generate search candidates: Every parent is an item, and every variant is also a separate item
             const candidateItems = [];
             products.forEach(p => {
-                // Parent item
-                candidateItems.push({
-                    parent: p,
-                    variant: null,
-                    displayName: p.name || 'Unnamed Product',
-                    barcode: p.barcode || '',
-                    stock: p.stock !== undefined ? p.stock : 0,
-                    price: p.price !== undefined ? p.price : (p.sellingPrice !== undefined ? p.sellingPrice : 0),
-                    category: p.category || '',
-                    brand: p.brand || '',
-                    sku: p.sku || '',
-                    unit: p.unit || 'Piece'
-                });
+                // Only add parent item if it doesn't have variants
+                if (!window.hasVariants(p)) {
+                    candidateItems.push({
+                        parent: p,
+                        variant: null,
+                        displayName: (p.name || 'Unnamed Product') + (p.variant ? ' ' + p.variant.trim() : ''),
+                        barcode: p.barcode || '',
+                        stock: p.stock !== undefined ? p.stock : 0,
+                        price: p.price !== undefined ? p.price : (p.sellingPrice !== undefined ? p.sellingPrice : 0),
+                        category: p.category || '',
+                        brand: p.brand || '',
+                        sku: p.sku || '',
+                        unit: p.unit || 'Piece'
+                    });
+                }
 
                 // Variant items
                 if (window.hasVariants(p) && Array.isArray(p.variants)) {
@@ -10883,17 +10931,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                         } else {
                             // If exactly one match, select it
                             if(items.length === 1) {
-                                items[0].click();
-                            }
-                        }
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (comboboxSelectedIndex >= 0) {
-                            items[comboboxSelectedIndex].click();
-                        } else {
-                            if(items.length === 1) {
-                                items[0].click();
-                            } else if (items.length > 0) {
                                 items[0].click();
                             }
                         }
@@ -11912,21 +11949,30 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         
         function updateCartItemQuantity(index, value) {
-            if (index < 0 || index >= cart.length) return;
+            if (index < 0 || index >= cart.length) return false;
 
             const item = cart[index];
             const product = products.find(p => p.id === item.productId);
 
             if (!product) {
                 showAlert('Product not found', '❌');
-                return;
+                return false;
             }
+            
+            let variant = null;
+            if (item.variantId) {
+                variant = window.getVariantById ? window.getVariantById(product, item.variantId) : (product.variants && product.variants.find(v => v.id === item.variantId));
+            }
+            
+            const effStock = variant ? (variant.stock || 0) : (product.stock || 0);
+            const effUnit = variant ? (variant.unit || product.unit || 'units') : (product.unit || 'units');
 
             const parsedQty = parseFloat(value);
             if (isNaN(parsedQty) || parsedQty <= 0) {
                 showAlert('Please enter a valid quantity greater than 0.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
@@ -11935,30 +11981,39 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const multiplier = Math.round(1 / prec);
                 if (Math.abs((parsedQty * multiplier) % 1) > 0.001) {
                     showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                    window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                     updateCartDisplay();
-                    return;
+                    return false;
                 }
             } else {
                 if (!Number.isInteger(parsedQty)) {
                     showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                     updateCartDisplay();
-                    return;
+                    return false;
                 }
             }
 
             const currentStockInCart = cart
-                .filter((cItem, idx) => cItem.productId === product.id && idx !== index)
+                .filter((cItem, idx) => cItem.productId === product.id && cItem.variantId === item.variantId && idx !== index)
                 .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
                 
-            if (currentStockInCart + (parsedQty * item.baseQuantity) > product.stock) {
-                showAlert(`Cannot update quantity! Available stock: ${product.stock} ${product.unit || 'units'}`, '⚠️');
+            if (currentStockInCart + (parsedQty * item.baseQuantity) > effStock) {
+                showAlert(`Cannot update quantity! Available stock: ${effStock} ${effUnit}`, '⚠️');
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById(`cart-qty-${index}`);
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             item.quantity = parsedQty;
             item.total = item.quantity * item.price;
             updateCartDisplay();
+            return true;
         }
 
         function decreaseQuantity(index) {
@@ -11991,8 +12046,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             if (isNaN(parsedVal) || parsedVal < 0) {
                 showAlert('Invalid discount value.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-disc-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             let gross = item.quantity * item.price;
@@ -12000,14 +12056,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             if (amount > gross) {
                 showAlert('Discount cannot be greater than the item amount.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-disc-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay(); // reset input
-                return;
+                return false;
             }
 
             item.discountType = isPercentage ? 'percentage' : 'amount';
             item.discountValue = parsedVal;
             item.discountPercent = isPercentage ? parsedVal : 0; // backward compat
             updateCartDisplay();
+            return true;
         }
 
         function updateCartDisplay() {
@@ -12990,9 +13048,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             // For historical sales: use the stored gstApplied flag
             // For new sales without flag: fall back to current settings
             const saleGstApplied = lastSaleData.gstApplied !== undefined ? lastSaleData.gstApplied : settings.gstEnabled;
-            // Show GST on receipt only if GST was applied AND receipt showGST is enabled
-            const showGstOnReceipt = saleGstApplied && settings.showGST;
-            
+            // Show GST on receipt only if GST was applied
+            const showGstOnReceipt = saleGstApplied;
+
             const businessNameStr = settings.businessName || 'Sales Receipt';
             const addressStr = settings.address ? `<p style="font-size:12px; margin:2px 0;">${settings.address.replace(/\n/g, '<br>')}</p>` : '';
             const mobileStr = settings.mobile ? `<p style="font-size:12px; margin:2px 0;">Ph: ${settings.mobile}</p>` : '';
@@ -13008,6 +13066,46 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
             
             const footerStr = settings.footerMsg ? `<hr><p style="text-align: center; margin-top: 20px;">${settings.footerMsg.replace(/\n/g, '<br>')}</p>` : '<hr><p style="text-align: center; margin-top: 20px;">Thank you for your purchase!</p>';
+
+            let gstRowsHTML = '';
+            if (showGstOnReceipt && lastSaleData.items && lastSaleData.items.length > 0) {
+                const totalTaxable = lastSaleData.items.reduce((sum, item) => sum + (item.taxableValue || 0), 0);
+                gstRowsHTML += `
+                    <tr>
+                        <td colspan="4" style="text-align: right;">Taxable Amount:</td>
+                        <td style="text-align: right;">₹${totalTaxable.toFixed(2)}</td>
+                    </tr>
+                `;
+
+                const totalCGST = lastSaleData.items.reduce((sum, item) => sum + (item.cgst || 0), 0);
+                const totalSGST = lastSaleData.items.reduce((sum, item) => sum + (item.sgst || 0), 0);
+                const totalIGST = lastSaleData.items.reduce((sum, item) => sum + (item.igst || 0), 0);
+                const hasInterState = lastSaleData.items.some(item => item.taxType === 'inter');
+
+                if (hasInterState) {
+                    gstRowsHTML += `
+                        <tr>
+                            <td colspan="4" style="text-align: right;">IGST:</td>
+                            <td style="text-align: right;">₹${totalIGST.toFixed(2)}</td>
+                        </tr>
+                    `;
+                } else {
+                    gstRowsHTML += `
+                        <tr>
+                            <td colspan="4" style="text-align: right;">CGST:</td>
+                            <td style="text-align: right;">₹${totalCGST.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="text-align: right;">SGST:</td>
+                            <td style="text-align: right;">₹${totalSGST.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="text-align: right;">IGST:</td>
+                            <td style="text-align: right;">₹0.00</td>
+                        </tr>
+                    `;
+                }
+            }
 
             receiptContent.innerHTML = `
                 <div class="receipt-container">
@@ -13065,27 +13163,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <td style="text-align: right;">₹${lastSaleData.courier.toFixed(2)}</td>
                             </tr>
                             ` : ''}
-                            ${showGstOnReceipt ? `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total Taxable Value:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.taxableValue || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            ${lastSaleData.items.some(i => i.taxType === 'inter') ? `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total IGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.igst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            ` : `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total CGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.cgst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total SGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.sgst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            `}
-                            ` : ''}
+                            ${gstRowsHTML}
         <tr style="font-weight: bold; border-top: 2px solid #333;">
             <td colspan="4" style="text-align: right;">Grand Total:</td>
             <td style="text-align: right;">₹${lastSaleData.total.toFixed(2)}</td>
@@ -15569,6 +15647,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const barcode = document.getElementById('productBarcode').value;
             const name = document.getElementById('productName').value.trim();
+            const variantVal = document.getElementById('newProductVariant') ? document.getElementById('newProductVariant').value.trim() : '';
 
             // 1. Check if barcode already exists
             if (products.find(p => p.barcode === barcode)) {
@@ -15611,6 +15690,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 id: Date.now(),
                 barcode: barcode,
                 name: name,
+                variant: typeof variantVal !== "undefined" ? variantVal : "",
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
                 unit: document.getElementById('newProductUnit').value,
@@ -15947,6 +16027,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('editProductId').value = product.id;
             document.getElementById('editProductBarcode').value = product.barcode || '';
             document.getElementById('editProductName').value = product.name;
+            const editVarInput = document.getElementById('editProductVariant');
+            if (editVarInput) editVarInput.value = product.variant || '';
             const editPurchasePrice = document.getElementById('editProductPurchasePrice');
             if(editPurchasePrice) editPurchasePrice.value = product.costPrice || '';
 
@@ -16125,6 +16207,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 product.barcode = newBarcode;
                 product.name = document.getElementById('editProductName').value;
+                const editVarInput = document.getElementById('editProductVariant');
+                if (editVarInput) product.variant = editVarInput.value.trim();
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
                 
@@ -16711,6 +16795,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showAlert(msg, icon = '⚠️') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
             btnContainer.innerHTML = `<button id="alertOkBtn" class="btn btn-primary" onclick="closePopup()">OK</button>`;
@@ -16748,6 +16842,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showConfirm(msg, onYes, onNo = null, icon = '❓') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
 
@@ -16842,6 +16946,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showPasswordPrompt(msg, onSubmit, icon = '🔒') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
 
@@ -23956,9 +24070,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else if (active.id === 'saleCustomerSearch') {
                 dropdown = document.getElementById('saleCustomerDropdown');
                 activeIndexVar = 'saleCustomerSelectedIndex';
-            } else if (active.id === 'saleProductSearch') {
-                dropdown = document.getElementById('saleProductDropdown');
-                activeIndexVar = 'saleProductSelectedIndex';
             }
             
             // If the active input has a visible autocomplete dropdown with options
@@ -24607,14 +24718,25 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 e.target.onchange = null;
                 
                 // Explicitly update the cart item synchronously
+                let success = true;
                 try {
                     if (type === 'qty') {
-                        if (typeof updateCartItemQuantity === 'function') updateCartItemQuantity(index, e.target.value);
+                        if (typeof updateCartItemQuantity === 'function') {
+                            success = updateCartItemQuantity(index, e.target.value) !== false;
+                        }
                     } else if (type === 'disc') {
-                        if (typeof updateCartItemDiscount === 'function') updateCartItemDiscount(index, e.target.value);
+                        if (typeof updateCartItemDiscount === 'function') {
+                            success = updateCartItemDiscount(index, e.target.value) !== false;
+                        }
                     }
                 } catch(err) {
                     console.error("Cart update error:", err);
+                    success = false;
+                }
+                
+                // If update failed (e.g. stock exceeded), stay in the field!
+                if (!success) {
+                    return;
                 }
                 
                 // Determine destination
@@ -25608,7 +25730,8 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                     <label style="font-weight:600;">Barcode</label>
                     <div style="display:flex; gap:6px;">
                         <input type="text" id="addVariantBarcode" placeholder="Scan or enter" style="flex:1; padding:8px; font-size:16px;">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('addVariantBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="height:38px; padding:0 10px;">⚡</button>
+                        <button type="button" class="btn btn-info btn-sm" onclick="openScannerModal('addVariantBarcode')" style="height:38px; padding:0 10px;" title="Scan">📷</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('addVariantBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="height:38px; padding:0 10px;" title="Auto-generate">⚡</button>
                     </div>
                 </div>
             </div>
@@ -26047,4 +26170,110 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             }, 100);
         }
     </script>
+
+
+
+
+<!-- BEGIN PAYMENT ENTER HANDLER -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Initialize the payment UI correctly on load
+    if (typeof togglePaymentFields === 'function') {
+        setTimeout(() => {
+            togglePaymentFields();
+        }, 100);
+    }
+
+    function handlePaymentEnter(e) {
+        if (e.key !== 'Enter') return;
+        if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+        
+        const targetId = e.target.id;
+        const validIds = [
+            'paymentMethod', 'creditAmountPaid', 'creditPaymentMethod', 
+            'creditReference', 'creditDueDate', 'customerAmount', 'otherPaymentAmount'
+        ];
+        
+        if (!validIds.includes(targetId)) return;
+        
+        // Don't prevent default on select elements immediately to allow native dropdown closing
+        if (e.target.tagName !== 'SELECT') {
+            e.preventDefault();
+        }
+
+        setTimeout(() => {
+            if (targetId === 'paymentMethod') {
+                const methodValue = document.getElementById('paymentMethod').value;
+                if (methodValue === 'credit') {
+                    const amt = document.getElementById('creditAmountPaid');
+                    if(amt && amt.offsetWidth > 0) {
+                        amt.focus();
+                        amt.select();
+                    }
+                } else if (methodValue === 'cash' || methodValue === 'mixed') {
+                    const amt = document.getElementById('customerAmount');
+                    if (amt && amt.offsetWidth > 0) {
+                        amt.focus();
+                        amt.select();
+                    } else {
+                        const btn = document.getElementById('btnCompleteSale');
+                        if (btn) btn.click();
+                    }
+                } else {
+                    const btn = document.getElementById('btnCompleteSale');
+                    if(btn) btn.click();
+                }
+            } 
+            else if (targetId === 'customerAmount') {
+                const methodValue = document.getElementById('paymentMethod').value;
+                if (methodValue === 'mixed') {
+                    const otherAmt = document.getElementById('otherPaymentAmount');
+                    if (otherAmt && otherAmt.offsetWidth > 0) {
+                        otherAmt.focus();
+                        otherAmt.select();
+                    } else {
+                        const btn = document.getElementById('btnCompleteSale');
+                        if (btn) btn.click();
+                    }
+                } else {
+                    const btn = document.getElementById('btnCompleteSale');
+                    if (btn) btn.click();
+                }
+            }
+            else if (targetId === 'otherPaymentAmount') {
+                const btn = document.getElementById('btnCompleteSale');
+                if (btn) btn.click();
+            }
+            else if (targetId === 'creditAmountPaid') {
+                const method = document.getElementById('creditPaymentMethod');
+                if(method && method.offsetWidth > 0) method.focus();
+            }
+            else if (targetId === 'creditPaymentMethod') {
+                const ref = document.getElementById('creditReference');
+                const refGroup = document.getElementById('inlineReferenceGroup');
+                if(ref && refGroup && refGroup.style.display !== 'none' && ref.offsetWidth > 0) {
+                    ref.focus();
+                    ref.select();
+                } else {
+                    const due = document.getElementById('creditDueDate');
+                    if(due && due.offsetWidth > 0) due.focus();
+                }
+            }
+            else if (targetId === 'creditReference') {
+                const due = document.getElementById('creditDueDate');
+                if(due && due.offsetWidth > 0) due.focus();
+            }
+            else if (targetId === 'creditDueDate') {
+                const btn = document.getElementById('btnCompleteSale');
+                if(btn) btn.click();
+            }
+        }, 10);
+    }
+
+    // Use bubbling phase (false) instead of capture (true) so select gets the key first
+    document.addEventListener('keydown', handlePaymentEnter, false);
+});
+</script>
+<!-- END PAYMENT ENTER HANDLER -->
+
 </body>

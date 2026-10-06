@@ -2268,7 +2268,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: 20px; z-index: 200; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; z-index: 200; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
                     </div>
@@ -2490,7 +2490,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div style="display: flex; gap: 10px; align-items: flex-end; width: 100%;">
                                     <div class="form-group">
                                         <label>Payment Method</label>
-                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('cashReceived').focus();}" style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white; ">
+                                        <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()"  style="padding: 10px 15px; font-size: 20px; font-weight: bold; height: 48px; width: 100%; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; background: white;">
                                             <option value="cash" selected>Cash Only</option>
                                             <option value="card">Card</option>
                                             <option value="upi">UPI</option>
@@ -2605,6 +2605,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <div style="background: #fff5f5; border: 1px solid #f5c6cb; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 110px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                             <div style="margin-bottom: 4px;"><span style="font-size: 14px;">🗑️</span> <kbd style="background: #f8f9fa; border: 1px solid #ddd; color: #333; padding: 2px 5px; border-radius: 4px; font-size: 12px; font-family: monospace; box-shadow: 0 1px 1px rgba(0,0,0,0.1);">Ctrl + C</kbd></div>
                             <span style="font-size: 12px; font-weight: bold; color: #721c24;">Clear Cart</span>
+                        </div>
+
+                        <div style="background: #f5f0ff; border: 1px solid #d3bfff; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 110px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="margin-bottom: 4px;"><span style="font-size: 14px;">🔀</span> <kbd style="background: #f8f9fa; border: 1px solid #ddd; color: #333; padding: 2px 5px; border-radius: 4px; font-size: 12px; font-family: monospace; box-shadow: 0 1px 1px rgba(0,0,0,0.1);">Ctrl + V</kbd></div>
+                            <span style="font-size: 12px; font-weight: bold; color: #4a1d96;">Add Variant</span>
                         </div>
                         
                         <div style="background: #f0f7ff; border: 1px solid #b8daff; border-radius: 6px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 110px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
@@ -4474,6 +4479,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             </div>
             <form id="addStockForm" onsubmit="submitAddStock(event)">
                 <input type="hidden" id="addStockProductId">
+                <input type="hidden" id="addStockVariantId">
                 <div style="margin-bottom: 20px; font-size: 14px; background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left; border: 1px solid #e9ecef;">
                     <div style="margin-bottom: 5px;"><strong style="color: #495057;">Product:</strong> <span id="addStockProductName" style="font-weight: 500; color: #212529;"></span></div>
                     <div><strong style="color: #495057;">Current Stock:</strong> <span id="addStockCurrentQty" style="color: #dc3545; font-weight: bold;"></span></div>
@@ -4510,124 +4516,304 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
     <div id="editProductModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2050; padding: 20px; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 8px; width: 100%; max-width: 1000px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: auto;">
-            <div style="padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; border-radius: 8px 8px 0 0;">
-                <h4 style="margin: 0; color: #333;">✏️ Edit Product</h4>
-                <span onclick="closeEditProductModal()" style="cursor:pointer; font-size: 20px; font-weight: bold; color: #dc3545;">&times;</span>
+        <div style="background: white; border: 2px solid #007bff; border-radius: 8px; width: 100%; max-width: 1200px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: auto;">
+            
+            <div style="padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-size: 22px; font-weight: bold; color: #007bff;">✏️ Edit Product</h4>
+                <span onclick="closeEditProductModal()" style="cursor:pointer; font-size: 28px; font-weight: bold; color: #dc3545;">&times;</span>
             </div>
-            <div style="padding: 15px; overflow-y: auto; flex: 1;">
-            <form id="editProductForm" onsubmit="saveEditedProduct(event)">
-                <div class="form-group" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                    <div style="flex: 1;">
-                        <label>Product Image (Optional)</label>
-                        <input type="file" id="editProductImage" accept="image/*" class="form-control" onchange="previewProductImage(this, 'editProductImagePreview', 'editProductImageBase64', 'editProductImageClear')">
-                        <input type="hidden" id="editProductImageBase64">
-                    </div>
-                    <div style="position: relative;">
-                        <img id="editProductImagePreview" src="" alt="Preview" style="display: none; width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
-                        <span id="editProductImageClear" onclick="clearProductImage('editProductImage', 'editProductImagePreview', 'editProductImageBase64', 'editProductImageClear')" style="display: none; position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; cursor: pointer; font-size: 12px; font-weight: bold;">×</span>
-                        <div id="editProductImageInfo" style="display: none; font-size: 10px; color: #666; margin-top: 5px; white-space: nowrap; position: absolute; top: 100%; left: 0; background: white; padding: 2px 4px; border-radius: 4px; border: 1px solid #eee; z-index: 10;"></div>
-                    </div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Barcode</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="text" id="editProductBarcode" placeholder="Scan or enter barcode"
-                                style="flex: 1;">
-                            <button type="button" id="btnEditProductAutoGenerate" class="btn btn-secondary" onclick="generateAutoBarcodeForEdit()"
-                                style="white-space: nowrap; background-color: #6c757d; color: white; padding: 0 10px;">⚡
-                                Auto</button>
+            
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+                <style>
+                    #editProductModal .form-group { margin-bottom: 15px; }
+                    #editProductModal label { margin-bottom: 6px; font-size: 18px; font-weight: bold; color: #495057; display: block; }
+                    #editProductModal input, #editProductModal select { padding: 10px 12px; height: 48px; font-size: 20px; width: 100%; box-sizing: border-box; }
+                    #editProductModal .btn { padding: 10px 16px; font-size: 20px; height: 48px; font-weight: bold; }
+                    #editProductModal .compact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; align-items: end; }
+                </style>
+
+                <form id="editProductForm" onsubmit="saveEditedProduct(event)">
+                    <!-- Row 1: Barcode and Image -->
+                    <div class="compact-grid" style="margin-bottom: 15px;">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Barcode</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="editProductBarcode" placeholder="Scan or enter barcode" style="flex: 1;">
+                                <button type="button" id="btnEditProductScanBarcode" class="btn btn-info" onclick="openScannerModal('editProduct')">📷 Scan</button>
+                                <button type="button" id="btnEditProductAutoGenerate" class="btn btn-secondary" onclick="generateAutoBarcodeForEdit()" style="background-color: #6c757d; color: white;">⚡ Auto-Generate</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column: span 2; display: flex; align-items: end; gap: 15px;">
+                            <div style="flex: 1;">
+                                <label>Product Image (Optional)</label>
+                                <input type="file" id="editProductImage" accept="image/*" class="form-control" onchange="previewProductImage(this, 'editProductImagePreview', 'editProductImageBase64', 'editProductImageClear')" style="padding: 7px;">
+                                <input type="hidden" id="editProductImageBase64">
+                            </div>
+                            <div style="position: relative; height: 48px; width: 48px; flex-shrink: 0;">
+                                <img id="editProductImagePreview" src="" alt="Preview" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                <span id="editProductImageClear" onclick="clearProductImage('editProductImage', 'editProductImagePreview', 'editProductImageBase64', 'editProductImageClear')" style="display: none; position: absolute; top: -8px; right: -8px; background: red; color: white; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 22px; cursor: pointer; font-size: 16px; font-weight: bold;">&times;</span>
+                                <div id="editProductImageInfo" style="display: none;"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Product Name</label>
-                        <input type="text" id="editProductName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select id="editProductCategory" required>
-                            <option value="">Select Category...</option>
-                        </select>
-                    </div>
-                    <div class="form-group expiry-tracking-feature">
-                        <label>Expiry Days (Optional)</label>
-                        <input type="number" id="editProductExpiryDays" placeholder="e.g. 30" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Base Unit</label>
-                        <select id="editProductUnit" required>
-                            <option value="">Select Unit...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity Type</label>
-                        <select id="editProductQuantityType">
-                            <option value="whole" selected>Whole Number</option>
-                            <option value="decimal">Decimal</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Unit Price (₹)</label>
-                        <input type="number" id="editProductPrice" step="0.01" required>
-                    </div>
-                    <div class="form-group buying-price-feature">
-                        <label>Buying Price (₹)</label>
-                        <input type="number" id="editProductPurchasePrice" step="0.01" placeholder="0.00">
-                    </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label id="editProductDiscountLabel">Product Discount (%) — <small style="color:#666; font-weight:normal;">Overrides Category Discount</small></label>
-                        <div style="display: flex; gap: 10px;">
-                            <select id="editProductDiscountType" class="form-control" style="width: auto;" onchange="document.getElementById('editProductDiscountLabel').innerHTML = this.value === 'percentage' ? 'Product Discount (%) — <small style=\'color:#666; font-weight:normal;\'>Overrides Category Discount</small>' : 'Product Discount (₹) — <small style=\'color:#666; font-weight:normal;\'>Overrides Category Discount</small>'">
-                                <option value="percentage">Percentage (%)</option>
-                                <option value="amount">Amount (₹)</option>
+
+                    <!-- Row 2: Product Name, HSN, Category, Expiry, Unit -->
+                    <div class="compact-grid">
+                        <div class="form-group">
+                            <label>Product Name</label>
+                            <input type="text" id="editProductName" required placeholder="e.g., Blue Ballpoint Pen" oninput="const vpd=document.getElementById('editVarParentDisplay'); if(vpd) vpd.value=this.value.trim();">
+                        </div>
+                        <div class="form-group">
+                            <label>Variant</label>
+                            <input type="text" id="editProductVariant" placeholder="e.g., 0.7mm">
+                        </div>
+                        <div class="form-group gst-field" style="display:none;">
+                            <label>HSN/SAC Code</label>
+                            <input type="text" id="editProductHSN" placeholder="e.g. 4820">
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="editProductCategory" required>
+                                <option value="">Select Category...</option>
                             </select>
-                            <input type="number" id="editProductDiscount" step="0.01" min="0" placeholder="e.g. 5 (Leave blank for category default)" style="flex: 1;">
+                        </div>
+                        <div class="form-group expiry-tracking-feature" id="editProductExpiryContainer">
+                            <label>Expiry Days</label>
+                            <input type="number" id="editProductExpiryDays" placeholder="e.g. 30" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Base Unit (single item info)</label>
+                            <select id="editProductUnit" required>
+                                <option value="">Select Unit...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Quantity Type</label>
+                            <select id="editProductQuantityType">
+                                <option value="whole" selected>Whole Number</option>
+                                <option value="decimal">Decimal</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group gst-field" style="display:none;">
+                            <label>GST Rate (%)</label>
+                            <select id="editProductGSTRate" onchange="document.getElementById('editProductCustomGSTRate').style.display = this.value === 'custom' ? 'block' : 'none'">
+                                <option value="0">0%</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="editProductCustomGSTRate" placeholder="Enter %" style="display:none; margin-top:4px;" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Selling Price (₹)</label>
+                            <input type="number" id="editProductPrice" step="0.01" required placeholder="10.00">
+                        </div>
+                        <div class="form-group">
+                            <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Product Discount (%) <small style="color:#888; font-weight:normal; font-size:14px;">— Overrides Category</small></label>
+                            <input type="number" id="editProductDiscount" placeholder="0" min="0" max="100" step="0.01" value="0">
+                        </div>
+                        <div class="form-group buying-price-feature" id="editProductPurchasePriceContainer">
+                            <label>Buying Price (₹)</label>
+                            <input type="number" id="editProductPurchasePrice" step="0.01" placeholder="0.00">
                         </div>
                     </div>
-                    <div class="form-group gst-field" style="display:none;">
-                        <label>HSN/SAC Code</label>
-                        <input type="text" id="editProductHSN" placeholder="e.g. 4820">
-                    </div>
-                    <div class="form-group gst-field" style="display:none;">
-                        <label>GST Rate (%)</label>
-                        <select id="editProductGSTRate" onchange="document.getElementById('editProductCustomGSTRate').style.display = this.value === 'custom' ? 'block' : 'none'">
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                        <input type="number" id="editProductCustomGSTRate" placeholder="Enter %" style="display:none; margin-top:5px;" min="0" step="0.01">
-                    </div>
-                    <div class="form-group"
-                        style="grid-column: 1 / -1; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <label style="margin-bottom: 10px; display: block;">Pack Sizes (Optional)</label>
+
+                    <!-- Pack Sizes Section -->
+                    <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-top: 10px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <label style="margin: 0;">Pack Sizes (whole size item info)</label>
+                            <button type="button" id="btnEditProductAddPackSize" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'editPackSizesContainer')">+ Add Pack Size</button>
+                        </div>
                         <div id="editPackSizesContainer">
                             <!-- Dynamic pack size inputs will be added here -->
                         </div>
-                        <button type="button" id="btnEditProductAddPackSize" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'editPackSizesContainer')">+ Add Pack Size</button>
                     </div>
 
-                    <div class="form-group">
-                        <label>Stock</label>
-                        <input type="number" id="editProductStock" required>
+                    <!-- Last Row -->
+                    <div class="compact-grid">
+                        <div class="form-group">
+                            <label>Current Stock</label>
+                            <input type="number" id="editProductStock" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Stock Level</label>
+                            <input type="number" id="editProductMinStock" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Supplier</label>
+                            <input type="text" id="editProductSupplier" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="editProductDescription" placeholder="Optional product description">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Minimum Stock Level</label>
-                        <input type="number" id="editProductMinStock" required>
+
+                    <!-- Variant Section -->
+                    <div style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+                            <input type="checkbox" id="editProductHasVariants" onchange="toggleEditVariantUI()" style="width: 24px; height: 24px; margin: 0;">
+                            ☑ This product has variants
+                        </label>
                     </div>
-                    <div class="form-group">
-                        <label>Supplier</label>
-                        <input type="text" id="editProductSupplier">
+                    
+                    <div id="editVariantSection" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h5 style="margin: 0; color: #333; font-weight: bold; font-size: 18px;">Product Variants</h5>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" class="btn btn-info btn-sm" onclick="openAddVariantFromEdit()" title="Add Variant" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Existing Variants List Table -->
+                        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 15px;">
+                                <thead style="background: #e9ecef;">
+                                    <tr>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;">Variant</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;">Barcode</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;">Sell ₹</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;" class="buying-price-feature">Buy ₹</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;">Disc%</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd;">Stock</th>
+                                        <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="editVariantsTableBody">
+                                    <tr id="editNoVariantsRow"><td colspan="7" style="padding: 15px; text-align: center; color: #666; font-style: italic;">No variants added yet. Click + to add variant.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="editProductId">
+                    
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button type="button" id="btnCancelEditProduct" class="btn btn-secondary" onclick="closeEditProductModal()">Cancel</button>
+                        <button type="submit" id="btnSaveEditProduct" class="btn btn-primary">💾 Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<!-- ===== Full Edit Variant Modal ===== -->
+<div id="editVariantModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.65); z-index:3200; padding:16px; align-items:flex-start; justify-content:center; overflow-y:auto;">
+    <div style="background:#fff; border-radius:10px; width:100%; max-width:760px; box-shadow:0 6px 24px rgba(0,0,0,0.25); margin:auto; position:relative;">
+        <div style="padding:12px 18px; border-bottom:1px solid #e9ecef; background:#f8f9fa; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="margin:0; color:#333;">&#x270F;&#xFE0F; Edit Variant</h4>
+            <span onclick="closeEditVariantModal()" style="cursor:pointer; font-size:22px; font-weight:bold; color:#dc3545; line-height:1;">&times;</span>
+        </div>
+        <div style="padding:18px; overflow-y:auto; max-height:calc(100vh - 120px);">
+            <!-- Parent Product (read-only) -->
+            <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:18px;">&#x1F512;</span>
+                <div>
+                    <div style="font-size:11px; color:#856404; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Parent Product (Read-only)</div>
+                    <div id="evParentName" style="font-size:15px; font-weight:700; color:#333;"></div>
+                </div>
+            </div>
+            <!-- Row 1: Variant Name + Barcode -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Variant Name <span style="color:red;">*</span></label>
+                    <input type="text" id="evName" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;" placeholder="e.g. Black, A4, XL">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Barcode</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="evBarcode" style="flex:1; padding:8px; font-size:15px; box-sizing:border-box;">
+                        <button type="button" title="Scan" onclick="openScannerModal('evBarcode')" style="background:#17a2b8; color:#fff; border:none; border-radius:4px; padding:0 10px; cursor:pointer; font-size:14px;">📷</button>
+                        <button type="button" title="Auto-generate" onclick="document.getElementById('evBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="background:#6c757d; color:#fff; border:none; border-radius:4px; padding:0 10px; cursor:pointer; font-size:14px;">&#x26A1;</button>
                     </div>
                 </div>
-                <input type="hidden" id="editProductId">
-                <button type="submit" id="btnSaveEditProduct" class="btn btn-primary">Save Changes</button>
-                <button type="button" id="btnCancelEditProduct" class="btn btn-warning" onclick="closeEditProductModal()">Cancel</button>
-            </form>
+            </div>
+            <!-- Row 2: Selling Price + Buying Price + Discount -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Selling Price (&#x20B9;)</label>
+                    <input type="number" id="evSellPrice" min="0" step="0.01" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+                <div class="form-group buying-price-feature" id="evBuyPriceGroup" style="margin:0;">
+                    <label style="font-weight:600;">Buying Price (&#x20B9;)</label>
+                    <input type="number" id="evBuyPrice" min="0" step="0.01" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Product Discount (%) <small style="color:#888; font-weight:normal; font-size:11px;">&#x2014; Overrides Category</small></label>
+                    <input type="number" id="evDiscount" min="0" max="100" step="0.01" value="0" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+            </div>
+            <!-- Row 3: Category + Base Unit + Qty Type -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Category</label>
+                    <select id="evCategory" style="width:100%; padding:8px; font-size:14px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Base Unit</label>
+                    <select id="evUnit" style="width:100%; padding:8px; font-size:14px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Qty Type</label>
+                    <select id="evQtyType" style="width:100%; padding:8px; font-size:14px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                        <option value="whole">Whole Number</option>
+                        <option value="decimal">Decimal</option>
+                    </select>
+                </div>
+            </div>
+            <!-- GST Row (shown when GST enabled) -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group gst-field" id="evHSNGroup" style="margin:0; display:none;">
+                    <label style="font-weight:600;">HSN/SAC Code</label>
+                    <input type="text" id="evHSNCustom" placeholder="Enter HSN/SAC (blank = same as parent)" style="width:100%; padding:8px; font-size:14px; box-sizing:border-box;">
+                </div>
+                <div class="form-group gst-field" id="evGSTGroup" style="margin:0; display:none;">
+                    <label style="font-weight:600;">GST Rate (%)</label>
+                    <select id="evGST" style="width:100%; padding:8px; font-size:14px; height:38px; box-sizing:border-box;" onchange="document.getElementById('evGSTCustom').style.display=this.value==='__custom__'?'block':'none';">
+                        <option value="">Same as parent</option>
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                        <option value="__custom__">Custom&hellip;</option>
+                    </select>
+                    <input type="number" id="evGSTCustom" placeholder="Enter %" min="0" step="0.01" style="display:none; margin-top:4px; width:100%; padding:8px; font-size:14px; box-sizing:border-box;">
+                </div>
+            </div>
+            <!-- Stock Row -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Stock</label>
+                    <input type="number" id="evStock" value="0" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Minimum Stock Level</label>
+                    <input type="number" id="evMinStock" value="0" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+            </div>
+            <!-- Pack Sizes -->
+            <div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #dee2e6; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label style="margin:0; font-weight:600; font-size:14px;">Pack Sizes (for this variant)</label>
+                    <button type="button" class="btn btn-info btn-sm" onclick="addPackSizeInput('','','','evPackSizesContainer')">+ Add Pack Size</button>
+                </div>
+                <div id="evPackSizesContainer"></div>
+            </div>
+            <!-- Buttons -->
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeEditVariantModal()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveEditedVariantFull()" style="font-size:15px; padding:8px 20px;">&#x2705; Update Variant</button>
+            </div>
         </div>
     </div>
 </div>
@@ -4754,7 +4940,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <div class="compact-grid">
                                 <div class="form-group">
                                     <label>Product Name</label>
-                                    <input type="text" id="newProductName" required placeholder="e.g., Blue Ballpoint Pen">
+                                    <input type="text" id="newProductName" required placeholder="e.g., Blue Ballpoint Pen" oninput="const vpd=document.getElementById('varParentDisplay'); if(vpd) vpd.value=this.value.trim();">
+                                </div>
+                                <div class="form-group">
+                                    <label>Variant</label>
+                                    <input type="text" id="newProductVariant" placeholder="e.g., 0.7mm">
                                 </div>
                                 <div class="form-group gst-field" style="display:none;">
                                     <label>HSN/SAC Code</label>
@@ -4800,6 +4990,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <div class="form-group">
                                     <label>Selling Price (₹)</label>
                                     <input type="number" id="newProductSellingPrice" placeholder="10.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Product Discount (%) <small style="color:#888;font-weight:normal;">Overrides Category Discount</small></label>
+                                    <input type="number" id="newProductDiscount" placeholder="0" min="0" max="100" step="0.01" value="0">
                                 </div>
                                 <div class="form-group" id="newProductPurchasePriceContainer">
                                     <label>Buying Price (₹)</label>
@@ -4853,51 +5047,126 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         <button type="button" class="btn btn-info btn-sm" onclick="addNewProductVariant()" title="Add Variant" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;">+</button>
                                     </div>
                                 </div>
-                                <div class="compact-grid" style="grid-template-columns: repeat(6, 1fr);">
-                                    <div class="form-group" style="grid-column: span 2;">
-                                        <label>Variant Name</label>
-                                        <input type="text" id="varName" placeholder="e.g. XL, Red, ₹10" onkeydown="handleVariantKeydown(event, 'varBarcode')">
-                                    </div>
-                                    <div class="form-group" style="grid-column: span 2;">
-                                        <label>Barcode</label>
-                                        <div style="display: flex; gap: 5px;">
-                                            <input type="text" id="varBarcode" placeholder="Scan/Enter" onkeydown="handleVariantKeydown(event, 'varBuyPrice')" style="flex:1;">
-                                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('varBarcode').value = 'VAR-' + Date.now()" style="padding: 0 10px; height: 48px;">⚡</button>
+
+                                <!-- Variant Entry Form -->
+                                <div style="background:#fff; border:1px solid #c8e6c9; border-radius:8px; padding:15px; margin-bottom:12px;">
+                                    <!-- Row 1: Parent (readonly) + Variant Name + Barcode -->
+                                    <div class="compact-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:10px;">
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Parent Product <span style="color:#888;font-size:14px;">🔒</span></label>
+                                            <input type="text" id="varParentDisplay" readonly style="background:#f0f0f0; cursor:not-allowed;" placeholder="Enter Product Name above">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Variant Name <span style="color:red;">*</span></label>
+                                            <input type="text" id="varName" placeholder="e.g. A4, L, Red" onkeydown="handleVariantKeydown(event, 'varBarcode')">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Barcode</label>
+                                            <div style="display: flex; gap: 5px;">
+                                                <input type="text" id="varBarcode" placeholder="Scan/Enter" onkeydown="handleVariantKeydown(event, 'varSellPrice')" style="flex:1;">
+                                                <button type="button" class="btn btn-info btn-sm" onclick="openScannerModal('varBarcode')" style="padding: 0 10px; height: 48px;" title="Scan">📷</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('varBarcode').value = 'VAR-' + Date.now()" style="padding: 0 10px; height: 48px;" title="Auto-generate">⚡</button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="form-group buying-price-feature">
-                                        <label>Buy Price (₹)</label>
-                                        <input type="number" id="varBuyPrice" placeholder="0.00" onkeydown="handleVariantKeydown(event, 'varSellPrice')">
+                                    <!-- Row 2: Sell Price + Buy Price + Discount -->
+                                    <div class="compact-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:10px;">
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Selling Price (₹)</label>
+                                            <input type="number" id="varSellPrice" placeholder="0.00" min="0" step="0.01" onkeydown="handleVariantKeydown(event, 'varBuyPrice')">
+                                        </div>
+                                        <div class="form-group buying-price-feature" style="margin-bottom:0;">
+                                            <label>Buying Price (₹)</label>
+                                            <input type="number" id="varBuyPrice" placeholder="0.00" min="0" step="0.01" onkeydown="handleVariantKeydown(event, 'varDiscount')">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Product Discount (%) <small style="color:#888; font-weight:normal; font-size:11px;">&#x2014; Overrides Category</small></label>
+                                            <input type="number" id="varDiscount" placeholder="0" min="0" max="100" step="0.01" value="0" onkeydown="handleVariantKeydown(event, 'varHSN')">
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Sell Price (₹)</label>
-                                        <input type="number" id="varSellPrice" placeholder="0.00" onkeydown="handleVariantKeydown(event, 'varStock')">
+                                    <!-- Row 3: HSN + Category + Base Unit + Qty Type + GST -->
+                                    <div class="compact-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr 1fr; margin-bottom:10px;">
+                                        <div class="form-group gst-field" style="margin-bottom:0; display:none;">
+                                            <label>HSN/SAC</label>
+                                            <select id="varHSN" style="font-size:16px; height:48px;" onchange="const ci=document.getElementById('varHSNCustom'); if(ci) ci.style.display=this.value==='__custom__'?'block':'none';" onkeydown="handleVariantKeydown(event, 'varCategory')">
+                                                <option value="">Same as parent</option>
+                                                <option value="__custom__">Custom…</option>
+                                            </select>
+                                            <input type="text" id="varHSNCustom" placeholder="Enter HSN/SAC code" style="display:none; margin-top:4px; width:100%; box-sizing:border-box;">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Category</label>
+                                            <select id="varCategory" onchange="" style="font-size:16px; height:48px;">
+                                                <option value="">Same as parent</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Base Unit</label>
+                                            <select id="varUnit" style="font-size:16px; height:48px;">
+                                                <option value="">Same as parent</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Qty Type</label>
+                                            <select id="varQuantityType" style="font-size:16px; height:48px;">
+                                                <option value="">Same as parent</option>
+                                                <option value="whole">Whole Number</option>
+                                                <option value="decimal">Decimal</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group gst-field" style="margin-bottom:0; display:none;">
+                                            <label>GST Rate (%)</label>
+                                            <select id="varGSTRate" style="font-size:16px; height:48px;">
+                                                <option value="">Same as parent</option>
+                                                <option value="0">0%</option>
+                                                <option value="5">5%</option>
+                                                <option value="12">12%</option>
+                                                <option value="18">18%</option>
+                                                <option value="28">28%</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Stock</label>
-                                        <input type="number" id="varStock" placeholder="0" value="0" onkeydown="handleVariantKeydown(event, 'varMinStock')">
+                                    <!-- Row 4: Stock + Min Stock -->
+                                    <div class="compact-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:10px;">
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Opening Stock</label>
+                                            <input type="number" id="varStock" placeholder="0" value="0" min="0" onkeydown="handleVariantKeydown(event, 'varMinStock')">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom:0;">
+                                            <label>Min Stock</label>
+                                            <input type="number" id="varMinStock" placeholder="0" value="0" min="0" onkeydown="handleVariantKeydown(event, 'btnAddVar')">
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Min Stock</label>
-                                        <input type="number" id="varMinStock" placeholder="0" value="0" onkeydown="handleVariantKeydown(event, 'btnAddVar')">
+                                    <!-- Pack Sizes for variant -->
+                                    <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom:10px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                            <label style="margin: 0; font-size:16px;">Pack Sizes (for this variant)</label>
+                                            <button type="button" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'varPackSizesContainer')">+ Add Pack Size</button>
+                                        </div>
+                                        <div id="varPackSizesContainer"></div>
+                                    </div>
+                                    <!-- Add button -->
+                                    <div style="text-align:right;">
+                                        <button type="button" class="btn btn-success" onclick="addNewProductVariant()" style="font-size:17px; padding: 8px 24px;">+ Add Variant to List</button>
                                     </div>
                                     <button id="btnAddVar" style="display:none;" onclick="addNewProductVariant()"></button>
                                 </div>
-                                
+
                                 <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 15px; background: white;">
-                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 16px;">
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 15px;">
                                         <thead style="background: #e9ecef;">
                                             <tr>
                                                 <th style="padding: 10px; border-bottom: 2px solid #ddd;">Variant</th>
                                                 <th style="padding: 10px; border-bottom: 2px solid #ddd;">Barcode</th>
-                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Buy Price</th>
-                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Sell Price</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Sell ₹</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;" class="buying-price-feature">Buy ₹</th>
+                                                <th style="padding: 10px; border-bottom: 2px solid #ddd;">Disc%</th>
                                                 <th style="padding: 10px; border-bottom: 2px solid #ddd;">Stock</th>
                                                 <th style="padding: 10px; border-bottom: 2px solid #ddd; text-align: center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="variantsTableBody">
-                                            <tr id="noVariantsRow"><td colspan="6" style="padding: 15px; text-align: center; color: #666; font-style: italic;">No variants added yet. Add variants above.</td></tr>
+                                            <tr id="noVariantsRow"><td colspan="7" style="padding: 15px; text-align: center; color: #666; font-style: italic;">No variants added yet. Fill the form above and click + Add Variant to List.</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -6272,6 +6541,32 @@ input:focus, select:focus, textarea:focus, button:focus {
         // Initialize data structure
         let products = JSON.parse(localStorage.getItem('products')) || [];
 
+        // MIGRATION: Fix products where Simple Variant and Advanced Variants were accidentally combined
+        let needsSaveMigration = false;
+        products.forEach(p => {
+            if (p.variant && p.variant.trim() !== '' && Array.isArray(p.variants) && p.variants.length > 0) {
+                const svName = p.variant.trim();
+                const exists = p.variants.some(v => String(v.variantName).toLowerCase().trim() === svName.toLowerCase());
+                if (!exists) {
+                    p.variants.unshift({
+                        id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+                        variantName: svName,
+                        barcode: p.barcode || 'VAR-' + Date.now().toString().slice(-7),
+                        buyingPrice: p.costPrice || 0,
+                        sellingPrice: p.price || 0,
+                        stock: p.stock || 0,
+                        minimumStock: p.minStock || 0,
+                        unit: p.unit || 'Piece'
+                    });
+                }
+                p.variant = '';
+                needsSaveMigration = true;
+            }
+        });
+        if (needsSaveMigration) {
+            localStorage.setItem('products', JSON.stringify(products));
+        }
+
         // --- Product Variant Helper Functions ---
         window.hasVariants = function(product) {
             return product && Array.isArray(product.variants) && product.variants.length > 0;
@@ -6293,10 +6588,16 @@ input:focus, select:focus, textarea:focus, button:focus {
         
         window.getVariantDisplayName = function(product, variant) {
             if (!product) return 'Unknown Product';
+            let name = product.name || 'Unknown Product';
+            
             if (variant && variant.variantName) {
-                return `${product.name} - ${variant.variantName}`;
+                return `${name} - ${variant.variantName}`;
             }
-            return product.name || 'Unknown Product';
+            
+            if (product.variant && product.variant.trim()) {
+                name += ' ' + product.variant.trim();
+            }
+            return name;
         };
 
         let calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
@@ -8460,6 +8761,12 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Variants are additive: do NOT hide parent-level fields.
             // Only toggle the variant section visibility.
             document.getElementById('variantSection').style.display = hasVariants ? 'block' : 'none';
+            if (hasVariants) {
+                const varBarcodeEl = document.getElementById('varBarcode');
+                if (varBarcodeEl && !varBarcodeEl.value) {
+                    varBarcodeEl.value = 'VAR-' + Date.now();
+                }
+            }
         }
 
         function handleVariantKeydown(e, nextId) {
@@ -8492,58 +8799,125 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function addNewProductVariant() {
+            // Auto-update parent display from product name field
+            const productNameEl = document.getElementById('newProductName');
+            const parentDisplayEl = document.getElementById('varParentDisplay');
+            if (productNameEl && parentDisplayEl) {
+                parentDisplayEl.value = productNameEl.value.trim();
+            }
+
             const name = document.getElementById('varName').value.trim();
             const barcode = document.getElementById('varBarcode').value.trim();
             const buyPrice = parseFloat(document.getElementById('varBuyPrice').value) || 0;
             const sellPrice = parseFloat(document.getElementById('varSellPrice').value) || 0;
             const stock = parseInt(document.getElementById('varStock').value) || 0;
             const minStock = parseInt(document.getElementById('varMinStock').value) || 0;
-            
+            const discount = parseFloat(document.getElementById('varDiscount') ? document.getElementById('varDiscount').value : 0) || 0;
+            const hsnEl = document.getElementById('varHSN');
+            let hsn = '';
+            if (hsnEl) {
+                if (hsnEl.tagName === 'SELECT') {
+                    hsn = hsnEl.value === '__custom__'
+                        ? (document.getElementById('varHSNCustom') ? document.getElementById('varHSNCustom').value.trim() : '')
+                        : (hsnEl.value === '' ? '' : hsnEl.value);
+                } else {
+                    hsn = hsnEl.value.trim();
+                }
+            }
+
+            const catEl = document.getElementById('varCategory');
+            const category = catEl ? catEl.value : '';
+            const unitEl = document.getElementById('varUnit');
+            const unit = unitEl ? unitEl.value : '';
+            const qtyTypeEl = document.getElementById('varQuantityType');
+            const quantityType = qtyTypeEl ? qtyTypeEl.value : '';
+            const gstEl = document.getElementById('varGSTRate');
+            const gstRate = gstEl ? gstEl.value : '';
+
+            // Gather pack sizes for this variant
+            const packSizes = [];
+            const varPackContainer = document.getElementById('varPackSizesContainer');
+            if (varPackContainer) {
+                varPackContainer.querySelectorAll('.pack-size-row').forEach((row, index) => {
+                    const pName = row.querySelector('.pack-name');
+                    const pQty = row.querySelector('.pack-qty');
+                    const pPrice = row.querySelector('.pack-price');
+                    if (pName && pQty && pName.value && parseFloat(pQty.value)) {
+                        packSizes.push({
+                            name: pName.value,
+                            quantity: parseFloat(pQty.value),
+                            price: pPrice ? (parseFloat(pPrice.value) || 0) : 0
+                        });
+                    }
+                });
+            }
+
             if (!name) {
                 showAlert('Variant Name is required.', '⚠️');
+                document.getElementById('varName').focus();
                 return;
             }
-            
+
             const parentNameEl = document.getElementById('newProductName');
             const parentNameVal = parentNameEl ? parentNameEl.value.trim() : 'Current Product';
             const parentName = parentNameEl ? parentNameEl.value.trim().toLowerCase() : '';
 
-            const lowerName = name.toLowerCase();
-            if (currentNewProductVariants.some(v => v.variantName.toLowerCase() === lowerName)) {
-                showAlert(`Variant ${name} already exists for ${parentNameVal}.`, '⚠️');
+            // Case-insensitive + whitespace-normalized duplicate check
+            const normName = name.toLowerCase().replace(/\s+/g, ' ').trim();
+            if (currentNewProductVariants.some(v => v.variantName.toLowerCase().replace(/\s+/g, ' ').trim() === normName)) {
+                showAlert(`Variant "${name}" already exists for ${parentNameVal}.`, '⚠️');
                 return;
             }
-            
+
             if (parentName) {
                 const existingParent = products.find(p => p.name.trim().toLowerCase() === parentName);
                 if (existingParent && window.hasVariants(existingParent)) {
-                    if (existingParent.variants.some(v => String(v.variantName).toLowerCase() === lowerName)) {
-                        showAlert(`Variant ${name} already exists for ${existingParent.name}.`, '⚠️');
+                    if (existingParent.variants.some(v => String(v.variantName).toLowerCase().replace(/\s+/g, ' ').trim() === normName)) {
+                        showAlert(`Variant "${name}" already exists for ${existingParent.name}.`, '⚠️');
                         return;
                     }
                 }
             }
-            
+
             if (barcode && !isBarcodeGloballyUnique(barcode)) {
                 showAlert('Barcode already exists globally!', '⚠️');
                 return;
             }
-            
+
             const newVariant = {
-                id: 'var-' + Date.now(),
+                id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 variantName: name,
                 barcode: barcode,
                 buyingPrice: buyPrice,
                 sellingPrice: sellPrice,
                 stock: stock,
-                minimumStock: minStock
+                minimumStock: minStock,
+                productDiscount: discount,
+                hsn: hsn,
+                category: category,
+                unit: unit,
+                quantityType: quantityType,
+                gstRate: gstRate,
+                packSizes: packSizes
             };
-            
+
             currentNewProductVariants.push(newVariant);
             renderVariantsTable();
-            
+
+            // Reset variant form fields
             document.getElementById('varName').value = '';
-            document.getElementById('varBarcode').value = '';
+            document.getElementById('varBarcode').value = 'VAR-' + Date.now();
+            document.getElementById('varSellPrice').value = '';
+            document.getElementById('varBuyPrice').value = '';
+            document.getElementById('varDiscount').value = '0';
+            document.getElementById('varStock').value = '0';
+            document.getElementById('varMinStock').value = '0';
+            const hsnResetEl = document.getElementById('varHSN');
+            if (hsnResetEl) { hsnResetEl.value = ''; }
+            const hsnCustomResetEl = document.getElementById('varHSNCustom');
+            if (hsnCustomResetEl) { hsnCustomResetEl.value = ''; hsnCustomResetEl.style.display = 'none'; }
+
+            if (varPackContainer) varPackContainer.innerHTML = '';
             document.getElementById('varName').focus();
         }
 
@@ -8633,18 +9007,19 @@ input:focus, select:focus, textarea:focus, button:focus {
         function renderVariantsTable() {
             const tbody = document.getElementById('variantsTableBody');
             if (currentNewProductVariants.length === 0) {
-                tbody.innerHTML = '<tr id="noVariantsRow"><td colspan="6" style="padding: 10px; text-align: center; color: #666; font-style: italic;">No variants added yet.</td></tr>';
+                tbody.innerHTML = '<tr id="noVariantsRow"><td colspan="7" style="padding: 10px; text-align: center; color: #666; font-style: italic;">No variants added yet. Fill the form above and click + Add Variant to List.</td></tr>';
                 return;
             }
             tbody.innerHTML = currentNewProductVariants.map((v, index) => `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">${v.variantName}</td>
-                    <td style="padding: 10px;">${v.barcode || '-'}</td>
-                    <td style="padding: 10px;">₹${v.buyingPrice.toFixed(2)}</td>
-                    <td style="padding: 10px;">₹${v.sellingPrice.toFixed(2)}</td>
-                    <td style="padding: 10px;">${v.stock}</td>
-                    <td style="padding: 10px;">
-                        <button type="button" class="btn btn-sm btn-danger" onclick="removeVariant(${index})" style="padding: 4px 8px;">🗑</button>
+                    <td style="padding: 8px 10px; font-weight:600;">${v.variantName}</td>
+                    <td style="padding: 8px 10px; font-size:13px; color:#555;">${v.barcode || '—'}</td>
+                    <td style="padding: 8px 10px;">₹${(v.sellingPrice || 0).toFixed(2)}</td>
+                    <td style="padding: 8px 10px;" class="buying-price-feature">₹${(v.buyingPrice || 0).toFixed(2)}</td>
+                    <td style="padding: 8px 10px;">${v.productDiscount ? v.productDiscount + '%' : '—'}</td>
+                    <td style="padding: 8px 10px;">${v.stock || 0}</td>
+                    <td style="padding: 8px 10px; text-align:center;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeVariant(${index})" style="padding: 4px 8px;" title="Remove">🗑</button>
                     </td>
                 </tr>
             `).join('');
@@ -8696,6 +9071,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const sellingPriceEl = document.getElementById('newProductSellingPrice');
                 const sellingPrice = sellingPriceEl ? parseFloat(sellingPriceEl.value) || 0 : 0;
 
+                const productDiscountEl = document.getElementById('newProductDiscount');
+                const productDiscount = productDiscountEl ? parseFloat(productDiscountEl.value) || 0 : 0;
+
+
                 const costPriceEl = document.getElementById('newProductPurchasePrice');
                 const costPrice = costPriceEl ? parseFloat(costPriceEl.value) || 0 : 0;
 
@@ -8726,7 +9105,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const imageBase64 = imageBase64El ? imageBase64El.value : '';
 
                 if (!name || !category || !unit) {
-                    alert('Debug: Validation Failed. Name: ' + name + ', Category: ' + category + ', Unit: ' + unit);
                     showAlert('Name, Category and Unit are required!', '⚠️');
                     return;
                 }
@@ -8782,6 +9160,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 });
 
+                // Ensure main variant is included in variants array if hasVariants is true
+                if (hasVariants) {
+                    let tempVarVal = typeof variantVal !== "undefined" ? variantVal : (document.getElementById("newProductVariant") ? document.getElementById("newProductVariant").value.trim() : "");
+                    if (tempVarVal) {
+                        const exists = currentNewProductVariants.some(v => v.variantName.toLowerCase().replace(/\s+/g, ' ').trim() === tempVarVal.toLowerCase().replace(/\s+/g, ' ').trim());
+                        if (!exists) {
+                            currentNewProductVariants.unshift({
+                                id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                                variantName: tempVarVal,
+                                barcode: barcode || 'VAR-' + Date.now().toString().slice(-7),
+                                buyingPrice: costPrice || 0,
+                                sellingPrice: sellingPrice || 0,
+                                stock: stock || 0,
+                                minimumStock: minStock || 0,
+                                productDiscount: productDiscount || 0,
+                                hsn: hsn || '',
+                                category: category || '',
+                                unit: unit || 'Piece'
+                            });
+                        }
+                    }
+                }
+
                 const proceedToAdd = () => {
                     // Check if updating existing
                     let newProd = products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -8803,6 +9204,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         }
                         newProd.hsn = hsn;
                         newProd.gstRate = gstRate;
+                        newProd.productDiscount = productDiscount;
                         if (desc) newProd.description = desc;
                         if (supplier) newProd.supplier = supplier;
                         if (packSizes.length > 0) newProd.packSizes = packSizes;
@@ -8810,6 +9212,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         
                         if (hasVariants) {
                             if (!newProd.variants) newProd.variants = [];
+                            // append new variants
                             newProd.variants.push(...currentNewProductVariants);
                         }
                     } else {
@@ -8818,12 +9221,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                             id: Date.now(),
                             barcode: hasVariants ? '' : (barcode || 'Manual-' + Date.now()),
                             name: name,
+                            variant: (hasVariants ? "" : (typeof variantVal !== "undefined" ? variantVal : (document.getElementById("newProductVariant") ? document.getElementById("newProductVariant").value.trim() : ""))),
                             category: category,
                             unit: unit,
                             expiryDays: expiryDays,
                             expiryDate: expiryDate,
                             price: hasVariants ? 0 : sellingPrice,
                             costPrice: hasVariants ? 0 : costPrice,
+                            productDiscount: productDiscount,
                             hsn: hsn,
                             gstRate: gstRate,
                             stock: hasVariants ? 0 : stock,
@@ -9428,9 +9833,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                 loadProductByBarcode(barcode, 'stock');
             } else if (currentScanMode === 'newProduct') {
                 document.getElementById('newProductBarcode').value = barcode;
+            } else if (currentScanMode === 'editProduct') {
+                document.getElementById('editProductBarcode').value = barcode;
             } else if (currentScanMode === 'purchase') {
                 document.getElementById('purchaseSearchInput').value = barcode;
                 searchPurchaseProduct(barcode);
+            } else if (currentScanMode === 'varBarcode') {
+                document.getElementById('varBarcode').value = barcode;
+            } else if (currentScanMode === 'evBarcode') {
+                document.getElementById('evBarcode').value = barcode;
+            } else if (currentScanMode === 'addVariantBarcode') {
+                document.getElementById('addVariantBarcode').value = barcode;
             }
 
             closeScannerModal();
@@ -9838,63 +10251,30 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 if (window.hasVariants(product)) {
                     let rows = '';
-                    // Determine if parent has its own meaningful inventory (stock > 0 or price > 0 or barcode)
-                    const parentHasOwnInventory = (product.stock > 0) || (product.price > 0) || product.barcode;
                     
-                    if (parentHasOwnInventory) {
-                        let pStock = product.stock || 0;
-                        let pMinStock = product.minStock || 0;
-                        let pStockStatus = pStock <= 0 ? 'stock-low' : (pStock <= pMinStock ? 'stock-low' : 'stock-ok');
-                        let pStatusText = pStock <= 0 ? '🔴 Out of Stock' : (pStock <= pMinStock ? '🟡 Low Stock' : '🟢 In Stock');
-                        let pTotalValue = ((product.price || 0) * pStock).toFixed(2);
-                        rows += `
-                        <tr data-product-id="${product.id}">
-                            <td>${product.barcode || 'N/A'}</td>
-                            <td>${product.name}</td>
-                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
-                            <td>${product.category || 'Uncategorized'}</td>
-                            <td class="expiry-tracking-feature">${expiryDisplay}</td>
-                            <td class="${pStockStatus}">${pStock}</td>
-                            <td>₹${(product.price || 0).toFixed(2)}</td>
-                            <td>${displayDiscount}</td>
-                            <td>₹${pTotalValue}</td>
-                            <td class="${pStockStatus}">${pStatusText}</td>
-                            <td>
-                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
-                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
-                            </td>
-                        </tr>`;
-                    } else {
-                        // Variant-only parent: show a lightweight header row with + Variant action
-                        rows += `
-                        <tr data-product-id="${product.id}" style="background-color: #f8f9fa;">
-                            <td style="color:#999;">—</td>
-                            <td><strong>${product.name}</strong> <span style="color:#888; font-size:12px;">(${product.variants.length} variant${product.variants.length > 1 ? 's' : ''})</span></td>
-                            ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
-                            <td>${product.category || 'Uncategorized'}</td>
-                            <td class="expiry-tracking-feature">—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td>
-                                <button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Edit">Edit</button>` : ''}
-                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
-                            </td>
-                        </tr>`;
+                    let variantsToRender = product.variants;
+                    if (searchTerm) {
+                        const parentMatches = (product.name && product.name.toLowerCase().includes(searchTerm)) || 
+                                              (product.barcode && String(product.barcode).toLowerCase().includes(searchTerm));
+                        if (!parentMatches) {
+                            variantsToRender = product.variants.filter(v => 
+                                (v.variantName && v.variantName.toLowerCase().includes(searchTerm)) ||
+                                (v.barcode && String(v.barcode).toLowerCase().includes(searchTerm))
+                            );
+                        }
                     }
 
                     // Render each variant as an independent flat row
-                    product.variants.forEach(v => {
+                    variantsToRender.forEach(v => {
                         let vStock = parseInt(v.stock) || 0;
                         let vMinStock = parseInt(v.minimumStock) || 0;
                         let stockStatus = vStock <= 0 ? 'stock-low' : (vStock <= vMinStock ? 'stock-low' : 'stock-ok');
                         let statusText = vStock <= 0 ? '🔴 Out of Stock' : (vStock <= vMinStock ? '🟡 Low Stock' : '🟢 In Stock');
                         let totalValue = ((v.sellingPrice || 0) * vStock).toFixed(2);
                         let vDisplayName = window.getVariantDisplayName(product, v);
+                        
+                        const isMainVariant = product.variants.length > 0 && String(v.id) === String(product.variants[0].id);
+                        
                         rows += `
                         <tr data-product-id="${product.id}" data-variant-id="${v.id}">
                             <td>${v.barcode || '-'}</td>
@@ -9908,6 +10288,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <td>₹${totalValue}</td>
                             <td class="${stockStatus}">${statusText}</td>
                             <td>
+                                ${isMainVariant ? `<button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>` : ''}
+                                <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}','${v.id}')" title="PO">PO</button>
                                 ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryVariant('${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
                                 ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete">Del</button>` : ''}
                             </td>
@@ -10133,7 +10515,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             dropdown.style.display = 'block';
         }
 
-        function /* filterPaymentMethods removed */ {
+        function filterPaymentMethods() {
             const searchTerm = document.getElementById('paymentMethod').value;
             const clearBtn = document.getElementById('paymentMethodClear');
             
@@ -10190,13 +10572,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                 searchInput.addEventListener('blur', () => {
                     setTimeout(() => {
                         const currentText = searchInput.value.toLowerCase().trim();
-                        const match = paymentMethodsList.find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
+                        const match = (typeof paymentMethodsList !== 'undefined' ? paymentMethodsList : []).find(m => m.text.toLowerCase() === currentText || m.value.toLowerCase() === currentText);
                         if (match) {
                             onPaymentMethodSelection(match.value, match.text);
                         } else {
                             // Revert to current select value if invalid text
                             const selectElem = document.getElementById('paymentMethod');
-                            const validMatch = paymentMethodsList.find(m => m.value === selectElem.value);
+                            const validMatch = (typeof paymentMethodsList !== 'undefined' ? paymentMethodsList : []).find(m => m.value === selectElem.value);
                             if (validMatch) searchInput.value = validMatch.text;
                         }
                     }, 200); // small delay to allow click event on dropdown to fire first
@@ -10291,9 +10673,119 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const filteredProducts = searchProductsUnified(searchTerm, products);
+            const rawQuery = searchTerm.toLowerCase().trim();
+            const tokens = rawQuery.split(/\s+/).filter(t => t.length > 0);
 
-            if (filteredProducts.length === 0) {
+            // Generate search candidates: Every parent is an item, and every variant is also a separate item
+            const candidateItems = [];
+            products.forEach(p => {
+                // Only add parent item if it doesn't have variants
+                if (!window.hasVariants(p)) {
+                    candidateItems.push({
+                        parent: p,
+                        variant: null,
+                        displayName: (p.name || 'Unnamed Product') + (p.variant ? ' ' + p.variant.trim() : ''),
+                        barcode: p.barcode || '',
+                        stock: p.stock !== undefined ? p.stock : 0,
+                        price: p.price !== undefined ? p.price : (p.sellingPrice !== undefined ? p.sellingPrice : 0),
+                        category: p.category || '',
+                        brand: p.brand || '',
+                        sku: p.sku || '',
+                        unit: p.unit || 'Piece'
+                    });
+                }
+
+                // Variant items
+                if (window.hasVariants(p) && Array.isArray(p.variants)) {
+                    p.variants.forEach(v => {
+                        candidateItems.push({
+                            parent: p,
+                            variant: v,
+                            displayName: window.getVariantDisplayName(p, v),
+                            barcode: v.barcode || '',
+                            stock: v.stock !== undefined ? v.stock : 0,
+                            price: v.sellingPrice !== undefined ? v.sellingPrice : (v.price !== undefined ? v.price : 0),
+                            category: v.category || p.category || '',
+                            brand: v.brand || p.brand || '',
+                            sku: v.sku || p.sku || '',
+                            unit: v.unit || p.unit || 'Piece'
+                        });
+                    });
+                }
+            });
+
+            // Score and filter candidates across parent name, variant name, display name, barcode, category, brand, sku, price
+            const scoredResults = [];
+            candidateItems.forEach(item => {
+                let score = 0;
+                let allTokensMatch = true;
+
+                const nameStr = item.displayName.toLowerCase();
+                const parentNameStr = (item.parent.name || '').toLowerCase();
+                const varNameStr = item.variant ? (item.variant.variantName || '').toLowerCase() : '';
+                const barcodeStr = (item.barcode || '').toLowerCase();
+                const catStr = (item.category || '').toLowerCase();
+                const brandStr = (item.brand || '').toLowerCase();
+                const skuStr = (item.sku || '').toLowerCase();
+                const priceStr = String(item.price || '');
+                const unitStr = (item.unit || '').toLowerCase();
+
+                // Exact barcode match
+                if (barcodeStr && barcodeStr === rawQuery) score += 1000;
+                else if (barcodeStr && barcodeStr.includes(rawQuery)) score += 500;
+
+                // Exact full name match
+                if (nameStr === rawQuery) score += 800;
+                else if (parentNameStr === rawQuery) score += 750;
+                else if (varNameStr === rawQuery) score += 700;
+
+                tokens.forEach(token => {
+                    let tokenMatched = false;
+                    if (barcodeStr && barcodeStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 50;
+                    }
+                    if (nameStr.includes(token)) {
+                        tokenMatched = true;
+                        if (nameStr.startsWith(token) || nameStr.includes(' ' + token)) score += 30;
+                        else score += 10;
+                    } else if (parentNameStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 20;
+                    } else if (varNameStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 25;
+                    }
+                    if (catStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 2;
+                    }
+                    if (brandStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 2;
+                    }
+                    if (skuStr.includes(token)) {
+                        tokenMatched = true;
+                        score += 5;
+                    }
+                    if (unitStr === token) {
+                        tokenMatched = true;
+                        score += 1;
+                    }
+                    if (!isNaN(token) && priceStr === token) {
+                        tokenMatched = true;
+                        score += 30;
+                    }
+
+                    if (!tokenMatched) allTokensMatch = false;
+                });
+
+                if (allTokensMatch || score >= 500) {
+                    scoredResults.push({ item: item, score: score });
+                }
+            });
+
+            if (scoredResults.length === 0) {
                 dropdown.style.display = 'none';
                 const prompt = document.getElementById('addInventoryPrompt');
                 if (prompt) prompt.style.display = 'flex';
@@ -10303,32 +10795,34 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (prompt) prompt.style.display = 'none';
             }
 
-            let displayItems = [];
-            filteredProducts.forEach(p => {
-                if (window.hasVariants(p)) {
-                    p.variants.forEach(v => {
-                        displayItems.push({ parent: p, variant: v, displayName: window.getVariantDisplayName(p, v), barcode: v.barcode, stock: v.stock });
-                    });
-                } else {
-                    displayItems.push({ parent: p, variant: null, displayName: p.name, barcode: p.barcode, stock: p.stock });
-                }
-            });
-            displayItems = displayItems.slice(0, 15);
+            // Sort by score descending
+            scoredResults.sort((a, b) => b.score - a.score);
 
-            displayItems.forEach((itemObj, index) => {
+            const displayItems = scoredResults.slice(0, 15).map(r => r.item);
+
+            displayItems.forEach((itemObj) => {
                 const product = itemObj.parent;
                 const variant = itemObj.variant;
                 const item = document.createElement('div');
                 item.className = 'custom-dropdown-item';
-                
-                let displayText = itemObj.displayName;
-                if (itemObj.barcode && itemObj.barcode !== 'N/A') {
-                    displayText += ` | ${itemObj.barcode}`;
-                }
-                displayText += ` (Stock: ${itemObj.stock})`;
-                item.textContent = displayText;
                 item.dataset.id = product.id;
-                
+                if (variant) item.dataset.variantId = variant.id;
+
+                const barcodeDisplay = itemObj.barcode && itemObj.barcode !== 'N/A' ? `Barcode: ${itemObj.barcode}` : 'Barcode: —';
+                const priceFormatted = parseFloat(itemObj.price || 0).toFixed(2);
+                const stockVal = itemObj.stock;
+                const stockColor = stockVal <= 0 ? '#dc3545' : '#198754';
+
+                item.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <div style="font-weight:600; font-size:15px; color:#212529;">${itemObj.displayName}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#6c757d;">
+                            <span>${barcodeDisplay}</span>
+                            <span>Stock: <strong style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong style="color:#0d6efd;">₹${priceFormatted}</strong></span>
+                        </div>
+                    </div>
+                `;
+
                 item.onclick = function() {
                     onSaleProductChange(product.id, variant ? variant.id : null);
                 };
@@ -10437,17 +10931,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                         } else {
                             // If exactly one match, select it
                             if(items.length === 1) {
-                                items[0].click();
-                            }
-                        }
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (comboboxSelectedIndex >= 0) {
-                            items[comboboxSelectedIndex].click();
-                        } else {
-                            if(items.length === 1) {
-                                items[0].click();
-                            } else if (items.length > 0) {
                                 items[0].click();
                             }
                         }
@@ -10845,13 +11328,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             showPurchaseAddNewProductForm();
         }
 
-        function openAddStockModalForExistingProduct(productId) {
+        function openAddStockModalForExistingProduct(productId, variantId = null) {
             const product = products.find(p => String(p.id) === String(productId));
             if (!product) return;
             
+            let variant = null;
+            if (variantId) {
+                variant = window.getVariantById ? window.getVariantById(product, variantId) : null;
+            } else if (window.selectedSaleVariant) {
+                variant = window.selectedSaleVariant;
+            }
+            
             document.getElementById('addStockProductId').value = product.id;
-            document.getElementById('addStockProductName').textContent = product.name + (product.barcode && product.barcode !== 'N/A' ? ` (${product.barcode})` : '');
-            document.getElementById('addStockCurrentQty').textContent = product.stock + ' ' + (product.unit || 'Piece');
+            if (document.getElementById('addStockVariantId')) {
+                document.getElementById('addStockVariantId').value = variant ? variant.id : '';
+            }
+            
+            const displayName = variant ? (window.getVariantDisplayName ? window.getVariantDisplayName(product, variant) : `${product.name} - ${variant.name}`) : product.name;
+            const barcode = variant ? (variant.barcode || '') : (product.barcode || '');
+            const currentStock = variant ? (variant.stock || 0) : (product.stock || 0);
+            const unit = variant ? (variant.unit || product.unit || 'Piece') : (product.unit || 'Piece');
+            
+            document.getElementById('addStockProductName').textContent = displayName + (barcode && barcode !== 'N/A' ? ` (${barcode})` : '');
+            document.getElementById('addStockCurrentQty').textContent = currentStock + ' ' + unit;
             document.getElementById('addStockQty').value = '';
             
             document.getElementById('addStockModal').style.display = 'flex';
@@ -10861,20 +11360,32 @@ input:focus, select:focus, textarea:focus, button:focus {
         window.submitAddStock = function(e) {
             e.preventDefault();
             const productId = document.getElementById('addStockProductId').value;
+            const variantId = document.getElementById('addStockVariantId') ? document.getElementById('addStockVariantId').value : '';
             const qtyToAdd = parseFloat(document.getElementById('addStockQty').value);
             
             if (!productId || isNaN(qtyToAdd) || qtyToAdd <= 0) return;
             
             const product = products.find(p => String(p.id) === String(productId));
             if (product) {
-                product.stock += qtyToAdd;
+                let variant = null;
+                if (variantId && window.getVariantById) {
+                    variant = window.getVariantById(product, variantId);
+                }
+                
+                if (variant) {
+                    variant.stock = (variant.stock || 0) + qtyToAdd;
+                    product.stock = (product.variants || []).reduce((sum, v) => sum + (v.stock || 0), 0);
+                } else {
+                    product.stock = (product.stock || 0) + qtyToAdd;
+                }
+                
                 if (typeof saveData === 'function') saveData();
                 
                 const prompt = document.getElementById('addInventoryPrompt');
                 if (prompt) prompt.style.display = 'none';
                 
                 // Refresh sale selection
-                if (typeof onSaleProductChange === 'function') onSaleProductChange(product.id);
+                if (typeof onSaleProductChange === 'function') onSaleProductChange(product.id, variant ? variant.id : null);
                 
                 // Refresh UI lists
                 if (typeof updateDashboard === 'function') updateDashboard();
@@ -10888,13 +11399,25 @@ input:focus, select:focus, textarea:focus, button:focus {
         };
 
         function handleAddInventoryFromSale() {
+            // Check if dropdown item is selected or highlighted
+            const dropdown = document.getElementById('saleProductDropdown');
+            if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
+                const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                if (items[comboboxSelectedIndex]) {
+                    const pid = items[comboboxSelectedIndex].dataset.id;
+                    const varId = items[comboboxSelectedIndex].dataset.variantId || null;
+                    if (pid) {
+                        openAddStockModalForExistingProduct(pid, varId);
+                        dropdown.style.display = 'none';
+                        return;
+                    }
+                }
+            }
+
             const saleProductId = document.getElementById('saleProductId').value;
             if (saleProductId) {
-                const product = products.find(p => String(p.id) === String(saleProductId));
-                if (product && product.stock <= 0) {
-                    openAddStockModalForExistingProduct(saleProductId);
-                    return;
-                }
+                openAddStockModalForExistingProduct(saleProductId, window.selectedSaleVariant ? window.selectedSaleVariant.id : null);
+                return;
             }
 
             window.isAddingFromSale = true;
@@ -10912,6 +11435,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('newProductName').value = searchTerm;
             }
         }
+        window.handleAddInventoryFromSale = handleAddInventoryFromSale;
 
         function onSaleProductChange(productId, variantId = null) {
             try {
@@ -10945,9 +11469,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 window.selectedSaleVariant = variant;
                 
+                const effectiveQtyType = (variant && variant.quantityType) ? variant.quantityType : (product.quantityType || 'whole');
                 const saleQtyInput = document.getElementById('saleQuantity');
                 if (saleQtyInput) {
-                    if (product.quantityType === 'decimal') {
+                    if (effectiveQtyType === 'decimal') {
                         saleQtyInput.step = 'any';
                         saleQtyInput.min = '0';
                         saleQtyInput.value = '1';
@@ -10963,22 +11488,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                     if (prompt) prompt.style.display = 'block';
                 }
 
-                console.log("Product selected:", window.getVariantDisplayName(product, variant));
+                const displayName = window.getVariantDisplayName(product, variant);
+                console.log("Product selected:", displayName);
                 
                 currentProductUnits = []; // Reset units array
 
                 // Add Base Unit
-                const baseText = `${product.unit || 'Piece'} (Base)`;
+                const effectiveUnit = (variant && variant.unit) ? variant.unit : (product.unit || 'Piece');
+                const effectivePrice = variant ? (variant.sellingPrice !== undefined ? variant.sellingPrice : (variant.price || 0)) : (product.price || 0);
+                const baseText = `${effectiveUnit} (Base)`;
                 const baseOption = new Option(baseText, 'base');
-                baseOption.dataset.price = variant ? (variant.sellingPrice || 0) : (product.price || 0);
+                baseOption.dataset.price = effectivePrice;
                 baseOption.dataset.quantity = 1;
                 unitSelect.add(baseOption);
                 currentProductUnits.push({ value: 'base', text: baseText });
 
-                // Add Pack Sizes
-                if (product.packSizes && Array.isArray(product.packSizes) && product.packSizes.length > 0) {
-                    product.packSizes.forEach((pack, index) => {
-                        const packText = `${pack.name} (${pack.quantity} ${product.unit})`;
+                // Add Pack Sizes (prefer variant packSizes if present, else fallback to parent's)
+                const packSizesToUse = (variant && variant.packSizes && Array.isArray(variant.packSizes) && variant.packSizes.length > 0)
+                    ? variant.packSizes
+                    : ((product.packSizes && Array.isArray(product.packSizes) && product.packSizes.length > 0) ? product.packSizes : []);
+
+                if (packSizesToUse.length > 0) {
+                    packSizesToUse.forEach((pack, index) => {
+                        const packText = `${pack.name} (${pack.quantity} ${effectiveUnit})`;
                         const option = new Option(packText, `pack_${index}`);
                         option.dataset.price = pack.price;
                         option.dataset.quantity = pack.quantity;
@@ -10991,9 +11523,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Select Base Unit by default but skip focusing quantity
                 onSaleUnitSelection('base', currentProductUnits[0].text, true);
 
-                // Update search input with selected product name
+                // Update search input with selected display name
                 const searchInput = document.getElementById('saleProductSearch');
-                searchInput.value = product.name;
+                searchInput.value = displayName;
                 document.getElementById('saleProductClear').style.display = 'block';
 
                 // Focus the new Unit/Pack search box
@@ -11016,7 +11548,18 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function getEffectiveDiscount(product) {
+        function getEffectiveDiscount(product, variant = null) {
+            if (variant) {
+                if (variant.productDiscount !== undefined && variant.productDiscount !== null && variant.productDiscount !== "") {
+                    return { type: 'percentage', value: parseFloat(variant.productDiscount) || 0 };
+                }
+                if (variant.discountValue !== undefined && variant.discountValue !== null && variant.discountValue !== "") {
+                    return { type: variant.discountType || 'percentage', value: parseFloat(variant.discountValue) || 0 };
+                }
+                if (variant.discountPercent !== undefined && variant.discountPercent !== null && variant.discountPercent !== "") {
+                    return { type: 'percentage', value: parseFloat(variant.discountPercent) || 0 };
+                }
+            }
             if (product.discountValue !== undefined && product.discountValue !== null && product.discountValue !== "") {
                 return { type: product.discountType || 'percentage', value: parseFloat(product.discountValue) };
             }
@@ -11025,8 +11568,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (oldProdVal !== undefined && oldProdVal !== null && oldProdVal !== "") {
                 return { type: 'percentage', value: parseFloat(oldProdVal) };
             }
-            if (product.category) {
-                const catDiscount = categoryDiscounts.find(c => c.category === product.category && c.active);
+            const catToUse = (variant && variant.category) ? variant.category : product.category;
+            if (catToUse) {
+                const catDiscount = categoryDiscounts.find(c => c.category === catToUse && c.active);
                 if (catDiscount) {
                     if (catDiscount.discountValue !== undefined && catDiscount.discountValue !== null && catDiscount.discountValue !== "") {
                         return { type: catDiscount.discountType || 'percentage', value: parseFloat(catDiscount.discountValue) };
@@ -11098,7 +11642,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
 
-            if (product.stock <= 0) {
+            const targetVariantId = window.selectedSaleVariant ? window.selectedSaleVariant.id : undefined;
+            const effStock = window.selectedSaleVariant ? (window.selectedSaleVariant.stock || 0) : (product.stock || 0);
+
+            if (effStock <= 0) {
                 window.popupCloseCallback = () => {
                     const sps = document.getElementById('saleProductSearch');
                     if (sps) {
@@ -11110,13 +11657,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const unitName = selectedOption.dataset.name || product.unit || 'Piece';
+            const effectiveUnitName = (window.selectedSaleVariant && window.selectedSaleVariant.unit) ? window.selectedSaleVariant.unit : (product.unit || 'Piece');
+            const unitName = selectedOption.dataset.name || effectiveUnitName;
             const unitPrice = parseFloat(selectedOption.dataset.price);
             const unitQuantity = parseFloat(selectedOption.dataset.quantity); // Multiplier (e.g., 10 for Box)
             const totalBaseQuantityNeeded = quantity * unitQuantity;
 
             // Check if product already in cart (same product, same unit, same variant)
-            const targetVariantId = window.selectedSaleVariant ? window.selectedSaleVariant.id : undefined;
             const existingItemIndex = cart.findIndex(item => item.productId === productId && item.unit === unitName && String(item.variantId) === String(targetVariantId));
 
             // Calculate total stock used by this product/variant in cart
@@ -11124,14 +11671,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 .filter(item => item.productId === productId && String(item.variantId) === String(targetVariantId))
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
-            const effStock = window.selectedSaleVariant ? (window.selectedSaleVariant.stock || 0) : (product.stock || 0);
-
             if (currentStockInCart + totalBaseQuantityNeeded > effStock) {
                 window.popupCloseCallback = () => {
                     const sq = document.getElementById('saleQuantity');
                     if (sq) { sq.focus(); sq.select(); }
                 };
-                showAlert(`Insufficient stock! Available: ${effStock} ${product.unit || 'Units'}. You are trying to sell ${currentStockInCart + totalBaseQuantityNeeded}.`, '⚠️');
+                showAlert(`Insufficient stock! Available: ${effStock} ${effectiveUnitName}. You are trying to sell ${currentStockInCart + totalBaseQuantityNeeded}.`, '⚠️');
                 return;
             }
 
@@ -11139,7 +11684,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + quantity).toFixed(3));
                 cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
             } else {
-                let effDisc = getEffectiveDiscount(product);
+                let effDisc = getEffectiveDiscount(product, window.selectedSaleVariant);
                 cart.push({
                     productId: productId,
                     variantId: targetVariantId,
@@ -11359,7 +11904,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // --- Payment Section Navigation ---
             
-            }
+
+        }
 
         // Call setup on load
         document.addEventListener('DOMContentLoaded', setupSalesKeybindings);
@@ -11403,21 +11949,30 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         
         function updateCartItemQuantity(index, value) {
-            if (index < 0 || index >= cart.length) return;
+            if (index < 0 || index >= cart.length) return false;
 
             const item = cart[index];
             const product = products.find(p => p.id === item.productId);
 
             if (!product) {
                 showAlert('Product not found', '❌');
-                return;
+                return false;
             }
+            
+            let variant = null;
+            if (item.variantId) {
+                variant = window.getVariantById ? window.getVariantById(product, item.variantId) : (product.variants && product.variants.find(v => v.id === item.variantId));
+            }
+            
+            const effStock = variant ? (variant.stock || 0) : (product.stock || 0);
+            const effUnit = variant ? (variant.unit || product.unit || 'units') : (product.unit || 'units');
 
             const parsedQty = parseFloat(value);
             if (isNaN(parsedQty) || parsedQty <= 0) {
                 showAlert('Please enter a valid quantity greater than 0.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
@@ -11426,30 +11981,39 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const multiplier = Math.round(1 / prec);
                 if (Math.abs((parsedQty * multiplier) % 1) > 0.001) {
                     showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                    window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                     updateCartDisplay();
-                    return;
+                    return false;
                 }
             } else {
                 if (!Number.isInteger(parsedQty)) {
                     showAlert(`This product requires a whole number quantity.`, '⚠️');
+                    window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-qty-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                     updateCartDisplay();
-                    return;
+                    return false;
                 }
             }
 
             const currentStockInCart = cart
-                .filter((cItem, idx) => cItem.productId === product.id && idx !== index)
+                .filter((cItem, idx) => cItem.productId === product.id && cItem.variantId === item.variantId && idx !== index)
                 .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
                 
-            if (currentStockInCart + (parsedQty * item.baseQuantity) > product.stock) {
-                showAlert(`Cannot update quantity! Available stock: ${product.stock} ${product.unit || 'units'}`, '⚠️');
+            if (currentStockInCart + (parsedQty * item.baseQuantity) > effStock) {
+                showAlert(`Cannot update quantity! Available stock: ${effStock} ${effUnit}`, '⚠️');
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById(`cart-qty-${index}`);
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             item.quantity = parsedQty;
             item.total = item.quantity * item.price;
             updateCartDisplay();
+            return true;
         }
 
         function decreaseQuantity(index) {
@@ -11482,8 +12046,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             if (isNaN(parsedVal) || parsedVal < 0) {
                 showAlert('Invalid discount value.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-disc-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay();
-                return;
+                return false;
             }
 
             let gross = item.quantity * item.price;
@@ -11491,14 +12056,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             if (amount > gross) {
                 showAlert('Discount cannot be greater than the item amount.', '⚠️');
+                window.popupCloseCallback = () => { setTimeout(() => { const el = document.getElementById(`cart-disc-${index}`); if (el) { el.focus(); el.select(); } }, 50); };
                 updateCartDisplay(); // reset input
-                return;
+                return false;
             }
 
             item.discountType = isPercentage ? 'percentage' : 'amount';
             item.discountValue = parsedVal;
             item.discountPercent = isPercentage ? parsedVal : 0; // backward compat
             updateCartDisplay();
+            return true;
         }
 
         function updateCartDisplay() {
@@ -12187,8 +12754,18 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Check stock availability
             for (let item of cart) {
                 const product = products.find(p => p.id === item.productId);
-                if (!product || product.stock < item.quantity) {
-                    showAlert(`Insufficient stock for ${item.productName}! Available: ${product ? product.stock : 0} units`, '⚠️');
+                let itemAvailStock = 0;
+                if (product) {
+                    if (item.variantId) {
+                        const vObj = window.getVariantById(product, item.variantId);
+                        itemAvailStock = vObj ? (vObj.stock || 0) : 0;
+                    } else {
+                        itemAvailStock = product.stock || 0;
+                    }
+                }
+                const neededBaseQty = (item.quantity || 0) * (item.baseQuantity || 1);
+                if (!product || itemAvailStock < neededBaseQty) {
+                    showAlert(`Insufficient stock for ${item.productName}! Available: ${itemAvailStock} units`, '⚠️');
                     return;
                 }
             }
@@ -12471,9 +13048,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             // For historical sales: use the stored gstApplied flag
             // For new sales without flag: fall back to current settings
             const saleGstApplied = lastSaleData.gstApplied !== undefined ? lastSaleData.gstApplied : settings.gstEnabled;
-            // Show GST on receipt only if GST was applied AND receipt showGST is enabled
-            const showGstOnReceipt = saleGstApplied && settings.showGST;
-            
+            // Show GST on receipt only if GST was applied
+            const showGstOnReceipt = saleGstApplied;
+
             const businessNameStr = settings.businessName || 'Sales Receipt';
             const addressStr = settings.address ? `<p style="font-size:12px; margin:2px 0;">${settings.address.replace(/\n/g, '<br>')}</p>` : '';
             const mobileStr = settings.mobile ? `<p style="font-size:12px; margin:2px 0;">Ph: ${settings.mobile}</p>` : '';
@@ -12489,6 +13066,46 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
             
             const footerStr = settings.footerMsg ? `<hr><p style="text-align: center; margin-top: 20px;">${settings.footerMsg.replace(/\n/g, '<br>')}</p>` : '<hr><p style="text-align: center; margin-top: 20px;">Thank you for your purchase!</p>';
+
+            let gstRowsHTML = '';
+            if (showGstOnReceipt && lastSaleData.items && lastSaleData.items.length > 0) {
+                const totalTaxable = lastSaleData.items.reduce((sum, item) => sum + (item.taxableValue || 0), 0);
+                gstRowsHTML += `
+                    <tr>
+                        <td colspan="4" style="text-align: right;">Taxable Amount:</td>
+                        <td style="text-align: right;">₹${totalTaxable.toFixed(2)}</td>
+                    </tr>
+                `;
+
+                const totalCGST = lastSaleData.items.reduce((sum, item) => sum + (item.cgst || 0), 0);
+                const totalSGST = lastSaleData.items.reduce((sum, item) => sum + (item.sgst || 0), 0);
+                const totalIGST = lastSaleData.items.reduce((sum, item) => sum + (item.igst || 0), 0);
+                const hasInterState = lastSaleData.items.some(item => item.taxType === 'inter');
+
+                if (hasInterState) {
+                    gstRowsHTML += `
+                        <tr>
+                            <td colspan="4" style="text-align: right;">IGST:</td>
+                            <td style="text-align: right;">₹${totalIGST.toFixed(2)}</td>
+                        </tr>
+                    `;
+                } else {
+                    gstRowsHTML += `
+                        <tr>
+                            <td colspan="4" style="text-align: right;">CGST:</td>
+                            <td style="text-align: right;">₹${totalCGST.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="text-align: right;">SGST:</td>
+                            <td style="text-align: right;">₹${totalSGST.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="text-align: right;">IGST:</td>
+                            <td style="text-align: right;">₹0.00</td>
+                        </tr>
+                    `;
+                }
+            }
 
             receiptContent.innerHTML = `
                 <div class="receipt-container">
@@ -12546,27 +13163,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <td style="text-align: right;">₹${lastSaleData.courier.toFixed(2)}</td>
                             </tr>
                             ` : ''}
-                            ${showGstOnReceipt ? `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total Taxable Value:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.taxableValue || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            ${lastSaleData.items.some(i => i.taxType === 'inter') ? `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total IGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.igst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            ` : `
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total CGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.cgst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" style="text-align: right;">Total SGST:</td>
-                                <td style="text-align: right;">₹${lastSaleData.items.reduce((sum, item) => sum + (item.sgst || 0), 0).toFixed(2)}</td>
-                            </tr>
-                            `}
-                            ` : ''}
+                            ${gstRowsHTML}
         <tr style="font-weight: bold; border-top: 2px solid #333;">
             <td colspan="4" style="text-align: right;">Grand Total:</td>
             <td style="text-align: right;">₹${lastSaleData.total.toFixed(2)}</td>
@@ -15050,6 +15647,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const barcode = document.getElementById('productBarcode').value;
             const name = document.getElementById('productName').value.trim();
+            const variantVal = document.getElementById('newProductVariant') ? document.getElementById('newProductVariant').value.trim() : '';
 
             // 1. Check if barcode already exists
             if (products.find(p => p.barcode === barcode)) {
@@ -15092,6 +15690,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 id: Date.now(),
                 barcode: barcode,
                 name: name,
+                variant: typeof variantVal !== "undefined" ? variantVal : "",
                 // Category handling needs to be resolved before this object is final
                 category: '', // Placeholder, will set in finalize
                 unit: document.getElementById('newProductUnit').value,
@@ -15381,6 +15980,43 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
+        function toggleEditVariantUI() {
+            const hasVariantsCb = document.getElementById('editProductHasVariants');
+            const variantSection = document.getElementById('editVariantSection');
+            if (hasVariantsCb && variantSection) {
+                variantSection.style.display = hasVariantsCb.checked ? 'block' : 'none';
+            }
+        }
+
+        function renderEditVariantsTable(product) {
+            const tbody = document.getElementById('editVariantsTableBody');
+            if (!tbody) return;
+            if (!product || !product.variants || product.variants.length === 0) {
+                tbody.innerHTML = '<tr id="editNoVariantsRow"><td colspan="7" style="padding: 15px; text-align: center; color: #666; font-style: italic;">No variants added yet. Click + to add variant.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = product.variants.map((v, index) => {
+                const discText = (v.productDiscount !== undefined && v.productDiscount !== null && v.productDiscount !== '') ? `${v.productDiscount}%` : '—';
+                const sellP = parseFloat(v.sellingPrice !== undefined ? v.sellingPrice : (v.price || 0)).toFixed(2);
+                const buyP = parseFloat(v.buyingPrice || 0).toFixed(2);
+                return `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; font-weight:600; color:#333;">${v.variantName}</td>
+                        <td style="padding: 10px; font-size:13px; color:#555;">${v.barcode || '—'}</td>
+                        <td style="padding: 10px; font-weight:600; color:#0d6efd;">₹${sellP}</td>
+                        <td style="padding: 10px;" class="buying-price-feature">₹${buyP}</td>
+                        <td style="padding: 10px;">${discText}</td>
+                        <td style="padding: 10px; font-weight:600;">${v.stock || 0}</td>
+                        <td style="padding: 10px; text-align:center;">
+                            <button type="button" class="btn btn-warning btn-sm" onclick="closeEditProductModal(); setTimeout(()=>editInventoryVariant('${product.id}','${v.id}'),80);" title="Edit Variant" style="padding:4px 10px; font-size:14px; font-weight:600;">✏️ Edit</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}'); setTimeout(()=>editProduct('${product.id}'),150);" title="Delete Variant" style="padding:4px 8px; font-size:14px; margin-left:4px;">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
         function editProduct(id) {
             const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
@@ -15391,6 +16027,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('editProductId').value = product.id;
             document.getElementById('editProductBarcode').value = product.barcode || '';
             document.getElementById('editProductName').value = product.name;
+            const editVarInput = document.getElementById('editProductVariant');
+            if (editVarInput) editVarInput.value = product.variant || '';
             const editPurchasePrice = document.getElementById('editProductPurchasePrice');
             if(editPurchasePrice) editPurchasePrice.value = product.costPrice || '';
 
@@ -15438,7 +16076,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (document.getElementById('editProductQuantityType')) {
                 const qtyType = product.quantityType || 'whole';
                 document.getElementById('editProductQuantityType').value = qtyType;
-
             }
 
             document.getElementById('editProductPrice').value = product.price;
@@ -15467,6 +16104,22 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('editProductStock').value = product.stock;
             document.getElementById('editProductMinStock').value = product.minStock;
             document.getElementById('editProductSupplier').value = product.supplier || '';
+
+            // Description
+            const editDescEl = document.getElementById('editProductDescription');
+            if (editDescEl) editDescEl.value = product.description || '';
+
+            // Product Variants section
+            const hasVariants = window.hasVariants(product) && Array.isArray(product.variants) && product.variants.length > 0;
+            const hasVariantsCb = document.getElementById('editProductHasVariants');
+            const variantSection = document.getElementById('editVariantSection');
+            if (hasVariantsCb) {
+                hasVariantsCb.checked = hasVariants;
+            }
+            if (variantSection) {
+                variantSection.style.display = hasVariants ? 'block' : 'none';
+            }
+            renderEditVariantsTable(product);
 
             // Populate Pack Sizes
             const editPackSizesContainer = document.getElementById('editPackSizesContainer');
@@ -15554,6 +16207,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 product.barcode = newBarcode;
                 product.name = document.getElementById('editProductName').value;
+                const editVarInput = document.getElementById('editProductVariant');
+                if (editVarInput) product.variant = editVarInput.value.trim();
                 product.category = categoryValue;
                 product.unit = document.getElementById('editProductUnit').value;
                 
@@ -15577,6 +16232,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 
                 product.price = parseFloat(document.getElementById('editProductPrice').value);
+                const editPurchasePriceEl = document.getElementById('editProductPurchasePrice');
+                if (editPurchasePriceEl) {
+                    product.costPrice = editPurchasePriceEl.value !== '' ? parseFloat(editPurchasePriceEl.value) || 0 : 0;
+                }
                 
                 const discVal = document.getElementById('editProductDiscount').value;
                 product.productDiscount = discVal.trim() === "" ? "" : parseFloat(discVal);
@@ -15595,6 +16254,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 product.stock = parseFloat(document.getElementById('editProductStock').value);
                 product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
                 product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
+
+                // Description
+                const descEl = document.getElementById('editProductDescription');
+                if (descEl) product.description = descEl.value || '';
 
                 const editImgBase64 = document.getElementById('editProductImageBase64');
                 if (editImgBase64) {
@@ -15626,6 +16289,25 @@ input:focus, select:focus, textarea:focus, button:focus {
             editProduct(id);
         }
 
+        // Helper: open Add Variant modal from the Edit Product form
+        function openAddVariantFromEdit() {
+            const prodId = document.getElementById('editProductId') && document.getElementById('editProductId').value;
+            if (!prodId) return;
+            closeEditProductModal();
+            setTimeout(() => openAddVariantModal(prodId), 80);
+        }
+
+        // Esc closes the Edit Variant modal
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const evModal = document.getElementById('editVariantModal');
+                if (evModal && evModal.style.display === 'flex') {
+                    e.preventDefault();
+                    closeEditVariantModal();
+                }
+            }
+        });
+
         function editInventoryVariant(productId, variantId) {
             const product = products.find(p => String(p.id) === String(productId));
             if (!product) return;
@@ -15635,109 +16317,184 @@ input:focus, select:focus, textarea:focus, button:focus {
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const buyTrack = settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false;
 
-            const displayName = window.getVariantDisplayName(product, variant);
-            const buyPriceField = buyTrack ? `
-                <div class="form-group">
-                    <label>Buying Price (₹)</label>
-                    <input type="number" id="editVarBuyPrice" value="${variant.buyingPrice || 0}" min="0" step="0.01">
-                </div>` : '';
-            
-            const modalHtml = `
-                <div id="editVariantModalOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px;">
-                    <div style="background:white;border-radius:8px;width:100%;max-width:480px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-                        <h4 style="margin-top:0;margin-bottom:5px;">Edit Variant</h4>
-                        <h5 style="margin-top:0;color:#555;margin-bottom:20px;">${displayName}</h5>
-                        <div class="form-group">
-                            <label>Variant Name</label>
-                            <input type="text" id="editVarName" value="${variant.variantName}">
-                        </div>
-                        <div class="form-group">
-                            <label>Barcode</label>
-                            <input type="text" id="editVarBarcode" value="${variant.barcode || ''}">
-                        </div>
-                        ${buyPriceField}
-                        <div class="form-group">
-                            <label>Selling Price (₹)</label>
-                            <input type="number" id="editVarSellPrice" value="${variant.sellingPrice || 0}" min="0" step="0.01">
-                        </div>
-                        <div style="display:flex;gap:15px;">
-                            <div class="form-group" style="flex:1;">
-                                <label>Stock</label>
-                                <input type="number" id="editVarStock" value="${variant.stock || 0}">
-                            </div>
-                            <div class="form-group" style="flex:1;">
-                                <label>Minimum Stock</label>
-                                <input type="number" id="editVarMinStock" value="${variant.minimumStock || 0}">
-                            </div>
-                        </div>
-                        <div style="margin-top:20px;text-align:right;display:flex;justify-content:flex-end;gap:10px;">
-                            <button class="btn btn-secondary" onclick="document.getElementById('editVariantModalOverlay').remove()">Cancel</button>
-                            <button class="btn btn-primary" onclick="saveEditedVariant('${productId}','${variantId}')">Save</button>
-                        </div>
-                    </div>
-                </div>`;
-            
-            // Remove any existing overlay first
-            const existing = document.getElementById('editVariantModalOverlay');
-            if (existing) existing.remove();
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Escape to close
-            const handler = function(e) {
-                if (e.key === 'Escape') {
-                    const overlay = document.getElementById('editVariantModalOverlay');
-                    if (overlay) overlay.remove();
-                    document.removeEventListener('keydown', handler);
-                }
-            };
-            document.addEventListener('keydown', handler);
+            // Remove any old inline overlay
+            const oldOverlay = document.getElementById('editVariantModalOverlay');
+            if (oldOverlay) oldOverlay.remove();
+
+            // Store context for save
+            window._evProductId = String(productId);
+            window._evVariantId = String(variantId);
+
+            // Parent name
+            document.getElementById('evParentName').textContent = product.name;
+
+            // Basic fields
+            document.getElementById('evName').value = variant.variantName || '';
+            document.getElementById('evBarcode').value = variant.barcode || '';
+            document.getElementById('evSellPrice').value = variant.sellingPrice || 0;
+            document.getElementById('evBuyPrice').value = variant.buyingPrice || 0;
+            document.getElementById('evDiscount').value = (variant.productDiscount !== undefined && variant.productDiscount !== null && variant.productDiscount !== '') ? variant.productDiscount : 0;
+            document.getElementById('evStock').value = variant.stock || 0;
+            document.getElementById('evMinStock').value = variant.minimumStock || 0;
+
+            // Buying price visibility
+            const buyGroup = document.getElementById('evBuyPriceGroup');
+            if (buyGroup) buyGroup.style.display = buyTrack ? '' : 'none';
+
+            // GST fields visibility
+            const gstVisible = settings.enableGST !== false;
+            const hsnGroup = document.getElementById('evHSNGroup');
+            const gstGroup = document.getElementById('evGSTGroup');
+            if (hsnGroup) hsnGroup.style.display = gstVisible ? '' : 'none';
+            if (gstGroup) gstGroup.style.display = gstVisible ? '' : 'none';
+
+            // HSN
+            const evHSNCustom = document.getElementById('evHSNCustom');
+            if (evHSNCustom) evHSNCustom.value = variant.hsn || '';
+
+            // Category dropdown — populate from master
+            const evCat = document.getElementById('evCategory');
+            evCat.innerHTML = '<option value="">Same as parent</option>';
+            (typeof categories !== 'undefined' ? categories : []).forEach(cat => {
+                const o = document.createElement('option');
+                o.value = cat.name || cat;
+                o.textContent = cat.name || cat;
+                evCat.appendChild(o);
+            });
+            evCat.value = variant.category || '';
+
+            // Base Unit dropdown — populate from master
+            const evUnit = document.getElementById('evUnit');
+            evUnit.innerHTML = '<option value="">Same as parent</option>';
+            const unitList = (typeof units !== 'undefined' && units.length) ? units
+                : ['Piece','Box','Kg','Gram','Litre','Ml','Meter','Pack','Set','Dozen','Pair','Roll','Sheet','Bag','Bottle','Can','Carton','Tube','Strip','Tablet'];
+            unitList.forEach(u => {
+                const o = document.createElement('option');
+                const val = u.name || u;
+                o.value = val; o.textContent = val;
+                evUnit.appendChild(o);
+            });
+            evUnit.value = variant.unit || '';
+
+            // Qty Type
+            document.getElementById('evQtyType').value = variant.quantityType || '';
+
+            // GST
+            const evGST = document.getElementById('evGST');
+            const evGSTCustom = document.getElementById('evGSTCustom');
+            const varGST = (variant.gstRate !== undefined && variant.gstRate !== null && variant.gstRate !== '') ? String(variant.gstRate) : '';
+            if (varGST === '') {
+                evGST.value = '';
+                evGSTCustom.style.display = 'none';
+            } else if (['0','5','12','18','28'].includes(varGST)) {
+                evGST.value = varGST;
+                evGSTCustom.style.display = 'none';
+            } else {
+                evGST.value = '__custom__';
+                evGSTCustom.value = varGST;
+                evGSTCustom.style.display = 'block';
+            }
+
+            // Pack sizes
+            const container = document.getElementById('evPackSizesContainer');
+            container.innerHTML = '';
+            if (variant.packSizes && variant.packSizes.length > 0) {
+                variant.packSizes.forEach(ps => addPackSizeInput(ps.name, ps.quantity, ps.price, 'evPackSizesContainer'));
+            }
+
+            // Show modal
+            const modal = document.getElementById('editVariantModal');
+            modal.style.display = 'flex';
+            setTimeout(() => { const f = document.getElementById('evName'); if (f) f.focus(); }, 60);
         }
 
-        function saveEditedVariant(productId, variantId) {
+        function closeEditVariantModal() {
+            document.getElementById('editVariantModal').style.display = 'none';
+            window._evProductId = null;
+            window._evVariantId = null;
+        }
+
+        function saveEditedVariantFull() {
+            if (!requireLicensedForWrite('editing a variant')) return;
+
+            const productId = window._evProductId;
+            const variantId = window._evVariantId;
             const product = products.find(p => String(p.id) === String(productId));
-            if (!product) return;
+            if (!product) { showAlert('Product not found!', '❌'); return; }
             const variant = window.getVariantById(product, variantId);
-            if (!variant) return;
+            if (!variant) { showAlert('Variant not found!', '❌'); return; }
 
-            const name = document.getElementById('editVarName').value.trim();
-            const barcode = document.getElementById('editVarBarcode').value.trim();
-            const buyPriceEl = document.getElementById('editVarBuyPrice');
-            const buyPrice = buyPriceEl ? (parseFloat(buyPriceEl.value) || 0) : (variant.buyingPrice || 0);
-            const sellPrice = parseFloat(document.getElementById('editVarSellPrice').value) || 0;
-            const stock = parseInt(document.getElementById('editVarStock').value) || 0;
-            const minStock = parseInt(document.getElementById('editVarMinStock').value) || 0;
+            const name = document.getElementById('evName').value.trim();
+            if (!name) { showAlert('Variant Name is required.', '⚠️'); return; }
 
-            if (!name) {
-                showAlert('Variant Name is required.', '⚠️');
-                return;
+            // Duplicate name check (excluding self)
+            const dup = product.variants.find(v => String(v.id) !== String(variantId) && String(v.variantName).toLowerCase().trim() === name.toLowerCase());
+            if (dup) { showAlert(`Variant "${name}" already exists for ${product.name}.`, '⚠️'); return; }
+
+            const barcode = document.getElementById('evBarcode').value.trim();
+            // Barcode uniqueness
+            if (barcode && barcode !== variant.barcode) {
+                const bExists = products.some(p => {
+                    if (String(p.id) === String(productId)) {
+                        return (p.variants || []).some(v => String(v.id) !== String(variantId) && v.barcode === barcode);
+                    }
+                    if (p.barcode === barcode) return true;
+                    return (p.variants || []).some(v => v.barcode === barcode);
+                });
+                if (bExists) { showAlert('Barcode already exists globally!', '⚠️'); return; }
             }
 
-            // Duplicate check (case-insensitive, excluding self)
-            const lowerName = name.toLowerCase().trim();
-            const duplicate = product.variants.find(v => String(v.id) !== String(variantId) && String(v.variantName).toLowerCase().trim() === lowerName);
-            if (duplicate) {
-                showAlert(`Variant ${name} already exists for ${product.name}.`, '⚠️');
-                return;
+            // Read HSN
+            const evHSNCustom = document.getElementById('evHSNCustom');
+            const hsn = evHSNCustom ? evHSNCustom.value.trim() : '';
+
+            // Read GST
+            const evGST = document.getElementById('evGST');
+            let gstRate = null;
+            if (evGST.value === '') {
+                gstRate = null; // inherit parent
+            } else if (evGST.value === '__custom__') {
+                gstRate = parseFloat(document.getElementById('evGSTCustom').value) || 0;
+            } else {
+                gstRate = parseFloat(evGST.value);
             }
 
-            // Barcode uniqueness check (excluding self)
-            if (barcode && barcode !== variant.barcode && !isBarcodeGloballyUnique(barcode)) {
-                showAlert('Barcode already exists globally!', '⚠️');
-                return;
-            }
+            const buyPriceEl = document.getElementById('evBuyPrice');
 
+            // Apply all changes to variant object
             variant.variantName = name;
             variant.barcode = barcode;
-            variant.buyingPrice = buyPrice;
-            variant.sellingPrice = sellPrice;
-            variant.stock = stock;
-            variant.minimumStock = minStock;
+            variant.sellingPrice = parseFloat(document.getElementById('evSellPrice').value) || 0;
+            variant.buyingPrice = buyPriceEl ? (parseFloat(buyPriceEl.value) || 0) : (variant.buyingPrice || 0);
+            const discRaw = document.getElementById('evDiscount').value;
+            variant.productDiscount = discRaw === '' ? '' : (parseFloat(discRaw) || 0);
+            variant.stock = parseFloat(document.getElementById('evStock').value) || 0;
+            variant.minimumStock = parseFloat(document.getElementById('evMinStock').value) || 0;
+            variant.hsn = hsn;
+            const catVal = document.getElementById('evCategory').value;
+            variant.category = catVal || '';
+            const unitVal = document.getElementById('evUnit').value;
+            variant.unit = unitVal || '';
+            const qtyVal = document.getElementById('evQtyType').value;
+            variant.quantityType = qtyVal || '';
+            if (gstRate !== null) {
+                variant.gstRate = gstRate;
+            } else {
+                delete variant.gstRate;
+            }
+            // Pack sizes — independent from parent
+            if (typeof getPackSizesFromForm === 'function') {
+                variant.packSizes = getPackSizesFromForm('evPackSizesContainer');
+            }
 
             saveData();
             updateInventoryTable();
-            document.getElementById('editVariantModalOverlay').remove();
-            showAlert(`Variant ${name} updated successfully!`, '✅');
+            closeEditVariantModal();
+            showAlert(`Variant "${name}" updated successfully!`, '✅');
         }
+
+        // Compatibility alias
+        function saveEditedVariant(productId, variantId) { saveEditedVariantFull(); }
 
         function deleteInventoryVariant(productId, variantId) {
             const product = products.find(p => String(p.id) === String(productId));
@@ -16038,6 +16795,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showAlert(msg, icon = '⚠️') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
             btnContainer.innerHTML = `<button id="alertOkBtn" class="btn btn-primary" onclick="closePopup()">OK</button>`;
@@ -16075,6 +16842,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showConfirm(msg, onYes, onNo = null, icon = '❓') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
 
@@ -16169,6 +16946,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showPasswordPrompt(msg, onSubmit, icon = '🔒') {
             document.getElementById('popupIcon').textContent = icon;
+
+            if (msg.includes('Cash Received') || msg.includes('Short by') || msg.includes('collect the full amount')) {
+                window.popupCloseCallback = () => {
+                    setTimeout(() => {
+                        const el = document.getElementById('customerAmount');
+                        if (el) { el.focus(); el.select(); }
+                    }, 50);
+                };
+            }
+
             document.getElementById('popupMsg').innerHTML = msg.replace(/\n/g, '<br>');
             const btnContainer = document.getElementById('popupButtons');
 
@@ -16393,13 +17180,45 @@ input:focus, select:focus, textarea:focus, button:focus {
             pendingProductToAdd = null;
         }
 
-        function addToPOFromInventory(productId) {
-            const product = products.find(p => p.id == productId);
+        function addToPOFromInventory(productId, variantId = null) {
+            const product = products.find(p => String(p.id) === String(productId));
             if (!product) return;
+
+            let targetItem = null;
+            if (variantId) {
+                const variant = window.getVariantById(product, variantId);
+                if (variant) {
+                    targetItem = {
+                        id: product.id,
+                        variantId: variant.id,
+                        name: window.getVariantDisplayName(product, variant),
+                        barcode: variant.barcode || '',
+                        stock: variant.stock !== undefined ? variant.stock : 0,
+                        price: variant.sellingPrice !== undefined ? variant.sellingPrice : (variant.price || 0),
+                        buyingPrice: variant.buyingPrice !== undefined ? variant.buyingPrice : 0,
+                        unit: variant.unit || product.unit || 'Piece',
+                        category: variant.category || product.category || ''
+                    };
+                }
+            }
+
+            if (!targetItem) {
+                targetItem = {
+                    id: product.id,
+                    variantId: undefined,
+                    name: product.name,
+                    barcode: product.barcode || '',
+                    stock: product.stock !== undefined ? product.stock : 0,
+                    price: product.price !== undefined ? product.price : 0,
+                    buyingPrice: product.costPrice !== undefined ? product.costPrice : 0,
+                    unit: product.unit || 'Piece',
+                    category: product.category || ''
+                };
+            }
 
             // 1. If we have an active unsaved draft in poCart, add to it immediately (user is working on it)
             if (poCart.length > 0) {
-                addToPOCart(product);
+                addToPOCart(targetItem);
                 return;
             }
 
@@ -16408,13 +17227,13 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // 3. If no pending POs, start a new one immediately
             if (pendingPOs.length === 0) {
-                addToPOCart(product);
+                addToPOCart(targetItem);
                 return;
             }
 
             // 4. If we have pending POs, ask the user
-            pendingProductToAdd = product;
-            document.getElementById('selectPOProductName').textContent = product.name;
+            pendingProductToAdd = targetItem;
+            document.getElementById('selectPOProductName').textContent = targetItem.name;
             const list = document.getElementById('selectPOList');
 
             let html = '';
@@ -16455,8 +17274,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Add to existing saved PO
                 const po = purchaseOrders.find(p => p.id === targetId);
                 if (po) {
-                    // Check if item exists in that PO
-                    const existingItem = po.items.find(item => item.product.id == pendingProductToAdd.id);
+                    // Check if item exists in that PO (matching id and variantId)
+                    const existingItem = po.items.find(item => String(item.product.id) === String(pendingProductToAdd.id) && String(item.product.variantId || '') === String(pendingProductToAdd.variantId || ''));
                     if (existingItem) {
                         existingItem.qty++;
                     } else {
@@ -16473,8 +17292,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function addToPOCart(product) {
-            // Check if already in cart
-            const existing = poCart.find(item => item.product.id == product.id);
+            // Check if already in cart (matching id and variantId)
+            const existing = poCart.find(item => String(item.product.id) === String(product.id) && String(item.product.variantId || '') === String(product.variantId || ''));
             if (existing) {
                 existing.qty++;
             } else {
@@ -16597,21 +17416,47 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function searchPOProduct() {
-            const query = document.getElementById('poSearchInput').value.toLowerCase();
+            const query = document.getElementById('poSearchInput').value.toLowerCase().trim();
             const resultsDiv = document.getElementById('poSearchResults');
 
-            if (query.length < 2) {
+            if (query.length < 1) {
                 resultsDiv.style.display = 'none';
                 return;
             }
 
-            const matches = searchProductsUnified(query, products);
+            const tokens = query.split(/\s+/).filter(t => t.length > 0);
+            const candidateItems = [];
+            products.forEach(p => {
+                candidateItems.push({
+                    parent: p,
+                    variant: null,
+                    displayName: p.name,
+                    stock: p.stock !== undefined ? p.stock : 0
+                });
+                if (window.hasVariants(p) && Array.isArray(p.variants)) {
+                    p.variants.forEach(v => {
+                        candidateItems.push({
+                            parent: p,
+                            variant: v,
+                            displayName: window.getVariantDisplayName(p, v),
+                            stock: v.stock !== undefined ? v.stock : 0
+                        });
+                    });
+                }
+            });
+
+            const matches = candidateItems.filter(item => {
+                const nameStr = item.displayName.toLowerCase();
+                const barStr = ((item.variant ? item.variant.barcode : item.parent.barcode) || '').toLowerCase();
+                return tokens.every(token => nameStr.includes(token) || barStr.includes(token));
+            }).slice(0, 10);
 
             if (matches.length > 0) {
-                resultsDiv.innerHTML = matches.map(p => `
-                    <div onclick="selectPOProduct('${p.id}')" 
-                         style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; hover: background: #f8f9fa;">
-                        <strong>${p.name}</strong> (${p.stock} in stock)
+                resultsDiv.innerHTML = matches.map(item => `
+                    <div onclick="selectPOProduct('${item.parent.id}', ${item.variant ? `'${item.variant.id}'` : 'null'})" 
+                         style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;"
+                         onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='transparent'">
+                        <strong>${item.displayName}</strong> (${item.stock} in stock)
                     </div>
                 `).join('');
                 resultsDiv.style.display = 'block';
@@ -16620,8 +17465,39 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function selectPOProduct(id) {
-            selectedPOProduct = products.find(p => p.id == id); // Loose equality for string/number id
+        function selectPOProduct(id, variantId = null) {
+            const product = products.find(p => String(p.id) === String(id));
+            if (!product) return;
+
+            if (variantId) {
+                const variant = window.getVariantById(product, variantId);
+                if (variant) {
+                    selectedPOProduct = {
+                        id: product.id,
+                        variantId: variant.id,
+                        name: window.getVariantDisplayName(product, variant),
+                        barcode: variant.barcode || '',
+                        stock: variant.stock !== undefined ? variant.stock : 0,
+                        price: variant.sellingPrice !== undefined ? variant.sellingPrice : (variant.price || 0),
+                        buyingPrice: variant.buyingPrice !== undefined ? variant.buyingPrice : 0,
+                        unit: variant.unit || product.unit || 'Piece',
+                        category: variant.category || product.category || ''
+                    };
+                }
+            } else {
+                selectedPOProduct = {
+                    id: product.id,
+                    variantId: undefined,
+                    name: product.name,
+                    barcode: product.barcode || '',
+                    stock: product.stock !== undefined ? product.stock : 0,
+                    price: product.price !== undefined ? product.price : 0,
+                    buyingPrice: product.costPrice !== undefined ? product.costPrice : 0,
+                    unit: product.unit || 'Piece',
+                    category: product.category || ''
+                };
+            }
+
             if (selectedPOProduct) {
                 document.getElementById('poProductName').textContent = selectedPOProduct.name;
                 document.getElementById('poSelectedProduct').style.display = 'flex';
@@ -16775,19 +17651,35 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // Update Stock
             poCart.forEach(item => {
-                const product = products.find(p => p.id === item.product.id);
+                const product = products.find(p => String(p.id) === String(item.product.id));
                 if (product) {
-                    product.stock = parseInt(product.stock) + parseInt(item.qty);
+                    let variant = null;
+                    if (item.product.variantId) {
+                        variant = window.getVariantById(product, item.product.variantId);
+                    }
 
-                    // Add to stock history
-                    stockHistory.push({
-                        date: new Date().toISOString(),
-                        productId: product.id,
-                        productName: product.name,
-                        change: parseInt(item.qty),
-                        reason: `PO Receive (${poId})`,
-                        newStock: product.stock
-                    });
+                    if (variant) {
+                        variant.stock = (parseInt(variant.stock) || 0) + parseInt(item.qty);
+                        stockHistory.push({
+                            date: new Date().toISOString(),
+                            productId: product.id,
+                            variantId: variant.id,
+                            productName: window.getVariantDisplayName(product, variant),
+                            change: parseInt(item.qty),
+                            reason: `PO Receive (${poId})`,
+                            newStock: variant.stock
+                        });
+                    } else {
+                        product.stock = (parseInt(product.stock) || 0) + parseInt(item.qty);
+                        stockHistory.push({
+                            date: new Date().toISOString(),
+                            productId: product.id,
+                            productName: product.name,
+                            change: parseInt(item.qty),
+                            reason: `PO Receive (${poId})`,
+                            newStock: product.stock
+                        });
+                    }
                 }
             });
 
@@ -18558,6 +19450,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                             openScannerModal('sale');
                         }
                         break;
+                    case 'KeyV': // Ctrl + V → Add Variant (Record Sale)
+                        if (document.getElementById('sales').classList.contains('active')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openAddVariantFromSale();
+                        }
+                        break;
                     case 'KeyE': // Ctrl + E → Edit
                         if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
@@ -18926,6 +19825,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <div><kbd>Ctrl</kbd> + <kbd>I</kbd> : Add New Inventory</div>
                     <div><kbd>Ctrl</kbd> + <kbd>E</kbd> : Edit</div>
                     <div><kbd>Ctrl</kbd> + <kbd>N</kbd> : Add New Customer</div>
+                    <div><kbd>Ctrl</kbd> + <kbd>V</kbd> : Add Variant to Product</div>
                     <div style="grid-column: 1 / -1;"><kbd>Enter</kbd> : Move to next logical field / Select Match</div>
                 </div>
                 
@@ -23170,9 +24070,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else if (active.id === 'saleCustomerSearch') {
                 dropdown = document.getElementById('saleCustomerDropdown');
                 activeIndexVar = 'saleCustomerSelectedIndex';
-            } else if (active.id === 'saleProductSearch') {
-                dropdown = document.getElementById('saleProductDropdown');
-                activeIndexVar = 'saleProductSelectedIndex';
             }
             
             // If the active input has a visible autocomplete dropdown with options
@@ -23811,52 +24708,72 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         };
 
         window.isCartInputEnterFocusing = false;
-        function handleCartInputKeydown(e, index, type) {
+        window.handleCartInputKeydown = function(e, index, type) {
             if (e.key === 'Enter') {
                 if (e.ctrlKey) return; // Let Ctrl+Enter bubble up for Product Edit
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Nullify the onchange handler on the current element so blurring it doesn't trigger a secondary redraw
+                // Temporarily disable onchange on current input to avoid duplicate calls on blur
                 e.target.onchange = null;
                 
                 // Explicitly update the cart item synchronously
+                let success = true;
                 try {
                     if (type === 'qty') {
-                        if (typeof updateCartItemQuantity === 'function') updateCartItemQuantity(index, e.target.value);
+                        if (typeof updateCartItemQuantity === 'function') {
+                            success = updateCartItemQuantity(index, e.target.value) !== false;
+                        }
                     } else if (type === 'disc') {
-                        if (typeof updateCartItemDiscount === 'function') updateCartItemDiscount(index, e.target.value);
+                        if (typeof updateCartItemDiscount === 'function') {
+                            success = updateCartItemDiscount(index, e.target.value) !== false;
+                        }
                     }
                 } catch(err) {
                     console.error("Cart update error:", err);
+                    success = false;
                 }
                 
-                setTimeout(() => {
-                    if (type === 'qty') {
-                        const discEl = document.getElementById('cart-disc-' + index);
-                        if (discEl) {
-                            discEl.focus();
-                            discEl.select();
+                // If update failed (e.g. stock exceeded), stay in the field!
+                if (!success) {
+                    return;
+                }
+                
+                // Determine destination
+                const nextIndex = index + 1;
+                const isLastRow = nextIndex >= cart.length;
+                
+                const performFocus = () => {
+                    if (!isLastRow) {
+                        const nextQty = document.getElementById('cart-qty-' + nextIndex);
+                        if (nextQty) {
+                            if (typeof window.setCartRowHighlight === 'function') {
+                                window.setCartRowHighlight(nextIndex);
+                            }
+                            nextQty.focus();
+                            nextQty.select();
                         }
-                    } else if (type === 'disc') {
-                        if (index + 1 < cart.length) {
-                            const nextQty = document.getElementById('cart-qty-' + (index + 1));
-                            if (nextQty) {
-                                nextQty.focus();
-                                nextQty.select();
-                            }
-                        } else {
-                            const customerSearch = document.getElementById('saleCustomerSearch');
-                            if (customerSearch) {
-                                customerSearch.focus();
-                                customerSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
+                    } else {
+                        if (typeof window.clearCartRowHighlight === 'function') {
+                            window.clearCartRowHighlight();
+                        }
+                        const customerSearch = document.getElementById('saleCustomerSearch');
+                        if (customerSearch) {
+                            customerSearch.focus();
+                            customerSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                     }
-                }, 10);
+                };
+                
+                // Fire immediately and across multiple ticks to reliably focus after innerHTML reconstruction
+                performFocus();
+                requestAnimationFrame(performFocus);
+                setTimeout(performFocus, 0);
+                setTimeout(performFocus, 20);
+                setTimeout(performFocus, 50);
             }
-        }
-
+        };
+        const handleCartInputKeydown = window.handleCartInputKeydown;
 
         // =========================================================================
         // RECORD SALE - CENTRALIZED KEYBOARD NAVIGATION
@@ -23905,21 +24822,20 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             }
 
             // -------------------------------------------------------------
-            // ALT+ENTER TO QUICKLY ADD INVENTORY
+            // -------------------------------------------------------------
+            // ALT+ENTER TO QUICKLY ADD INVENTORY / STOCK
             // -------------------------------------------------------------
             if (e.key === 'Enter' && e.altKey) {
-                if (activeId === 'saleProductSearch' || activeId === 'quickSaleBarcode') {
-                    const prompt = document.getElementById('addInventoryPrompt');
-                    if (prompt && prompt.style.display !== 'none') {
-                        e.preventDefault();
-                        if (typeof handleAddInventoryFromSale === 'function') {
-                            handleAddInventoryFromSale();
-                        }
-                        return;
+                const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'quickSaleBarcode'];
+                if (addItemIds.includes(activeId)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof handleAddInventoryFromSale === 'function') {
+                        handleAddInventoryFromSale();
                     }
+                    return;
                 }
             }
-            
             // -------------------------------------------------------------
             // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT EDIT
             // -------------------------------------------------------------
@@ -24787,71 +25703,233 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
     </script>
 
     <!-- Add Variant from Inventory Modal -->
-    <div id="addVariantModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; padding: 20px; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 8px; width: 100%; max-width: 500px; padding: 20px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            <h4 style="margin-top: 0; margin-bottom: 5px;">Add Variant</h4>
-            <h5 id="addVariantProductName" style="margin-top: 0; color: #555; margin-bottom: 20px;"></h5>
-            
-            <input type="hidden" id="addVariantParentId">
-            
-            <div class="form-group">
-                <label>Variant Name</label>
-                <input type="text" id="addVariantName" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantBarcode').focus();" placeholder="e.g. L, Red, etc.">
+    <div id="addVariantModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto;">
+        <div style="background: white; border-radius: 8px; width: 100%; max-width: 750px; padding: 25px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.25); margin: auto; margin-top: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <h4 style="margin: 0;">Add Variant to Product</h4>
+                <span onclick="closeAddVariantModal()" style="cursor:pointer; font-size:24px; color:#dc3545; line-height:1;">&times;</span>
             </div>
-            
-            <div class="form-group" style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                    <label>Barcode</label>
-                    <input type="text" id="addVariantBarcode" onkeypress="if(event.key === 'Enter') { const bp = document.getElementById('addVariantBuyPrice'); if(bp && bp.offsetParent !== null) { bp.focus(); } else { document.getElementById('addVariantSellPrice').focus(); } }" placeholder="Scan or Auto Generate">
-                </div>
-                <div style="display: flex; align-items: flex-end; padding-bottom: 2px;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('addVariantBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="height: 38px;">⚡</button>
+            <!-- Parent Product (read-only) -->
+            <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:18px;">&#x1F512;</span>
+                <div>
+                    <div style="font-size:11px; color:#856404; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Parent Product (Read-only)</div>
+                    <div id="addVariantProductName" style="font-size:15px; font-weight:700; color:#333;"></div>
                 </div>
             </div>
-            
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group buying-price-feature" style="flex: 1;">
-                    <label>Buying Price (₹)</label>
-                    <input type="number" id="addVariantBuyPrice" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantSellPrice').focus();" min="0" step="0.01">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Selling Price (₹)</label>
-                    <input type="number" id="addVariantSellPrice" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantStock').focus();" min="0" step="0.01">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Opening Stock</label>
-                    <input type="number" id="addVariantStock" onkeypress="if(event.key === 'Enter') document.getElementById('addVariantMinStock').focus();" value="0">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Minimum Stock</label>
-                    <input type="number" id="addVariantMinStock" onkeypress="if(event.key === 'Enter') submitAddVariant();" value="0">
-                </div>
-            </div>
-            
 
-            
-            <div style="margin-top: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+            <input type="hidden" id="addVariantParentId">
+
+            <!-- Row 1: Variant Name + Barcode -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Variant Name <span style="color:red;">*</span></label>
+                    <input type="text" id="addVariantName" placeholder="e.g. A4, L, Red, ₹10" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Barcode</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="addVariantBarcode" placeholder="Scan or enter" style="flex:1; padding:8px; font-size:16px;">
+                        <button type="button" class="btn btn-info btn-sm" onclick="openScannerModal('addVariantBarcode')" style="height:38px; padding:0 10px;" title="Scan">📷</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('addVariantBarcode').value='DDS-'+Date.now().toString().slice(-7)" style="height:38px; padding:0 10px;" title="Auto-generate">⚡</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Sell Price + Buy Price + Discount -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Selling Price (₹)</label>
+                    <input type="number" id="addVariantSellPrice" min="0" step="0.01" placeholder="0.00" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+                <div class="form-group buying-price-feature" style="margin:0;">
+                    <label style="font-weight:600;">Buying Price (₹)</label>
+                    <input type="number" id="addVariantBuyPrice" min="0" step="0.01" placeholder="0.00" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Product Discount (%) <small style="color:#888; font-weight:normal; font-size:11px;">&#x2014; Overrides Category</small></label>
+                    <input type="number" id="addVariantDiscount" min="0" max="100" step="0.01" placeholder="0" value="0" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <!-- Row 3: HSN + Category + Base Unit + Qty Type + GST -->
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group gst-field" style="margin:0; display:none;">
+                    <label style="font-weight:600;">HSN/SAC</label>
+                    <select id="addVariantHSN" style="width:100%; padding:8px; font-size:15px; height:38px; box-sizing:border-box;" onchange="const ci=document.getElementById('addVariantHSNCustom'); if(ci) ci.style.display=this.value==='__custom__'?'block':'none';">
+                        <option value="">Same as parent</option>
+                        <option value="__custom__">Custom…</option>
+                    </select>
+                    <input type="text" id="addVariantHSNCustom" placeholder="Enter HSN/SAC code" style="display:none; margin-top:4px; width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Category</label>
+                    <select id="addVariantCategory" style="width:100%; padding:8px; font-size:15px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Base Unit</label>
+                    <select id="addVariantUnit" style="width:100%; padding:8px; font-size:15px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Qty Type</label>
+                    <select id="addVariantQuantityType" style="width:100%; padding:8px; font-size:15px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                        <option value="whole">Whole Number</option>
+                        <option value="decimal">Decimal</option>
+                    </select>
+                </div>
+                <div class="form-group gst-field" style="margin:0; display:none;">
+                    <label style="font-weight:600;">GST Rate (%)</label>
+                    <select id="addVariantGSTRate" style="width:100%; padding:8px; font-size:15px; height:38px; box-sizing:border-box;">
+                        <option value="">Same as parent</option>
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 4: Stock + Min Stock -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Opening Stock</label>
+                    <input type="number" id="addVariantStock" value="0" min="0" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-weight:600;">Minimum Stock</label>
+                    <input type="number" id="addVariantMinStock" value="0" min="0" style="width:100%; padding:8px; font-size:16px; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <!-- Pack Sizes -->
+            <div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #dee2e6; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label style="margin:0; font-weight:600; font-size:14px;">Pack Sizes (for this variant)</label>
+                    <button type="button" class="btn btn-info btn-sm" onclick="addPackSizeInput('', '', '', 'addVariantPackSizesContainer')">+ Add Pack Size</button>
+                </div>
+                <div id="addVariantPackSizesContainer"></div>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn btn-secondary" onclick="closeAddVariantModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitAddVariant()">Add Variant</button>
+                <button class="btn btn-success" onclick="submitAddVariant()" style="font-size:16px; padding:8px 20px;">✅ Add Variant</button>
             </div>
         </div>
     </div>
-    
+
+    <!-- Add Variant Picker Modal (Ctrl+V from Record Sale) -->
+    <div id="addVariantPickerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9000; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; padding:24px; width:460px; max-width:95vw; box-shadow:0 8px 32px rgba(0,0,0,0.22); position:relative;">
+            <button onclick="closeAddVariantPickerModal()" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:22px; cursor:pointer; color:#888;">&times;</button>
+            <h3 style="margin:0 0 6px 0; font-size:18px;">&#x1F500; Add Variant to Product</h3>
+            <p style="margin:0 0 14px 0; color:#666; font-size:13px;">Search the parent product you want to add a variant to:</p>
+            <input type="text" id="avPickerSearch" placeholder="Type product name..." autocomplete="off"
+                style="width:100%; padding:10px 12px; font-size:15px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"
+                oninput="avPickerFilter(this.value)">
+            <div id="avPickerResults" style="margin-top:10px; max-height:260px; overflow-y:auto; border:1px solid #e9ecef; border-radius:8px;"></div>
+        </div>
+    </div>
+
+    <script>
+        function openAddVariantFromSale() {
+            const modal = document.getElementById('addVariantPickerModal');
+            modal.style.display = 'flex';
+            const inp = document.getElementById('avPickerSearch');
+            inp.value = '';
+            avPickerFilter('');
+            setTimeout(() => inp.focus(), 80);
+        }
+
+        function closeAddVariantPickerModal() {
+            document.getElementById('addVariantPickerModal').style.display = 'none';
+        }
+
+        function avPickerFilter(query) {
+            const resultsEl = document.getElementById('avPickerResults');
+            const q = (query || '').trim().toLowerCase();
+            const list = (typeof products !== 'undefined' ? products : [])
+                .filter(p => !q || p.name.toLowerCase().includes(q))
+                .slice(0, 30);
+
+            if (!list.length) {
+                resultsEl.innerHTML = '<div style="padding:14px; color:#888; font-style:italic;">No products found.</div>';
+                return;
+            }
+
+            resultsEl.innerHTML = list.map(p => {
+                const varCount = (p.variants || []).length;
+                const badge = varCount > 0
+                    ? `<span style="font-size:11px; background:#e0f0ff; color:#0056b3; border-radius:10px; padding:1px 7px; margin-left:6px;">${varCount} variant${varCount > 1 ? 's' : ''}</span>`
+                    : '';
+                return `<div onclick="avPickerSelect('${p.id}')"
+                    style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f1f1; display:flex; align-items:center; justify-content:space-between;"
+                    onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+                    <span style="font-size:14px; font-weight:600;">${p.name}${badge}</span>
+                    <span style="font-size:12px; color:#888;">${p.category || ''}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function avPickerSelect(productId) {
+            closeAddVariantPickerModal();
+            setTimeout(() => openAddVariantModal(productId), 60);
+        }
+
+        // Close on Esc
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('addVariantPickerModal') && document.getElementById('addVariantPickerModal').style.display === 'flex') {
+                e.preventDefault();
+                closeAddVariantPickerModal();
+            }
+        });
+    </script>
+
     <script>
         function openAddVariantModal(productId) {
+
             const product = products.find(p => String(p.id) === String(productId));
             if (!product) return;
             document.getElementById('addVariantParentId').value = product.id;
-            document.getElementById('addVariantProductName').textContent = 'Product: ' + product.name;
+            document.getElementById('addVariantProductName').textContent = product.name;
             document.getElementById('addVariantName').value = '';
             document.getElementById('addVariantBarcode').value = 'DDS-' + Date.now().toString().slice(-7);
             document.getElementById('addVariantBuyPrice').value = '';
             document.getElementById('addVariantSellPrice').value = '';
+            document.getElementById('addVariantDiscount').value = '0';
             document.getElementById('addVariantStock').value = '0';
             document.getElementById('addVariantMinStock').value = '0';
+            const avHSNEl = document.getElementById('addVariantHSN');
+            if (avHSNEl) { avHSNEl.value = ''; }
+            const avHSNCustom = document.getElementById('addVariantHSNCustom');
+            if (avHSNCustom) { avHSNCustom.value = ''; avHSNCustom.style.display = 'none'; }
+            const avPackCont = document.getElementById('addVariantPackSizesContainer');
+            if (avPackCont) avPackCont.innerHTML = '';
+
+            // Populate category and unit selects from app settings
+            const catSelect = document.getElementById('addVariantCategory');
+            const unitSelect = document.getElementById('addVariantUnit');
+            if (catSelect) {
+                const savedCats = JSON.parse(localStorage.getItem('categories') || '[]');
+                catSelect.innerHTML = '<option value="">Same as parent</option>' +
+                    savedCats.map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+            if (unitSelect) {
+                const savedUnits = JSON.parse(localStorage.getItem('units') || '["pcs","kg","g","l","ml","box","pack","dozen"]');
+                unitSelect.innerHTML = '<option value="">Same as parent</option>' +
+                    savedUnits.map(u => `<option value="${u}">${u}</option>`).join('');
+            }
+            // Reset combos
+            if (document.getElementById('addVariantQuantityType')) document.getElementById('addVariantQuantityType').value = '';
+            if (document.getElementById('addVariantGSTRate')) document.getElementById('addVariantGSTRate').value = '';
+            if (document.getElementById('addVariantCategory')) document.getElementById('addVariantCategory').value = '';
+            if (document.getElementById('addVariantUnit')) document.getElementById('addVariantUnit').value = '';
+
             document.getElementById('addVariantModal').style.display = 'flex';
             setTimeout(() => document.getElementById('addVariantName').focus(), 100);
         }
@@ -24864,44 +25942,91 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             const parentId = document.getElementById('addVariantParentId').value;
             const parent = products.find(p => String(p.id) === String(parentId));
             if (!parent) return;
-            
+
             if (!parent.variants) parent.variants = [];
-            
+
             const name = document.getElementById('addVariantName').value.trim();
             const barcode = document.getElementById('addVariantBarcode').value.trim();
             const buyPrice = parseFloat(document.getElementById('addVariantBuyPrice').value) || 0;
             const sellPrice = parseFloat(document.getElementById('addVariantSellPrice').value) || 0;
             const stock = parseInt(document.getElementById('addVariantStock').value) || 0;
             const minStock = parseInt(document.getElementById('addVariantMinStock').value) || 0;
-            
+            const discount = parseFloat(document.getElementById('addVariantDiscount') ? document.getElementById('addVariantDiscount').value : 0) || 0;
+            const avHsnEl = document.getElementById('addVariantHSN');
+            let hsn = '';
+            if (avHsnEl) {
+                if (avHsnEl.tagName === 'SELECT') {
+                    hsn = avHsnEl.value === '__custom__'
+                        ? (document.getElementById('addVariantHSNCustom') ? document.getElementById('addVariantHSNCustom').value.trim() : '')
+                        : (avHsnEl.value === '' ? '' : avHsnEl.value);
+                } else {
+                    hsn = avHsnEl.value.trim();
+                }
+            }
+            const catEl = document.getElementById('addVariantCategory');
+            const category = catEl ? catEl.value : '';
+            const unitEl = document.getElementById('addVariantUnit');
+            const unit = unitEl ? unitEl.value : '';
+            const qtyTypeEl = document.getElementById('addVariantQuantityType');
+            const quantityType = qtyTypeEl ? qtyTypeEl.value : '';
+            const gstEl = document.getElementById('addVariantGSTRate');
+            const gstRate = gstEl ? gstEl.value : '';
+
+            // Pack sizes
+            const packSizes = [];
+            const avPackCont = document.getElementById('addVariantPackSizesContainer');
+            if (avPackCont) {
+                avPackCont.querySelectorAll('.pack-size-row').forEach((row) => {
+                    const pName = row.querySelector('.pack-name');
+                    const pQty = row.querySelector('.pack-qty');
+                    const pPrice = row.querySelector('.pack-price');
+                    if (pName && pQty && pName.value && parseFloat(pQty.value)) {
+                        packSizes.push({
+                            name: pName.value,
+                            quantity: parseFloat(pQty.value),
+                            price: pPrice ? (parseFloat(pPrice.value) || 0) : 0
+                        });
+                    }
+                });
+            }
+
             if (!name) {
                 showAlert('Variant Name is required.', '⚠️');
+                document.getElementById('addVariantName').focus();
                 return;
             }
-            
-            const lowerName = name.toLowerCase();
-            if (parent.variants.some(v => String(v.variantName).toLowerCase() === lowerName)) {
-                showAlert(`Variant ${name} already exists for ${parent.name}.`, '⚠️');
+
+            // Case-insensitive + whitespace-normalized duplicate check
+            const normName = name.toLowerCase().replace(/\s+/g, ' ').trim();
+            if (parent.variants.some(v => String(v.variantName).toLowerCase().replace(/\s+/g, ' ').trim() === normName)) {
+                showAlert(`Variant "${name}" already exists for ${parent.name}.`, '⚠️');
                 return;
             }
-            
+
             if (barcode && !isBarcodeGloballyUnique(barcode)) {
                 showAlert('Barcode already exists globally!', '⚠️');
                 return;
             }
-            
+
             const newVariant = {
-                id: 'var-' + Date.now(),
+                id: 'var-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 variantName: name,
                 barcode: barcode,
                 buyingPrice: buyPrice,
                 sellingPrice: sellPrice,
                 stock: stock,
-                minimumStock: minStock
+                minimumStock: minStock,
+                productDiscount: discount,
+                hsn: hsn,
+                category: category,
+                unit: unit,
+                quantityType: quantityType,
+                gstRate: gstRate,
+                packSizes: packSizes
             };
-            
+
             parent.variants.push(newVariant);
-            
+
             if (stock > 0) {
                 stockHistory.push({
                     date: new Date().toISOString(),
@@ -25045,4 +26170,110 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             }, 100);
         }
     </script>
+
+
+
+
+<!-- BEGIN PAYMENT ENTER HANDLER -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Initialize the payment UI correctly on load
+    if (typeof togglePaymentFields === 'function') {
+        setTimeout(() => {
+            togglePaymentFields();
+        }, 100);
+    }
+
+    function handlePaymentEnter(e) {
+        if (e.key !== 'Enter') return;
+        if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+        
+        const targetId = e.target.id;
+        const validIds = [
+            'paymentMethod', 'creditAmountPaid', 'creditPaymentMethod', 
+            'creditReference', 'creditDueDate', 'customerAmount', 'otherPaymentAmount'
+        ];
+        
+        if (!validIds.includes(targetId)) return;
+        
+        // Don't prevent default on select elements immediately to allow native dropdown closing
+        if (e.target.tagName !== 'SELECT') {
+            e.preventDefault();
+        }
+
+        setTimeout(() => {
+            if (targetId === 'paymentMethod') {
+                const methodValue = document.getElementById('paymentMethod').value;
+                if (methodValue === 'credit') {
+                    const amt = document.getElementById('creditAmountPaid');
+                    if(amt && amt.offsetWidth > 0) {
+                        amt.focus();
+                        amt.select();
+                    }
+                } else if (methodValue === 'cash' || methodValue === 'mixed') {
+                    const amt = document.getElementById('customerAmount');
+                    if (amt && amt.offsetWidth > 0) {
+                        amt.focus();
+                        amt.select();
+                    } else {
+                        const btn = document.getElementById('btnCompleteSale');
+                        if (btn) btn.click();
+                    }
+                } else {
+                    const btn = document.getElementById('btnCompleteSale');
+                    if(btn) btn.click();
+                }
+            } 
+            else if (targetId === 'customerAmount') {
+                const methodValue = document.getElementById('paymentMethod').value;
+                if (methodValue === 'mixed') {
+                    const otherAmt = document.getElementById('otherPaymentAmount');
+                    if (otherAmt && otherAmt.offsetWidth > 0) {
+                        otherAmt.focus();
+                        otherAmt.select();
+                    } else {
+                        const btn = document.getElementById('btnCompleteSale');
+                        if (btn) btn.click();
+                    }
+                } else {
+                    const btn = document.getElementById('btnCompleteSale');
+                    if (btn) btn.click();
+                }
+            }
+            else if (targetId === 'otherPaymentAmount') {
+                const btn = document.getElementById('btnCompleteSale');
+                if (btn) btn.click();
+            }
+            else if (targetId === 'creditAmountPaid') {
+                const method = document.getElementById('creditPaymentMethod');
+                if(method && method.offsetWidth > 0) method.focus();
+            }
+            else if (targetId === 'creditPaymentMethod') {
+                const ref = document.getElementById('creditReference');
+                const refGroup = document.getElementById('inlineReferenceGroup');
+                if(ref && refGroup && refGroup.style.display !== 'none' && ref.offsetWidth > 0) {
+                    ref.focus();
+                    ref.select();
+                } else {
+                    const due = document.getElementById('creditDueDate');
+                    if(due && due.offsetWidth > 0) due.focus();
+                }
+            }
+            else if (targetId === 'creditReference') {
+                const due = document.getElementById('creditDueDate');
+                if(due && due.offsetWidth > 0) due.focus();
+            }
+            else if (targetId === 'creditDueDate') {
+                const btn = document.getElementById('btnCompleteSale');
+                if(btn) btn.click();
+            }
+        }, 10);
+    }
+
+    // Use bubbling phase (false) instead of capture (true) so select gets the key first
+    document.addEventListener('keydown', handlePaymentEnter, false);
+});
+</script>
+<!-- END PAYMENT ENTER HANDLER -->
+
 </body>
