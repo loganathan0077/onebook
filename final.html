@@ -24831,56 +24831,56 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // ALT+ENTER TO QUICKLY ADD INVENTORY / STOCK
             // -------------------------------------------------------------
             if (e.key === 'Enter' && e.altKey) {
-                const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'quickSaleBarcode', 'btnSaleAddItem'];
-                if (addItemIds.includes(activeId)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (typeof handleAddInventoryFromSale === 'function') {
-                        handleAddInventoryFromSale();
-                    }
-                    return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof handleAddInventoryFromSale === 'function') {
+                    handleAddInventoryFromSale();
                 }
+                return;
             }
             // -------------------------------------------------------------
-            // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT EDIT
+            // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT / CUSTOMER EDIT
             // -------------------------------------------------------------
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                // Record Sale -> Customer Edit
-                if (activeId === 'saleCustomerSearch') {
+                const isProductFocused = isCartInput || (activeElem && ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'].includes(activeId)) || (document.getElementById('saleProductDropdown') && document.getElementById('saleProductDropdown').style.display !== 'none');
+
+                if (isProductFocused) {
+                    // Product Edit
+                    const dropdown = document.getElementById('saleProductDropdown');
+                    if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
+                        const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                        if (items[comboboxSelectedIndex]) {
+                            e.preventDefault();
+                            const pid = items[comboboxSelectedIndex].dataset.id;
+                            if (pid && typeof editProduct === 'function') editProduct(parseInt(pid));
+                            return;
+                        }
+                    }
+                    const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'];
+                    if (activeElem && addItemIds.includes(activeId)) {
+                        const pid = document.getElementById('saleProductId').value;
+                        if (pid) {
+                            e.preventDefault();
+                            if (typeof editProduct === 'function') editProduct(parseInt(pid));
+                            return;
+                        }
+                    }
+                    if (isCartInput) {
+                        if (typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 && window.focusedCartRowIndex < cart.length) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (typeof editProduct === 'function') {
+                                editProduct(cart[window.focusedCartRowIndex].productId);
+                            }
+                            return;
+                        }
+                    }
+                } else {
+                    // Customer Edit (if focus is not on product and customer is selected)
                     const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
                     if (activeCustId) {
                         e.preventDefault();
                         if (typeof openAddCustomerModal === 'function') openAddCustomerModal(null, activeCustId);
-                        return;
-                    }
-                }
-
-                const dropdown = document.getElementById('saleProductDropdown');
-                if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
-                    const items = dropdown.querySelectorAll('.custom-dropdown-item');
-                    if (items[comboboxSelectedIndex]) {
-                        e.preventDefault();
-                        const pid = items[comboboxSelectedIndex].dataset.id;
-                        if (pid && typeof editProduct === 'function') editProduct(parseInt(pid));
-                        return;
-                    }
-                }
-                const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'];
-                if (activeElem && addItemIds.includes(activeId)) {
-                    const pid = document.getElementById('saleProductId').value;
-                    if (pid) {
-                        e.preventDefault();
-                        if (typeof editProduct === 'function') editProduct(parseInt(pid));
-                        return;
-                    }
-                }
-                if (isCartInput) {
-                    if (typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 && window.focusedCartRowIndex < cart.length) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (typeof editProduct === 'function') {
-                            editProduct(cart[window.focusedCartRowIndex].productId);
-                        }
                         return;
                     }
                 }
