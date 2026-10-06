@@ -8426,6 +8426,16 @@ input:focus, select:focus, textarea:focus, button:focus {
         let customerSearchFocusedIndex = -1;
 
         function handleCustomerSearchKeydown(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                const activeCustId = document.getElementById('activeCustomerId').value;
+                if (activeCustId) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openAddCustomerModal(null, activeCustId);
+                }
+                return;
+            }
+
             const dropdown = document.getElementById('customerSearchResults');
             
             // Flow: Search Customer -> Discount when Enter is pressed on empty field or after selection
