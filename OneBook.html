@@ -25837,6 +25837,9 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
     </div>
 
     <script>
+        let avPickerSelectedIndex = -1;
+        let avPickerFilteredProducts = [];
+
         function openAddVariantFromSale() {
             const modal = document.getElementById('addVariantPickerModal');
             modal.style.display = 'flex';
@@ -25853,28 +25856,71 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         function avPickerFilter(query) {
             const resultsEl = document.getElementById('avPickerResults');
             const q = (query || '').trim().toLowerCase();
-            const list = (typeof products !== 'undefined' ? products : [])
+            avPickerFilteredProducts = (typeof products !== 'undefined' ? products : [])
                 .filter(p => !q || p.name.toLowerCase().includes(q))
                 .slice(0, 30);
 
-            if (!list.length) {
+            avPickerSelectedIndex = -1;
+
+            if (!avPickerFilteredProducts.length) {
                 resultsEl.innerHTML = '<div style="padding:14px; color:#888; font-style:italic;">No products found.</div>';
                 return;
             }
 
-            resultsEl.innerHTML = list.map(p => {
+            resultsEl.innerHTML = avPickerFilteredProducts.map((p, index) => {
                 const varCount = (p.variants || []).length;
                 const badge = varCount > 0
                     ? `<span style="font-size:11px; background:#e0f0ff; color:#0056b3; border-radius:10px; padding:1px 7px; margin-left:6px;">${varCount} variant${varCount > 1 ? 's' : ''}</span>`
                     : '';
-                return `<div onclick="avPickerSelect('${p.id}')"
+                return `<div id="av-picker-item-${index}" class="av-picker-item" onclick="avPickerSelect('${p.id}')"
                     style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f1f1; display:flex; align-items:center; justify-content:space-between;"
-                    onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+                    onmouseover="avPickerSetHighlight(${index})">
                     <span style="font-size:14px; font-weight:600;">${p.name}${badge}</span>
                     <span style="font-size:12px; color:#888;">${p.category || ''}</span>
                 </div>`;
             }).join('');
         }
+
+        function avPickerSetHighlight(index) {
+            avPickerSelectedIndex = index;
+            const items = document.querySelectorAll('.av-picker-item');
+            items.forEach((item, i) => {
+                if (i === index) {
+                    item.style.background = '#f0f7ff';
+                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    item.style.background = '';
+                }
+            });
+        }
+
+        document.getElementById('avPickerSearch').addEventListener('keydown', function(e) {
+            if (!document.getElementById('addVariantPickerModal') || document.getElementById('addVariantPickerModal').style.display === 'none') return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (avPickerFilteredProducts.length > 0) {
+                    let nextIndex = avPickerSelectedIndex + 1;
+                    if (nextIndex >= avPickerFilteredProducts.length) nextIndex = avPickerFilteredProducts.length - 1;
+                    avPickerSetHighlight(nextIndex);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (avPickerFilteredProducts.length > 0) {
+                    let prevIndex = avPickerSelectedIndex - 1;
+                    if (prevIndex < 0) prevIndex = 0;
+                    avPickerSetHighlight(prevIndex);
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (avPickerSelectedIndex >= 0 && avPickerSelectedIndex < avPickerFilteredProducts.length) {
+                    avPickerSelect(avPickerFilteredProducts[avPickerSelectedIndex].id);
+                }
+            }
+        });
 
         function avPickerSelect(productId) {
             closeAddVariantPickerModal();
