@@ -24783,7 +24783,8 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         // =========================================================================
         // RECORD SALE - CENTRALIZED KEYBOARD NAVIGATION
         // =========================================================================
-        document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
+        document.addEventListener('keydown', function(e) { 
+            if (e.defaultPrevented && !(e.key === 'Enter' && (e.ctrlKey || e.metaKey))) return;
             const salesTab = document.getElementById('sales');
             if (!salesTab || !salesTab.classList.contains('active')) return;
             
@@ -24842,47 +24843,55 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // GLOBAL ENTER (Ctrl+Enter) FOR PRODUCT / CUSTOMER EDIT
             // -------------------------------------------------------------
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                const isProductFocused = isCartInput || (activeElem && ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'].includes(activeId)) || (document.getElementById('saleProductDropdown') && document.getElementById('saleProductDropdown').style.display !== 'none');
+                
+                const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
+                const productFields = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'];
+                const isCartInput = activeElem && activeElem.classList && (activeElem.classList.contains('cart-qty-input') || activeElem.classList.contains('cart-disc-input'));
+                const isProductInput = isCartInput || (activeElem && productFields.includes(activeId));
+                
+                console.log("[DEBUG] Ctrl+Enter pressed. isProductInput:", isProductInput, "activeCustId:", activeCustId);
 
-                if (isProductFocused) {
-                    // Product Edit
-                    const dropdown = document.getElementById('saleProductDropdown');
-                    if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
-                        const items = dropdown.querySelectorAll('.custom-dropdown-item');
-                        if (items[comboboxSelectedIndex]) {
-                            e.preventDefault();
-                            const pid = items[comboboxSelectedIndex].dataset.id;
-                            if (pid && typeof editProduct === 'function') editProduct(parseInt(pid));
-                            return;
-                        }
-                    }
-                    const addItemIds = ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'];
-                    if (activeElem && addItemIds.includes(activeId)) {
-                        const pid = document.getElementById('saleProductId').value;
-                        if (pid) {
-                            e.preventDefault();
-                            if (typeof editProduct === 'function') editProduct(parseInt(pid));
-                            return;
-                        }
-                    }
+                if (isProductInput) {
+                    console.log("[DEBUG] Editing product...");
                     if (isCartInput) {
                         if (typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 && window.focusedCartRowIndex < cart.length) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (typeof editProduct === 'function') {
-                                editProduct(cart[window.focusedCartRowIndex].productId);
+                            e.preventDefault(); e.stopPropagation();
+                            if (typeof editProduct === 'function') editProduct(cart[window.focusedCartRowIndex].productId);
+                        }
+                    } else if (activeId === 'saleProductSearch') {
+                        const dropdown = document.getElementById('saleProductDropdown');
+                        if (dropdown && dropdown.style.display !== 'none' && typeof comboboxSelectedIndex !== 'undefined' && comboboxSelectedIndex >= 0) {
+                            const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                            if (items[comboboxSelectedIndex]) {
+                                e.preventDefault(); e.stopPropagation();
+                                const pid = items[comboboxSelectedIndex].dataset.id;
+                                if (pid && typeof editProduct === 'function') editProduct(parseInt(pid));
                             }
-                            return;
+                        } else {
+                            const pid = document.getElementById('saleProductId').value;
+                            if (pid) {
+                                e.preventDefault(); e.stopPropagation();
+                                if (typeof editProduct === 'function') editProduct(parseInt(pid));
+                            }
+                        }
+                    } else {
+                        const pid = document.getElementById('saleProductId').value;
+                        if (pid) {
+                            e.preventDefault(); e.stopPropagation();
+                            if (typeof editProduct === 'function') editProduct(parseInt(pid));
                         }
                     }
-                } else {
-                    // Customer Edit (if focus is not on product and customer is selected)
-                    const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
-                    if (activeCustId) {
-                        e.preventDefault();
-                        if (typeof openAddCustomerModal === 'function') openAddCustomerModal(null, activeCustId);
-                        return;
+                    return;
+                }
+
+                if (activeCustId) {
+                    console.log("[DEBUG] Editing customer...");
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    if (typeof openAddCustomerModal === 'function') {
+                        openAddCustomerModal(null, activeCustId);
                     }
+                    return;
                 }
             }
 

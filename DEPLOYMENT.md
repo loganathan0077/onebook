@@ -69,7 +69,7 @@ Create a `public` directory and copy your files:
 ```bash
 mkdir -p public
 cp login.html public/index.html
-cp final.html public/final.html
+cp OneBook.html public/OneBook.html
 cp firebase-config.js public/firebase-config.js
 cp auth.js public/auth.js
 ```
@@ -104,7 +104,7 @@ After initial setup, you only need these commands to update your app:
 ```bash
 # Copy updated files to public directory
 cp login.html public/index.html
-cp final.html public/final.html
+cp OneBook.html public/OneBook.html
 cp firebase-config.js public/firebase-config.js
 cp auth.js public/auth.js
 
@@ -125,11 +125,11 @@ If you want to use your own domain (e.g., `store.yourdomain.com`):
 
 Whenever you make changes to your app:
 
-1. **Edit your local files** (login.html, final.html, etc.)
+1. **Edit your local files** (login.html, OneBook.html, etc.)
 2. **Copy to public directory:**
    ```bash
    cp login.html public/index.html
-   cp final.html public/final.html
+   cp OneBook.html public/OneBook.html
    cp firebase-config.js public/firebase-config.js
    cp auth.js public/auth.js
    ```

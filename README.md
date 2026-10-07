@@ -37,7 +37,7 @@ Complete inventory and sales management system with Firebase cloud sync and PWA 
 
 ```
 SalesApp/
-├── final.html              # Main application
+├── OneBook.html              # Main application
 ├── login.html              # Login page (also index.html)
 ├── auth.js                 # Authentication & sync logic
 ├── firebase-config.js      # Firebase configuration
@@ -104,12 +104,12 @@ SalesApp/
 ## 🔐 Admin Features
 
 ### Delete Sale (Password Protected)
-- **Password:** `admin123` (change in `final.html` line 2856)
+- **Password:** `admin123` (change in `OneBook.html` line 2856)
 - **Location:** Dashboard → Recent Sales → Delete button
 - **Access:** Only admin with password can delete sales
 
 ### Change Admin Password
-Edit `final.html` line 2856:
+Edit `OneBook.html` line 2856:
 ```javascript
 const ADMIN_PASSWORD = 'your-new-password'; // Change this
 ```
@@ -213,7 +213,7 @@ The application is optimized for rapid POS navigation.
 ### Manual Deploy
 ```bash
 # Copy files to public directory
-cp final.html login.html auth.js firebase-config.js service-worker.js manifest.json icon-*.png public/
+cp OneBook.html login.html auth.js firebase-config.js service-worker.js manifest.json icon-*.png public/
 
 # Deploy to Firebase
 firebase deploy --only hosting
@@ -311,7 +311,7 @@ cd SalesApp
 ## 📝 Important Files
 
 ### Essential Files (Must Keep)
-- `final.html` - Main application
+- `OneBook.html` - Main application
 - `login.html` / `index.html` - Login page
 - `auth.js` - Authentication logic
 - `firebase-config.js` - Firebase settings
@@ -334,7 +334,7 @@ cd SalesApp
 ### Common Tasks
 
 **Update Admin Password:**
-Edit `final.html` line 2856
+Edit `OneBook.html` line 2856
 
 **Add New User:**
 Firebase Console → Authentication → Users → Add User
