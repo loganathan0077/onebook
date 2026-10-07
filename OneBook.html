@@ -2462,31 +2462,43 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <div class="sale-card-box" style="background: #e9ecef; justify-content: space-between;">
                         <h4 class="sale-card-title" style="color: #004085; font-size: 18px;">💳 Sale Summary</h4>
                         
-                        <div style="display: grid; grid-template-columns: 1fr auto; row-gap: 8px; column-gap: 20px; font-size: 14px; margin-bottom: 10px;">
+                        <style>
+                        .summary-val {
+                            border: none; background: transparent; outline: none;
+                            font-weight: bold; font-family: monospace; font-size: 14px;
+                            text-align: right; width: 80px; padding: 0; margin: 0;
+                            color: inherit; pointer-events: none;
+                            -moz-appearance: textfield;
+                        }
+                        .summary-val::-webkit-outer-spin-button,
+                        .summary-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                        </style>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr auto; row-gap: 8px; column-gap: 10px; font-size: 14px; margin-bottom: 10px;">
                             <div style="color: #495057;">Subtotal</div>
-                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartSubtotal">0.00</span></div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<input type="number" id="cartSubtotal" class="summary-val" readonly value="0.00"></div>
                             
                             <div style="color: #495057;">Total Item Discount</div>
-                            <div style="text-align: right; font-weight: bold; color: red; font-family: monospace;">₹<span id="cartTotalItemDiscount">0.00</span></div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace; color: red;">₹<input type="number" id="cartTotalItemDiscount" class="summary-val" readonly value="0.00" style="color: red;"></div>
                             
                             <div style="color: #495057;">Taxable Amount</div>
-                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartTaxableAmount">0.00</span></div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<input type="number" id="cartTaxableAmount" class="summary-val" readonly value="0.00"></div>
                             
                             <div style="color: #495057;">CGST</div>
-                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartCGST">0.00</span></div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<input type="number" id="cartCGST" class="summary-val" readonly value="0.00"></div>
                             
                             <div style="color: #495057;">SGST</div>
-                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartSGST">0.00</span></div>
+                            <div style="text-align: right; font-family: monospace; font-weight: bold;">₹<input type="number" id="cartSGST" class="summary-val" readonly value="0.00"></div>
                             
                             <div style="color: #495057;">IGST</div>
-                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartIGST">0.00</span></div>
+                            <div style="text-align: right; font-family: monospace; font-weight: bold;">₹<input type="number" id="cartIGST" class="summary-val" readonly value="0.00"></div>
                         </div>
                         
                         <div style="border-top: 2px dashed #dee2e6; margin: 10px 0;"></div>
                         
                         <div style="display: grid; grid-template-columns: 1fr auto; align-items: center;">
                             <div style="font-weight: bold; color: #343a40; font-size: 16px;">Total Amount</div>
-                            <div style="text-align: right; font-weight: bold; color: #28a745; font-size: 20px; font-family: monospace;">₹<span id="cartTotal">0.00</span></div>
+                            <div style="text-align: right; font-weight: bold; color: #28a745;">₹<input type="number" id="cartTotal" class="summary-val" readonly value="0.00" style="font-size: 20px; color: #28a745; width: 90px;"></div>
                         </div>
                         
                         <div style="display:none;">
