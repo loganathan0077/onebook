@@ -19435,7 +19435,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         } else if (document.getElementById('sales').classList.contains('active')) {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleAddInventoryFromSale();
+                            handleAddInventoryFromInventory();
                         } else if (document.getElementById('inventory').classList.contains('active')) {
                             e.preventDefault();
                             e.stopPropagation();
@@ -24784,7 +24784,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         // RECORD SALE - CENTRALIZED KEYBOARD NAVIGATION
         // =========================================================================
         document.addEventListener('keydown', function(e) { 
-            if (e.defaultPrevented && !(e.key === 'Enter' && (e.ctrlKey || e.metaKey))) return;
+            if (e.defaultPrevented && !(e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.altKey))) return;
             const salesTab = document.getElementById('sales');
             if (!salesTab || !salesTab.classList.contains('active')) return;
             
