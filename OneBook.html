@@ -2416,6 +2416,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     display: flex;
                     flex-direction: column;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    height: 100%;
+                    box-sizing: border-box;
                 }
                 .sale-card-title {
                     margin: 0 0 15px 0;
@@ -2430,7 +2432,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 <div class="record-sale-bottom-grid">
                     
                     <!-- 1. CUSTOMER DETAILS -->
-                    <div class="sale-card-box scanner-container" style="background: #eef8ff; border-color: #cce5ff;">
+                    <div class="sale-card-box" style="background: #eef8ff; border-color: #cce5ff; height: 100%; box-sizing: border-box;">
                         <h4 class="sale-card-title" style="color: #004085; font-size: 18px;">👥 Customer Details</h4>
                         <div id="existingCustomerSection" style="max-width: 100%;">
                             <div class="form-group" style="position: relative; margin-bottom: 0;">
