@@ -8121,9 +8121,28 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
         // Customer Management Functions
+        // ── CUSTOMER MANAGEMENT (SQLite backend) ──────────────────
+        // Internal cache loaded from SQLite (Customers UI only).
+        // Sales/POS continues to use the legacy global 'customers' array — untouched.
+        let _sqliteCustomerCache = null; // null = not yet loaded
+
+        async function _loadSqliteCustomers() {
+            try {
+                const result = await window.electronAPI.sqlite.customers.getAll();
+                if (result && result.success !== false) {
+                    _sqliteCustomerCache = Array.isArray(result) ? result : (result.data || []);
+                }
+            } catch (e) {
+                console.warn('[4E.6] SQLite customer load failed:', e);
+                _sqliteCustomerCache = [];
+            }
+            return _sqliteCustomerCache || [];
+        }
+
         function openCustomerManagementModal() {
             document.getElementById('customerManagementModal').style.display = 'flex';
             document.getElementById('customerSearchInput').value = '';
+            _sqliteCustomerCache = null; // force fresh load on each open
             renderCustomerTable();
         }
 
@@ -8132,33 +8151,35 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function exportCustomersCSV() {
-            if (!customers || customers.length === 0) {
+            const source = _sqliteCustomerCache || [];
+            if (!source || source.length === 0) {
                 showAlert('No customers available to export.', '⚠️');
                 return;
             }
-            
             let csv = 'Customer ID,Name,Phone,Email,GSTIN,State,Country,Address,Notes\n';
-            customers.forEach(c => {
-                const name = `"${(c.name || '').replace(/"/g, '""')}"`;
-                const address = `"${(c.address || '').replace(/"/g, '""')}"`;
-                const notes = `"${(c.notes || '').replace(/"/g, '""')}"`;
-                
-                csv += `${c.id},${name},${c.phone || ''},${c.email || ''},${c.gstin || ''},${c.state || ''},${c.country || ''},${address},${notes}\n`;
+            source.forEach(c => {
+                const name = '"' + (c.name || '').replace(/"/g, '""') + '"';
+                const address = '"' + (c.address || '').replace(/"/g, '""') + '"';
+                const notes = '"' + (c.notes || '').replace(/"/g, '""') + '"';
+                csv += c.id + ',' + name + ',' + (c.phone || '') + ',' + (c.email || '') + ',' +
+                       (c.gstin || '') + ',' + (c.state || '') + ',' + (c.country || 'INDIA') + ',' +
+                       address + ',' + notes + '\n';
             });
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `customers_export.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'customers_export.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function viewCustomer(id) {
-            const c = customers.find(cus => cus.id === id);
+            const source = _sqliteCustomerCache || [];
+            const c = source.find(cus => cus.id === id);
             if (!c) return;
-            
+
             document.getElementById('entityDetailsTitle').textContent = 'Customer Details';
             document.getElementById('edName').textContent = c.name;
             document.getElementById('edGstin').textContent = c.gstin || '-';
@@ -8166,67 +8187,77 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('edState').textContent = c.state || '-';
             document.getElementById('edAddress').textContent = c.address || '-';
             document.getElementById('edNotes').textContent = c.notes || '-';
-            
+
             const bal = calculatePartyLedgerBalance(c, 'customer');
             document.getElementById('edOutstanding').textContent = '₹' + bal.balance.toFixed(2);
-            
-            // Get recent transactions
+
+            // Recent transactions — Sales not migrated yet, use legacy array
             const recentSales = sales.filter(s => s.customerId === id || s.customerName === c.name)
                                      .sort((a, b) => new Date(b.date) - new Date(a.date))
                                      .slice(0, 5);
-                                     
             const tbody = document.getElementById('edTransactionsBody');
-            tbody.innerHTML = recentSales.length === 0 ? '<tr><td colspan="4" style="text-align: center;">No transactions found.</td></tr>' : recentSales.map(s => {
-                const totalPaid = (s.paymentHistory || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
-                return `<tr>
-                    <td>${new Date(s.date).toLocaleDateString()}</td>
-                    <td>${s.saleId}</td>
-                    <td>₹${parseFloat(s.total || s.subtotal + s.totalTax).toFixed(2)}</td>
-                    <td>₹${totalPaid.toFixed(2)}</td>
-                </tr>`;
-            }).join('');
-            
+            tbody.innerHTML = recentSales.length === 0
+                ? '<tr><td colspan="4" style="text-align: center;">No transactions found.</td></tr>'
+                : recentSales.map(s => {
+                    const totalPaid = (s.paymentHistory || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                    return '<tr>' +
+                        '<td>' + new Date(s.date).toLocaleDateString() + '</td>' +
+                        '<td>' + s.saleId + '</td>' +
+                        '<td>₹' + parseFloat(s.total || (s.subtotal + s.totalTax)).toFixed(2) + '</td>' +
+                        '<td>₹' + totalPaid.toFixed(2) + '</td>' +
+                    '</tr>';
+                }).join('');
+
             document.getElementById('entityDetailsModal').style.display = 'flex';
         }
 
         function renderCustomerTable() {
             const query = document.getElementById('customerSearchInput').value.toLowerCase();
             const tbody = document.getElementById('customerTableBody');
-            
-            const filtered = customers.filter(c => {
-                if (!c || !c.name) return false;
-                return c.name.toLowerCase().includes(query) || 
-                       (c.gstin && c.gstin.toLowerCase().includes(query)) ||
-                       (c.phone && c.phone.includes(query)) ||
-                       (c.state && c.state.toLowerCase().includes(query));
-            });
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">Loading...</td></tr>';
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">No customers found.</td></tr>`;
-                return;
+            const doRender = (source) => {
+                const filtered = (source || []).filter(c => {
+                    if (!c || !c.name) return false;
+                    return c.name.toLowerCase().includes(query) ||
+                           (c.gstin && c.gstin.toLowerCase().includes(query)) ||
+                           (c.phone && c.phone.includes(query)) ||
+                           (c.state && c.state.toLowerCase().includes(query));
+                });
+
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No customers found.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = filtered.map(c =>
+                    '<tr>' +
+                    '<td><strong>' + c.name + '</strong></td>' +
+                    '<td>' + (c.gstin || '-') + '</td>' +
+                    '<td>' + (c.state || '-') + '</td>' +
+                    '<td>' + (c.phone || '-') + '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-info btn-sm" onclick="viewCustomer('' + c.id + '')" title="View Details">👁️</button> ' +
+                        '<button class="btn btn-secondary btn-sm" onclick="openPartyLedger('' + c.id + '', 'customer')" title="View Ledger">📖</button> ' +
+                        '<button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, '' + c.id + '')" title="Edit">✏️</button> ' +
+                        (window.hasPermission('delete') ? '<button class="btn btn-danger btn-sm" onclick="deleteCustomer('' + c.id + '')" title="Delete">🗑️</button>' : '') +
+                    '</td>' +
+                    '</tr>'
+                ).join('');
+            };
+
+            if (_sqliteCustomerCache !== null) {
+                doRender(_sqliteCustomerCache);
+            } else {
+                _loadSqliteCustomers().then(doRender);
             }
-
-            tbody.innerHTML = filtered.map(c => `
-                <tr>
-                    <td><strong>${c.name}</strong></td>
-                    <td>${c.gstin || '-'}</td>
-                    <td>${c.state || '-'}</td>
-                    <td>${c.phone || '-'}</td>
-                    <td>
-                        <button class="btn btn-info btn-sm" onclick="viewCustomer('${c.id}')" title="View Details">👁️</button>
-                        <button class="btn btn-secondary btn-sm" onclick="openPartyLedger('${c.id}', 'customer')" title="View Ledger">📖</button>
-                        <button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, '${c.id}')" title="Edit">✏️</button>
-                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')" title="Delete">🗑️</button>` : ''}
-                    </td>
-                </tr>
-            `).join('');
         }
 
         function openAddCustomerModal(initialName = null, editId = null) {
             document.getElementById('addCustomerModal').style.display = 'flex';
             const isEdit = !!editId;
             document.getElementById('addCustomerTitle').innerText = isEdit ? '✏️ Edit Customer' : '➕ Add New Customer';
-            
+
             document.getElementById('customerEditId').value = editId || '';
             document.getElementById('newCustomerName').value = initialName || '';
             document.getElementById('newCustomerGSTIN').value = '';
@@ -8238,7 +8269,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('newCustomerOpeningBalance').value = '';
 
             if (isEdit) {
-                const customer = customers.find(c => c.id === editId);
+                const source = _sqliteCustomerCache || [];
+                const customer = source.find(c => c.id === editId);
                 if (customer) {
                     document.getElementById('newCustomerName').value = customer.name;
                     document.getElementById('newCustomerGSTIN').value = customer.gstin || '';
@@ -8247,15 +8279,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                     document.getElementById('newCustomerState').value = customer.state || '';
                     document.getElementById('newCustomerCountry').value = customer.country || 'INDIA';
                     document.getElementById('newCustomerNotes').value = customer.notes || '';
-                    document.getElementById('newCustomerOpeningBalance').value = customer.openingBalance || '';
+                    document.getElementById('newCustomerOpeningBalance').value = customer.opening_balance || customer.openingBalance || '';
                 }
             }
             setTimeout(() => {
                 const nameInput = document.getElementById('newCustomerName');
-                if (nameInput) {
-                    nameInput.focus();
-                    nameInput.select();
-                }
+                if (nameInput) { nameInput.focus(); nameInput.select(); }
             }, 50);
         }
 
@@ -8294,7 +8323,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function saveCustomer() {
+        async function saveCustomer() {
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to manage customers.', 'error');
             const editId = document.getElementById('customerEditId').value;
             const name = document.getElementById('newCustomerName').value.trim().toUpperCase();
@@ -8306,104 +8335,111 @@ input:focus, select:focus, textarea:focus, button:focus {
             const notes = document.getElementById('newCustomerNotes').value.trim();
             const openingBalance = parseFloat(document.getElementById('newCustomerOpeningBalance').value) || 0;
 
-            if (!name) {
-                showAlert('Customer Name is required', '⚠️');
-                return;
-            }
+            if (!name) { showAlert('Customer Name is required', '⚠️'); return; }
 
             if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
-                showAlert('Invalid GSTIN format', '⚠️');
-                return;
+                showAlert('Invalid GSTIN format', '⚠️'); return;
             }
 
-            const normalizedName = name.replace(/\s+/g, ' ');
-            const matchName = normalizedName.toLowerCase();
-            const matchPhone = phone.replace(/[\s\-()+]/g, '').replace(/^91/, '');
-            const matchGSTIN = gstin; // Already trimmed and uppercase
-
-            let matchedMatches = [];
-            let duplicateCustomer = null;
-
-
             if (typeof isDemoMode === 'function' && isDemoMode()) {
-                // If editing existing, allow it. If creating new, check limit.
-                const editingId = document.getElementById('editCustomerId').value;
-                if (!editingId) {
-                    if (!canCreateDemoCustomer()) {
-                        showDemoLimitMessage('customers');
-                        return;
-                    }
-                }
-            }            const checkDuplicate = (record) => {
-                if (record.id === editId) return false;
-                
-                let matches = [];
-                const recName = (record.name || '').replace(/\s+/g, ' ').trim().toLowerCase();
-                const recPhone = (record.phone || '').replace(/[\s\-()+]/g, '').replace(/^91/, '');
-                const recGSTIN = (record.gstin || '').trim().toUpperCase();
+                if (!editId && !canCreateDemoCustomer()) { showDemoLimitMessage('customers'); return; }
+            }
 
+            const normalizedName = name.replace(/s+/g, ' ');
+            const matchName = normalizedName.toLowerCase();
+            const matchPhone = phone.replace(/[s-()+]/g, '').replace(/^91/, '');
+            const matchGSTIN = gstin;
+
+            // Duplicate check against SQLite cache + legacy suppliers
+            const source = _sqliteCustomerCache || [];
+            let duplicateCustomer = null;
+            let matchedMatches = [];
+
+            const checkDuplicate = (record) => {
+                if (record.id === editId) return false;
+                let matches = [];
+                const recName = (record.name || '').replace(/s+/g, ' ').trim().toLowerCase();
+                const recPhone = (record.phone || '').replace(/[s-()+]/g, '').replace(/^91/, '');
+                const recGSTIN = (record.gstin || '').trim().toUpperCase();
                 if (matchName && recName === matchName) matches.push('Customer Name');
                 if (matchPhone && recPhone === matchPhone) matches.push('Phone Number');
                 if (matchGSTIN && recGSTIN === matchGSTIN) matches.push('GSTIN');
-
-                if (matches.length > 0) {
-                    duplicateCustomer = record;
-                    matchedMatches = matches;
-                    return true;
-                }
+                if (matches.length > 0) { duplicateCustomer = record; matchedMatches = matches; return true; }
                 return false;
             };
 
-            const isDuplicate = customers.find(checkDuplicate) || suppliers.find(checkDuplicate);
-
+            const isDuplicate = source.find(checkDuplicate) || suppliers.find(checkDuplicate);
             if (isDuplicate) {
                 const displayName = duplicateCustomer.name + (duplicateCustomer.id.startsWith('sup_') ? ' (Supplier)' : '');
                 document.getElementById('duplicateCustomerNameDisplay').innerText = displayName;
-                
-                const listHtml = matchedMatches.map(m => `<li>✓ ${m}</li>`).join('');
-                document.getElementById('duplicateCustomerMatchesList').innerHTML = listHtml;
-                
+                document.getElementById('duplicateCustomerMatchesList').innerHTML = matchedMatches.map(m => '<li>✓ ' + m + '</li>').join('');
                 window.pendingDuplicateCustomerId = duplicateCustomer.id;
                 document.getElementById('duplicateCustomerModal').style.display = 'flex';
                 return;
             }
 
-            let newCustomerId = editId;
+            const customerData = { name: normalizedName, gstin, phone, address, state, country, notes, openingBalance };
+            let newCustomerId;
 
-            if (editId) {
-                const index = customers.findIndex(c => c.id === editId);
-                if (index !== -1) {
-                    customers[index] = { ...customers[index], name: normalizedName, gstin, phone, address, state, country, notes, openingBalance };
+            try {
+                if (editId) {
+                    const result = await window.electronAPI.sqlite.customers.update(editId, customerData);
+                    if (result && result.error) throw new Error(result.error);
+                    newCustomerId = editId;
+                    // Keep legacy 'customers' array in sync for Sales/POS cross-module use
+                    const idx = customers.findIndex(c => c.id === editId);
+                    if (idx !== -1) {
+                        customers[idx] = Object.assign({}, customers[idx], customerData);
+                        localStorage.setItem('customers', JSON.stringify(customers));
+                    }
+                } else {
+                    const result = await window.electronAPI.sqlite.customers.create(customerData);
+                    if (result && result.error) throw new Error(result.error);
+                    newCustomerId = typeof result === 'string' ? result : (result.id || result.data);
+                    // Push to legacy 'customers' array so Sales/POS can find it immediately
+                    customers.push(Object.assign({ id: newCustomerId }, customerData));
+                    localStorage.setItem('customers', JSON.stringify(customers));
                 }
-            } else {
-                newCustomerId = 'cus_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                const newCustomer = {
-                    id: newCustomerId,
-                    name: normalizedName,
-                    gstin, phone, address, state, country, notes, openingBalance
-                };
-                customers.push(newCustomer);
+            } catch (err) {
+                showAlert('Failed to save customer: ' + (err.message || String(err)), '❌');
+                return;
             }
 
-            saveData();
+            _sqliteCustomerCache = null;
             renderCustomerTable();
             closeAddCustomerModal();
             showAlert('Customer saved successfully', '✅');
 
-            // If the user was searching for a customer and created a new one, select it
-            if (document.getElementById('existingCustomerSection').style.display === 'block') {
-                 selectCustomer(newCustomerId);
+            // If user was in sales screen customer search, select the new customer
+            const existingSection = document.getElementById('existingCustomerSection');
+            if (existingSection && existingSection.style.display === 'block') {
+                selectCustomer(newCustomerId);
             }
         }
 
-        function deleteCustomer(id) {
+        async function deleteCustomer(id) {
             if (!window.hasPermission('delete')) return showAlert('Unauthorized: You do not have permission to delete customers.', 'error');
-            showConfirm('Are you sure you want to delete this customer?', () => {
-                customers = customers.filter(c => c.id !== id);
-                saveData();
-                renderCustomerTable();
+            showConfirm('Are you sure you want to delete this customer?', async () => {
+                try {
+                    const result = await window.electronAPI.sqlite.customers.delete(id);
+                    if (result && result.error) { showAlert('Delete failed: ' + result.error, '❌'); return; }
+                    if (result && result.deleted === false) {
+                        showAlert('Cannot delete: ' + (result.reason || 'Customer has linked records.'), '⚠️');
+                        return;
+                    }
+                    // Also remove from legacy array for Sales/POS consistency
+                    customers = customers.filter(c => c.id !== id);
+                    localStorage.setItem('customers', JSON.stringify(customers));
+                    _sqliteCustomerCache = null;
+                    renderCustomerTable();
+                    showAlert('Customer deleted successfully', '✅');
+                } catch (err) {
+                    showAlert('Delete error: ' + (err.message || String(err)), '❌');
+                }
             });
         }
+
+        // ── END CUSTOMER MANAGEMENT (SQLite backend) ──────────────
 
         // Sales Customer Flow Functions
 

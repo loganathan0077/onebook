@@ -100,10 +100,15 @@ function createSchema() {
             gstin TEXT,
             address TEXT,
             state TEXT,
+            country TEXT DEFAULT 'INDIA',
+            notes TEXT,
+            opening_balance REAL DEFAULT 0,
             balance REAL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+        -- Runtime migration: add columns to existing DBs
+        -- (ALTER TABLE is safe to run multiple times via try/catch in JS)
     `);
 
     // Suppliers
@@ -351,7 +356,19 @@ function createSchema() {
         );
     `);
 
-    // Migration Audit Log
+    // Runtime column migration for customers (idempotent)
+    const customerCols = db.prepare('PRAGMA table_info(customers)').all().map(c => c.name);
+    if (!customerCols.includes('country')) {
+        db.exec("ALTER TABLE customers ADD COLUMN country TEXT DEFAULT 'INDIA'");
+    }
+    if (!customerCols.includes('notes')) {
+        db.exec('ALTER TABLE customers ADD COLUMN notes TEXT');
+    }
+    if (!customerCols.includes('opening_balance')) {
+        db.exec('ALTER TABLE customers ADD COLUMN opening_balance REAL DEFAULT 0');
+    }
+
+        // Migration Audit Log
     db.exec(`
         CREATE TABLE IF NOT EXISTS migration_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -764,6 +764,9 @@ ipcMain.handle('sqlite:stock:adjust', (e, productId, variantId, qty, reason, ref
 ipcMain.handle('sqlite:customers:getAll', (e) => handleSqlite(e, () => customerService.getCustomers()));
 ipcMain.handle('sqlite:customers:get', (e, id) => handleSqlite(e, () => customerService.getCustomer(id)));
 ipcMain.handle('sqlite:customers:create', (e, data) => handleSqlite(e, () => customerService.createCustomer(data)));
+ipcMain.handle('sqlite:customers:update', (e, id, data) => handleSqlite(e, () => customerService.updateCustomer(id, data)));
+ipcMain.handle('sqlite:customers:delete', (e, id) => handleSqlite(e, () => customerService.deleteCustomer(id)));
+ipcMain.handle('sqlite:customers:search', (e, query) => handleSqlite(e, () => customerService.searchCustomers(query)));
 
 // Sales
 ipcMain.handle('sqlite:sales:create', (e, data) => handleSqlite(e, () => salesService.createSale(data)));
