@@ -28,6 +28,11 @@
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <script src="data/sqliteDataStore.js"></script>
+    <script src="data/jsonDataStore.js"></script>
+    <script src="data/dataStore.js"></script>
+
+
     <!-- Offline File Storage Override -->
     <script>
 
@@ -6589,6 +6594,19 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // Initialize data structure
         let products = JSON.parse(localStorage.getItem('products')) || [];
+        // MIGRATION: Async load products from SQLite if active
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (window.DATA_BACKEND === 'sqlite') {
+                try {
+                    products = await window.dataStore.getProducts();
+                    if (typeof updateProductsTable === 'function') updateProductsTable();
+                } catch (e) {
+                    console.error('Failed to load products from DB', e);
+                    if (typeof showAlert === 'function') showAlert('Failed to load products from database', '❌');
+                }
+            }
+        });
+        
 
         // MIGRATION: Fix products where Simple Variant and Advanced Variants were accidentally combined
         let needsSaveMigration = false;
@@ -7090,7 +7108,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function saveData() {
-            localStorage.setItem('products', JSON.stringify(products));
+            if (window.DATA_BACKEND !== 'sqlite') {
+                localStorage.setItem('products', JSON.stringify(products));
+            }
             localStorage.setItem('sales', JSON.stringify(sales));
                 if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
             localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
@@ -15787,7 +15807,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function finalizeAddProduct(product, categorySelect, customCategoryInput) {
+        async function finalizeAddProduct(product, categorySelect, customCategoryInput) {
             if (typeof isDemoMode === 'function' && isDemoMode()) {
                 if (!canCreateDemoProduct()) {
                     showDemoLimitMessage('products');
@@ -15795,28 +15815,48 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 product.isDemo = true;
             }
-            // Handle Custom Category persistence
             if (categorySelect.value === 'Other' && customCategoryInput.value.trim() !== '') {
                 const customValue = product.category;
-
-                // Add to localStorage
                 let categories = JSON.parse(localStorage.getItem('customCategories') || '[]');
                 if (!categories.includes(customValue)) {
                     categories.push(customValue);
                     localStorage.setItem('customCategories', JSON.stringify(categories));
-                    
                 }
-
-                // Add to select if not exists
                 if (![...categorySelect.options].some(opt => opt.value === customValue)) {
                     categorySelect.insertBefore(new Option(customValue, customValue), categorySelect.lastElementChild);
                 }
-
                 categorySelect.value = customValue;
             }
 
-            products.push(product);
-            saveData();
+            if (window.DATA_BACKEND === 'sqlite') {
+                try {
+                    const sqliteProduct = {
+                        name: product.name,
+                        category: product.category,
+                        unit: product.unit,
+                        min_stock: product.minStock,
+                        description: product.description,
+                        supplier: product.supplier,
+                        variants: [{
+                            variantName: product.variant || 'Default',
+                            sku: product.barcode,
+                            barcode: product.barcode,
+                            buyingPrice: product.costPrice || 0,
+                            sellingPrice: product.price,
+                            stock: product.stock
+                        }]
+                    };
+                    await window.electronAPI.sqlite.products.create(sqliteProduct);
+                    // Do NOT update in-memory products array anymore
+                } catch (e) {
+                    console.error(e);
+                    showAlert('Error saving product to DB: ' + e.message, '❌');
+                    return;
+                }
+            } else {
+                products.push(product);
+                saveData();
+            }
 
             document.getElementById('productForm').reset();
             updateProductsTable();
@@ -15885,22 +15925,43 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function updateProductsTable() {
+        async function updateProductsTable() {
             const tbody = document.getElementById('productsTableBody');
-            if (!tbody) return; // Prevent crash
+            if (!tbody) return;
 
             const searchInput = document.getElementById('productSearchLabelCenter');
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const searchTerm = searchInput ? searchInput.value.trim() : '';
 
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const showExpDays = settings.labelShowExpiry === true;
             const expHeader = document.getElementById('labelCenterExpDaysHeader');
             if (expHeader) expHeader.style.display = showExpDays ? 'table-cell' : 'none';
 
-            console.log('Search Debug:', { searchTerm, totalProducts: products.length });
-
-            // Filter products based on search term
-            let filteredProducts = searchProductsUnified(searchTerm, products);
+            let filteredProducts = [];
+            
+            if (window.DATA_BACKEND === 'sqlite') {
+                if (searchTerm) {
+                    filteredProducts = await window.electronAPI.sqlite.products.search(searchTerm);
+                } else {
+                    filteredProducts = await window.electronAPI.sqlite.products.getAll();
+                }
+                // Map SQLite product format back to UI format if needed, though they should be similar
+                // Ensure variant data is mapped if UI expects it flat
+                filteredProducts = filteredProducts.map(p => {
+                    const defVar = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+                    return {
+                        ...p,
+                        stock: defVar ? defVar.stock : 0,
+                        price: defVar ? defVar.selling_price : 0,
+                        costPrice: defVar ? defVar.buying_price : 0,
+                        barcode: defVar ? defVar.barcode : p.barcode,
+                        expiryDays: p.expiry_days,
+                        minStock: p.min_stock
+                    };
+                });
+            } else {
+                filteredProducts = searchProductsUnified(searchTerm.toLowerCase(), products);
+            }
             
             const filterVal = document.getElementById('filterLabelCenter') ? document.getElementById('filterLabelCenter').value : 'all';
             if (filterVal === 'selected') {
@@ -15917,11 +15978,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (filteredProducts.length === 0) {
                 const message = searchTerm ? 'No matching products found' : 'No products added yet';
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6c757d;">${message}</td></tr>`;
-
-                // Update "Select All" checkbox state
                 const selectAllCb = document.getElementById('selectAllProducts');
                 if (selectAllCb) selectAllCb.checked = false;
-
                 return;
             }
 
@@ -15945,7 +16003,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             });
 
-            // Update sort indicators
             const sortCols = ['barcode', 'name', 'category', 'stock', 'price', '_labelQty'];
             sortCols.forEach(c => {
                 const span = document.getElementById('labelSort-' + c);
@@ -15958,7 +16015,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             });
 
-            // Check if all visible items are selected to update "Select All" checkbox
             const selectedVisibleCount = sortedProducts.filter(p => selectedLabelProductIds.has(p.id)).length;
             const selectAllCb = document.getElementById('selectAllProducts');
             if (selectAllCb) {
@@ -16001,14 +16057,16 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function deleteProduct(id) {
+            if (window.DATA_BACKEND === 'sqlite') {
+                showAlert('Product deletion is disabled for data integrity in SQLite mode. Please set stock to 0 instead.', '⚠️');
+                return;
+            }
             if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
             const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
 
-            // Check if product has sales history
-            const hasSales = sales.some(sale => String(sale.productId) === String(id));
+            const hasSales = typeof sales !== 'undefined' && sales.some(sale => String(sale.productId) === String(id));
 
-            // Check if product has stock
             if (product.stock > 0) {
                 showAlert(`Cannot delete product with existing stock (${product.stock} units). Please update stock to 0 first or adjust inventory.`, '⚠️');
                 return;
@@ -16018,8 +16076,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 products = products.filter(p => String(p.id) !== String(id));
                 saveData();
                 updateProductsTable();
-                updateInventoryTable();
-                updateDashboard();
+                if (typeof updateInventoryTable === 'function') updateInventoryTable();
+                if (typeof updateDashboard === 'function') updateDashboard();
                 showAlert('Product deleted successfully!', '✅');
             };
 
@@ -16067,8 +16125,27 @@ input:focus, select:focus, textarea:focus, button:focus {
             }).join('');
         }
 
-        function editProduct(id) {
-            const product = products.find(p => String(p.id) === String(id));
+        async function editProduct(id) {
+            let product;
+            if (window.DATA_BACKEND === 'sqlite') {
+                product = await window.electronAPI.sqlite.products.get(id);
+                if (product) {
+                    // Map SQLite product format back to UI format
+                    const defVar = product.variants && product.variants.length > 0 ? product.variants[0] : null;
+                    product = {
+                        ...product,
+                        stock: defVar ? defVar.stock : 0,
+                        price: defVar ? defVar.selling_price : 0,
+                        costPrice: defVar ? defVar.buying_price : 0,
+                        barcode: defVar ? defVar.barcode : product.barcode,
+                        expiryDays: product.expiry_days,
+                        minStock: product.min_stock
+                    };
+                }
+            } else {
+                product = products.find(p => String(p.id) === String(id));
+            }
+            
             if (!product) return;
 
             currentEditingProductId = id;
@@ -16091,49 +16168,45 @@ input:focus, select:focus, textarea:focus, button:focus {
                 editImgPreview.style.display = 'block';
                 editImgClear.style.display = 'block';
             } else {
-                editImgBase64.value = '';
-                editImgPreview.src = '';
-                editImgPreview.style.display = 'none';
-                editImgClear.style.display = 'none';
+                if (editImgBase64) editImgBase64.value = '';
+                if (editImgPreview) {
+                    editImgPreview.src = '';
+                    editImgPreview.style.display = 'none';
+                }
+                if (editImgClear) editImgClear.style.display = 'none';
             }
 
-            // Refresh dropdowns from master data
             populateCategoryDropdowns();
             populateUnitDropdowns();
 
-            // Handle category - add to dropdown if it's a custom category not in the list
             const categorySelect = document.getElementById('editProductCategory');
             const categoryExists = [...categorySelect.options].some(opt => opt.value === product.category);
 
-            if (!categoryExists && product.category !== 'Other') {
-                // Add custom category to dropdown before "Other" option
+            if (!categoryExists && product.category !== 'Other' && product.category) {
                 const otherOption = categorySelect.querySelector('option[value="Other"]');
                 const newOption = new Option(product.category, product.category);
-                categorySelect.insertBefore(newOption, otherOption);
+                if (otherOption) {
+                    categorySelect.insertBefore(newOption, otherOption);
+                } else {
+                    categorySelect.appendChild(newOption);
+                }
             }
-
-            categorySelect.value = product.category;
+            if (product.category) categorySelect.value = product.category;
 
             const editExpiryDaysEl = document.getElementById('editProductExpiryDays');
-            if (editExpiryDaysEl) {
-                editExpiryDaysEl.value = product.expiryDays || '';
-            }
+            if (editExpiryDaysEl) editExpiryDaysEl.value = product.expiryDays || '';
 
-            // Set unit if available
-            if (document.getElementById('editProductUnit')) {
-                document.getElementById('editProductUnit').value = product.unit || 'Piece';
-            }
+            if (document.getElementById('editProductUnit')) document.getElementById('editProductUnit').value = product.unit || 'Piece';
             if (document.getElementById('editProductQuantityType')) {
                 const qtyType = product.quantityType || 'whole';
                 document.getElementById('editProductQuantityType').value = qtyType;
             }
 
-            document.getElementById('editProductPrice').value = product.price;
+            document.getElementById('editProductPrice').value = product.price || 0;
 
             const editDiscEl = document.getElementById('editProductDiscount');
-            if (editDiscEl) {
-                editDiscEl.value = (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") ? product.productDiscount : '';
-            }
+            if (editDiscEl) editDiscEl.value = (product.productDiscount !== undefined && product.productDiscount !== null && product.productDiscount !== "") ? product.productDiscount : '';
+            
             const editHsnEl = document.getElementById('editProductHSN');
             if (editHsnEl) editHsnEl.value = product.hsn || '';
             
@@ -16151,59 +16224,52 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
-            document.getElementById('editProductStock').value = product.stock;
-            document.getElementById('editProductMinStock').value = product.minStock;
+            document.getElementById('editProductStock').value = product.stock || 0;
+            document.getElementById('editProductMinStock').value = product.minStock || 0;
             document.getElementById('editProductSupplier').value = product.supplier || '';
 
-            // Description
             const editDescEl = document.getElementById('editProductDescription');
             if (editDescEl) editDescEl.value = product.description || '';
 
-            // Product Variants section
-            const hasVariants = window.hasVariants(product) && Array.isArray(product.variants) && product.variants.length > 0;
             const hasVariantsCb = document.getElementById('editProductHasVariants');
             const variantSection = document.getElementById('editVariantSection');
-            if (hasVariantsCb) {
-                hasVariantsCb.checked = hasVariants;
-            }
-            if (variantSection) {
-                variantSection.style.display = hasVariants ? 'block' : 'none';
-            }
-            renderEditVariantsTable(product);
+            const hasVariants = window.hasVariants ? window.hasVariants(product) && Array.isArray(product.variants) && product.variants.length > 0 : false;
+            
+            if (hasVariantsCb) hasVariantsCb.checked = hasVariants;
+            if (variantSection) variantSection.style.display = hasVariants ? 'block' : 'none';
+            if (typeof renderEditVariantsTable === 'function') renderEditVariantsTable(product);
 
-            // Populate Pack Sizes
             const editPackSizesContainer = document.getElementById('editPackSizesContainer');
-            editPackSizesContainer.innerHTML = ''; // Clear existing
-            if (product.packSizes && product.packSizes.length > 0) {
-                product.packSizes.forEach(pack => {
-                    addPackSizeInput(pack.name, pack.quantity, pack.price, 'editPackSizesContainer');
-                });
+            if (editPackSizesContainer) {
+                editPackSizesContainer.innerHTML = '';
+                if (product.packSizes && product.packSizes.length > 0) {
+                    product.packSizes.forEach(pack => {
+                        if (typeof addPackSizeInput === 'function') addPackSizeInput(pack.name, pack.quantity, pack.price, 'editPackSizesContainer');
+                    });
+                }
             }
 
-            // Handle Permissions
             const canEditGeneral = window.hasPermission('product_add_edit');
             const canEditPrice = window.hasPermission('product_add_edit');
             const canEditGst = window.hasPermission('product_add_edit');
             const canEditDiscount = window.hasPermission('product_add_edit');
 
-            document.getElementById('editProductName').disabled = !canEditGeneral;
-            document.getElementById('editProductBarcode').disabled = !canEditGeneral;
-            categorySelect.disabled = !canEditGeneral;
+            if(document.getElementById('editProductName')) document.getElementById('editProductName').disabled = !canEditGeneral;
+            if(document.getElementById('editProductBarcode')) document.getElementById('editProductBarcode').disabled = !canEditGeneral;
+            if(categorySelect) categorySelect.disabled = !canEditGeneral;
             if(document.getElementById('editProductUnit')) document.getElementById('editProductUnit').disabled = !canEditGeneral;
-            document.getElementById('editProductStock').disabled = !canEditGeneral;
-            document.getElementById('editProductMinStock').disabled = !canEditGeneral;
-            document.getElementById('editProductSupplier').disabled = !canEditGeneral;
+            if(document.getElementById('editProductStock')) document.getElementById('editProductStock').disabled = !canEditGeneral;
+            if(document.getElementById('editProductMinStock')) document.getElementById('editProductMinStock').disabled = !canEditGeneral;
+            if(document.getElementById('editProductSupplier')) document.getElementById('editProductSupplier').disabled = !canEditGeneral;
             if (document.getElementById('editProductImage')) document.getElementById('editProductImage').disabled = !canEditGeneral;
 
-            document.getElementById('editProductPrice').disabled = !canEditPrice;
+            if(document.getElementById('editProductPrice')) document.getElementById('editProductPrice').disabled = !canEditPrice;
 
             if (editGstEl) editGstEl.disabled = !canEditGst;
             if (editCustomGstEl) editCustomGstEl.disabled = !canEditGst;
             if (editHsnEl) editHsnEl.disabled = !canEditGst;
-
             if (editDiscEl) editDiscEl.disabled = !canEditDiscount;
 
-            // Hide/Show Save button
             const saveBtn = document.querySelector('#editProductForm button[type="submit"]');
             if (saveBtn) {
                 if (!canEditGeneral && !canEditPrice && !canEditGst && !canEditDiscount) {
@@ -16213,7 +16279,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
-            // Show modal
             document.getElementById('editProductModal').style.display = 'flex';
             setTimeout(() => { const nm = document.getElementById('editProductName'); if(nm) nm.focus(); }, 50);
         }
@@ -16224,7 +16289,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('editProductForm').reset();
         }
 
-        function saveEditedProduct(event) {
+        async function saveEditedProduct(event) {
             if (!requireLicensedForWrite('editing a product')) return;
             event.preventDefault();
 
@@ -16234,95 +16299,62 @@ input:focus, select:focus, textarea:focus, button:focus {
                     return;
                 }
 
-                const product = products.find(p => String(p.id) === String(currentEditingProductId));
-                if (!product) {
-                    showAlert("Error: Product not found!", "❌");
-                    return;
-                }
-
-                // Handle category
-                const categorySelect = document.getElementById('editProductCategory');
-                let categoryValue = categorySelect.value;
-
-                // Update product
-                const newBarcode = document.getElementById('editProductBarcode').value.trim();
-                // Check for duplicate barcode if changed
-                if (newBarcode && newBarcode !== (product.barcode || '')) {
-                    const existingProduct = products.find(p => p.barcode === newBarcode && p.id !== product.id);
-                    if (existingProduct) {
-                        showAlert('Barcode already exists for another product!', '⚠️');
+                if (window.DATA_BACKEND === 'sqlite') {
+                    // Fetch existing product from SQLite to preserve variants
+                    const existingProduct = await window.electronAPI.sqlite.products.get(currentEditingProductId);
+                    if (!existingProduct) {
+                        showAlert("Error: Product not found in database!", "❌");
                         return;
                     }
-                }
 
-                product.barcode = newBarcode;
-                product.name = document.getElementById('editProductName').value;
-                const editVarInput = document.getElementById('editProductVariant');
-                if (editVarInput) product.variant = editVarInput.value.trim();
-                product.category = categoryValue;
-                product.unit = document.getElementById('editProductUnit').value;
-                
-                const expEl = document.getElementById('editProductExpiryDays');
-                const newExpiryDays = expEl && expEl.value !== '' ? parseInt(expEl.value) || 0 : 0;
-                if (newExpiryDays !== (product.expiryDays || 0)) {
-                    product.expiryDays = newExpiryDays;
-                    if (newExpiryDays > 0) {
-                        let d = new Date();
-                        d.setDate(d.getDate() + newExpiryDays);
-                        product.expiryDate = d.toISOString().split('T')[0];
-                    } else {
-                        product.expiryDate = null;
+                    const newBarcode = document.getElementById('editProductBarcode').value.trim();
+                    const newPrice = parseFloat(document.getElementById('editProductPrice').value);
+                    const newStock = parseFloat(document.getElementById('editProductStock').value);
+                    
+                    const updateData = {
+                        name: document.getElementById('editProductName').value,
+                        category: document.getElementById('editProductCategory').value,
+                        unit: document.getElementById('editProductUnit').value,
+                        min_stock: parseFloat(document.getElementById('editProductMinStock').value),
+                        supplier: document.getElementById('editProductSupplier').value || 'N/A',
+                        description: document.getElementById('editProductDescription') ? document.getElementById('editProductDescription').value : ''
+                    };
+                    
+                    // We only update the default/first variant's price and barcode here
+                    if (existingProduct.variants && existingProduct.variants.length > 0) {
+                        updateData.variants = existingProduct.variants;
+                        updateData.variants[0].barcode = newBarcode;
+                        updateData.variants[0].sku = newBarcode;
+                        updateData.variants[0].sellingPrice = newPrice;
+                        
+                        // IF stock changed, we must do a stock adjustment! NOT direct overwrite.
+                        const oldStock = parseFloat(updateData.variants[0].stock);
+                        if (oldStock !== newStock) {
+                            const diff = newStock - oldStock;
+                            await window.electronAPI.sqlite.stock.adjust(updateData.variants[0].id, diff, 'ADJUSTMENT', 'MANUAL', 'Stock updated from edit product UI');
+                        }
+                        
+                        // We do NOT send stock in the update payload for products.update (stock is read-only in product update)
+                        delete updateData.variants[0].stock;
                     }
-                }
-                
-                const editQtyType = document.getElementById('editProductQuantityType');
-                if (editQtyType) {
-                    product.quantityType = editQtyType.value;
 
-                }
-                
-                product.price = parseFloat(document.getElementById('editProductPrice').value);
-                const editPurchasePriceEl = document.getElementById('editProductPurchasePrice');
-                if (editPurchasePriceEl) {
-                    product.costPrice = editPurchasePriceEl.value !== '' ? parseFloat(editPurchasePriceEl.value) || 0 : 0;
-                }
-                
-                const discVal = document.getElementById('editProductDiscount').value;
-                product.productDiscount = discVal.trim() === "" ? "" : parseFloat(discVal);
-                
-                const hsnEl = document.getElementById('editProductHSN');
-                product.hsn = hsnEl ? hsnEl.value : '';
-
-                const gstRateEl = document.getElementById('editProductGSTRate');
-                let gstRate = gstRateEl ? gstRateEl.value : '0';
-                if (gstRate === 'custom') {
-                    const customGstEl = document.getElementById('editProductCustomGSTRate');
-                    gstRate = customGstEl ? customGstEl.value : '0';
-                }
-                product.gstRate = parseFloat(gstRate) || 0;
-
-                product.stock = parseFloat(document.getElementById('editProductStock').value);
-                product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
-                product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
-
-                // Description
-                const descEl = document.getElementById('editProductDescription');
-                if (descEl) product.description = descEl.value || '';
-
-                const editImgBase64 = document.getElementById('editProductImageBase64');
-                if (editImgBase64) {
-                    product.image = editImgBase64.value;
-                }
-
-                // Pack sizes - check if container exists first to be safe
-                const packSizesContainer = document.getElementById('editPackSizesContainer');
-                if (packSizesContainer) {
-                    product.packSizes = getPackSizesFromForm('editPackSizesContainer');
+                    await window.electronAPI.sqlite.products.update(currentEditingProductId, updateData);
                 } else {
-                    product.packSizes = [];
+                    // Legacy JSON fallback
+                    const product = products.find(p => String(p.id) === String(currentEditingProductId));
+                    if (!product) return showAlert("Error: Product not found!", "❌");
+                    
+                    product.barcode = document.getElementById('editProductBarcode').value.trim();
+                    product.name = document.getElementById('editProductName').value;
+                    product.category = document.getElementById('editProductCategory').value;
+                    product.unit = document.getElementById('editProductUnit').value;
+                    product.price = parseFloat(document.getElementById('editProductPrice').value);
+                    product.stock = parseFloat(document.getElementById('editProductStock').value);
+                    product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
+                    product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
+                    saveData();
                 }
 
-                saveData();
                 updateProductsTable();
                 updateInventoryTable();
                 updateDashboard();
@@ -16330,7 +16362,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 showAlert('Product updated successfully!', '✅');
             } catch (error) {
                 console.error("CRITICAL ERROR in saveEditedProduct:", error);
-                // alert("Debug Error: " + error.message); // Uncomment for debugging
                 showAlert("Error saving: " + error.message, "❌");
             }
         }

@@ -19,8 +19,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     surrenderLicense: (key, contact) => ipcRenderer.invoke('surrender-license', key, contact),
     getMachineIdSync: () => ipcRenderer.sendSync('get-machine-id-sync'),
 
-    onLicenseBlockedReason: (callback) => ipcRenderer.on('license-blocked-reason', (_event, value) => callback(value)),
-    onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value))
+    onLicenseBlockedReason: (callback) => ipcRenderer.on('license-blocked-reason', (_event, value) => callback(value)),,
+    onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value)),
+
+    sqlite: {
+        products: {
+            getAll: () => ipcRenderer.invoke('sqlite:products:getAll'),
+            get: (id) => ipcRenderer.invoke('sqlite:products:get', id),
+            create: (data) => ipcRenderer.invoke('sqlite:products:create', data),
+            update: (id, data) => ipcRenderer.invoke('sqlite:products:update', id, data),
+            search: (q) => ipcRenderer.invoke('sqlite:products:search', q),
+            lowStock: () => ipcRenderer.invoke('sqlite:products:lowStock')
+        },
+        stock: {
+            get: (pId) => ipcRenderer.invoke('sqlite:stock:get', pId),
+            movements: (pId) => ipcRenderer.invoke('sqlite:stock:movements', pId),
+            adjust: (pId, qty, type, refId) => ipcRenderer.invoke('sqlite:stock:adjust', pId, qty, type, refId)
+        },
+        customers: {
+            getAll: () => ipcRenderer.invoke('sqlite:customers:getAll'),
+            get: (id) => ipcRenderer.invoke('sqlite:customers:get', id),
+            create: (data) => ipcRenderer.invoke('sqlite:customers:create', data)
+        },
+        sales: {
+            create: (data) => ipcRenderer.invoke('sqlite:sales:create', data),
+            cancel: (id) => ipcRenderer.invoke('sqlite:sales:cancel', id)
+        }
+    },
 });
 
 

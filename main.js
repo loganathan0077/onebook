@@ -720,3 +720,52 @@ app.on('window-all-closed', () => {
     }
 
 });
+
+
+// --- SQLITE IPC HANDLERS ---
+const productService = require('./services/productService');
+const salesService = require('./services/salesService');
+const stockService = require('./services/stockService');
+const customerService = require('./services/customerService');
+
+// Error wrapping helper
+async function handleSqlite(event, handlerFn) {
+    try {
+        const result = await handlerFn();
+        return { success: true, data: result };
+    } catch (e) {
+        console.error('SQLite IPC Error:', e);
+        // Map structured errors if present
+        if (e.code) {
+            return { success: false, error: { code: e.code, message: e.message } };
+        }
+        if (e.message && e.message.includes('Insufficient stock')) {
+            return { success: false, error: { code: 'INSUFFICIENT_STOCK', message: e.message } };
+        }
+        return { success: false, error: { code: 'DATABASE_ERROR', message: 'The operation could not be completed.', technicalDetails: e.message } };
+    }
+}
+}
+
+// Products
+ipcMain.handle('sqlite:products:getAll', (e) => handleSqlite(e, () => productService.getProducts()));
+ipcMain.handle('sqlite:products:get', (e, id) => handleSqlite(e, () => productService.getProduct(id)));
+ipcMain.handle('sqlite:products:create', (e, data) => handleSqlite(e, () => productService.createProduct(data)));
+ipcMain.handle('sqlite:products:update', (e, id, data) => handleSqlite(e, () => productService.updateProduct(id, data)));
+ipcMain.handle('sqlite:products:search', (e, q) => handleSqlite(e, () => productService.searchProducts(q)));
+ipcMain.handle('sqlite:products:lowStock', (e) => handleSqlite(e, () => productService.getLowStockProducts()));
+
+// Stock
+ipcMain.handle('sqlite:stock:get', (e, pId) => handleSqlite(e, () => stockService.getCurrentStock(pId)));
+ipcMain.handle('sqlite:stock:movements', (e, pId) => handleSqlite(e, () => stockService.getStockMovements(pId)));
+ipcMain.handle('sqlite:stock:adjust', (e, pId, qty, type, refId) => handleSqlite(e, () => stockService.adjustStock(pId, qty, type, refId)));
+
+// Customers
+ipcMain.handle('sqlite:customers:getAll', (e) => handleSqlite(e, () => customerService.getCustomers()));
+ipcMain.handle('sqlite:customers:get', (e, id) => handleSqlite(e, () => customerService.getCustomer(id)));
+ipcMain.handle('sqlite:customers:create', (e, data) => handleSqlite(e, () => customerService.createCustomer(data)));
+
+// Sales
+ipcMain.handle('sqlite:sales:create', (e, data) => handleSqlite(e, () => salesService.createSale(data)));
+ipcMain.handle('sqlite:sales:cancel', (e, id) => handleSqlite(e, () => salesService.cancelSale(id)));
+// Note: sales.getAll and sales.get would need to be in salesService. Skipping for now if not implemented.

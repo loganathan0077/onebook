@@ -64,6 +64,7 @@
     "dependencies": {
         "@supabase/supabase-js": "^2.116.0",
         "acorn": "^8.18.0",
+        "better-sqlite3": "^13.0.3",
         "jsdom": "^29.1.1",
         "puppeteer": "^25.10.0"
     }
