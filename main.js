@@ -770,5 +770,8 @@ ipcMain.handle('sqlite:customers:search', (e, query) => handleSqlite(e, () => cu
 
 // Sales
 ipcMain.handle('sqlite:sales:create', (e, data) => handleSqlite(e, () => salesService.createSale(data)));
+ipcMain.handle('sqlite:sales:getAll', (e, dateStr) => handleSqlite(e, () => salesService.getSales(dateStr)));
+ipcMain.handle('sqlite:sales:search', (e, query) => handleSqlite(e, () => salesService.searchSales(query)));
+ipcMain.handle('sqlite:sales:get', (e, id) => handleSqlite(e, () => salesService.getSaleById(id)));
 ipcMain.handle('sqlite:sales:cancel', (e, id) => handleSqlite(e, () => salesService.cancelSale(id)));
 // Note: sales.getAll and sales.get would need to be in salesService. Skipping for now if not implemented.

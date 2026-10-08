@@ -46,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         },
         sales: {
             create: (data) => ipcRenderer.invoke('sqlite:sales:create', data),
+            getAll: (dateStr) => ipcRenderer.invoke('sqlite:sales:getAll', dateStr),
+            search: (query) => ipcRenderer.invoke('sqlite:sales:search', query),
+            get: (id) => ipcRenderer.invoke('sqlite:sales:get', id),
             cancel: (id) => ipcRenderer.invoke('sqlite:sales:cancel', id)
         }
     },

@@ -1,0 +1,204 @@
+import re
+
+with open('old_bottom.html', 'r', encoding='utf-8') as f:
+    old_html = f.read()
+
+# We want to replace the outer wrapper and split it into 4 grid items.
+# Let's write the new HTML from scratch, carefully picking out the inner contents from old_bottom.html.
+
+# 1. Customer Details inner html
+customer_inner_start = old_html.find('<div id="existingCustomerSection"')
+customer_inner_end = old_html.find('<button type="button" id="btnAddCustomerMain"')
+customer_inner_end = old_html.find('</button>', customer_inner_end) + len('</button>')
+customer_html = old_html[customer_inner_start:customer_inner_end]
+
+# 2. Sale Summary inner html
+# Find from '<div style="display: grid; grid-template-columns: 1fr auto;' to the end of the Sale Summary block.
+# Actually, I'll just write it from scratch for Sale Summary and Adjustments & Payment because they are small and I have the text in my thought history.
+
+new_html = """
+                <style>
+                .record-sale-bottom-grid {
+                    display: grid;
+                    gap: 15px;
+                    margin-bottom: 10px;
+                    align-items: stretch;
+                }
+                
+                @media (min-width: 1200px) {
+                    .record-sale-bottom-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+                }
+                @media (min-width: 768px) and (max-width: 1199px) {
+                    .record-sale-bottom-grid { grid-template-columns: 1fr 1fr; }
+                }
+                @media (max-width: 767px) {
+                    .record-sale-bottom-grid { grid-template-columns: 1fr; }
+                }
+                
+                .sale-card-box {
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                }
+                .sale-card-title {
+                    margin: 0 0 15px 0;
+                    font-size: 16px;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                </style>
+
+                <div class="record-sale-bottom-grid">
+                    
+                    <!-- 1. CUSTOMER DETAILS -->
+                    <div class="sale-card-box scanner-container" style="background: #eef8ff; border-color: #cce5ff;">
+                        <h4 class="sale-card-title" style="color: #004085; font-size: 18px;">👥 Customer Details</h4>
+                        {CUSTOMER_HTML}
+                    </div>
+
+                    <!-- 2. SALE SUMMARY -->
+                    <div class="sale-card-box" style="background: #e9ecef; justify-content: space-between;">
+                        <h4 class="sale-card-title" style="color: #004085; font-size: 18px;">💳 Sale Summary</h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr auto; row-gap: 8px; column-gap: 20px; font-size: 14px; margin-bottom: 10px;">
+                            <div style="color: #495057;">Subtotal</div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartSubtotal">0.00</span></div>
+                            
+                            <div style="color: #495057;">Total Item Discount</div>
+                            <div style="text-align: right; font-weight: bold; color: red; font-family: monospace;">₹<span id="cartTotalItemDiscount">0.00</span></div>
+                            
+                            <div style="color: #495057;">Taxable Amount</div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartTaxableAmount">0.00</span></div>
+                            
+                            <div style="color: #495057;">CGST</div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartCGST">0.00</span></div>
+                            
+                            <div style="color: #495057;">SGST</div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartSGST">0.00</span></div>
+                            
+                            <div style="color: #495057;">IGST</div>
+                            <div style="text-align: right; font-weight: bold; font-family: monospace;">₹<span id="cartIGST">0.00</span></div>
+                        </div>
+                        
+                        <div style="border-top: 2px dashed #dee2e6; margin: 10px 0;"></div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr auto; align-items: center;">
+                            <div style="font-weight: bold; color: #343a40; font-size: 16px;">Total Amount</div>
+                            <div style="text-align: right; font-weight: bold; color: #28a745; font-size: 20px; font-family: monospace;">₹<span id="cartTotal">0.00</span></div>
+                        </div>
+                        
+                        <div style="display:none;">
+                            <select id="saleTaxType" class="form-control" onchange="updateCartDisplay()">
+                                <option value="auto">Auto (Detect from State)</option>
+                                <option value="intra">Intra-State (CGST + SGST)</option>
+                                <option value="inter">Inter-State (IGST)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 3. ADJUSTMENTS & PAYMENT -->
+                    <div class="sale-card-box" style="background: #ffffff; justify-content: flex-start;">
+                        <h4 class="sale-card-title" style="color: #495057; font-size: 18px;">⚙️ Adjustments & Payment</h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block;">Extra Discount (₹)</label>
+                                <input type="number" id="discountAmount" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" class="form-control" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('courierCharges').focus();}" style="font-weight: bold;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block;">Courier (₹)</label>
+                                <input type="number" id="courierCharges" min="0" step="0.01" value="0" onchange="updateDiscount()" placeholder="0" class="form-control" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('paymentMethod').focus();}" style="font-weight: bold;">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block;">Payment Method</label>
+                            <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" style="font-weight: bold; background-color: #f8f9fa;">
+                                <option value="cash" selected>Cash Only</option>
+                                <option value="card">Card</option>
+                                <option value="upi">UPI</option>
+                                <option value="credit">Credit</option>
+                                <option value="mixed">Mixed (Cash + UPI/Balance)</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 0;">
+                            <div class="form-group" id="customerAmountGroup" style="display: none; position: relative; margin-bottom: 0;">
+                                <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block; white-space: nowrap;">Cash Rcvd (₹) <span style="color: red;">*</span></label>
+                                <input type="number" id="customerAmount" class="form-control" step="0.01" onchange="calculateChange()" oninput="calculateChange()" placeholder="Amount" required onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnCompleteSale').focus();}" style="font-weight: bold;">
+                                <small id="cashAmountError" style="position: absolute; left: 0; bottom: -18px; font-size: 10px; color: red; display: none; white-space: nowrap;"></small>
+                            </div>
+                            
+                            <div class="form-group" id="otherPaymentGroup" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block; white-space: nowrap;">UPI/Bal (₹)</label>
+                                <input type="number" id="otherPaymentAmount" class="form-control" step="0.01" onchange="calculateChange()" oninput="calculateChange()" placeholder="Amount" value="0" style="font-weight: bold;">
+                            </div>
+                            
+                            <div class="form-group" id="changeAmountGroup" style="display: none; position: relative; margin-bottom: 0; grid-column: 1 / -1; margin-top: 5px;">
+                                <label style="font-size: 12px; color: #6c757d; margin-bottom: 5px; display: block;">Give Change (₹)</label>
+                                <input type="number" id="changeAmount" class="form-control" step="0.01" readonly style="font-weight: bold; color: #dc3545; background: #fff5f5;">
+                                <div id="negativeChangeInfo" style="position: absolute; left: 0; bottom: -18px; font-size: 10px; color: #dc3545; display: none; white-space: nowrap;">
+                                    <span id="negativeChangeText"></span> | Count: <span id="negativeChangeCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="creditPaymentGroup" style="display: none; padding: 10px; margin-top: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px;">
+                            <h4 style="margin: 0 0 10px 0; color: #c53030; font-size: 13px; border-bottom: 1px solid #fed7d7; padding-bottom: 5px;">💳 Credit Details</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 11px; color: #c53030;">Initial Paid (₹)</label>
+                                    <input type="number" id="creditAmountPaid" step="0.01" class="form-control form-control-sm" onchange="calculateChange()" oninput="calculateChange()" placeholder="e.g. 1000" value="0">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 11px; color: #c53030;">Outstanding (₹)</label>
+                                    <input type="text" id="creditOutstanding" class="form-control form-control-sm" readonly style="font-weight: bold; color: #c53030; background: #fff;" value="₹0.00">
+                                </div>
+                                <div class="form-group" id="inlineAdvancePaymentSection" style="margin-bottom: 0;">
+                                    <label style="font-size: 11px; color: #c53030;">Method</label>
+                                    <select id="creditPaymentMethod" class="form-control form-control-sm" onchange="calculateChange()">
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                        <option value="bank">Bank</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="inlineReferenceGroup" style="display: none; margin-bottom: 0;">
+                                    <label style="font-size: 11px; color: #c53030;">Ref No.</label>
+                                    <input type="text" id="creditReference" class="form-control form-control-sm" placeholder="Ref No">
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                                    <label style="font-size: 11px; color: #c53030;">Due Date</label>
+                                    <input type="date" id="creditDueDate" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. SALE ACTIONS -->
+                    <div class="sale-card-box" style="background: #ffffff; justify-content: flex-start;">
+                        <h4 class="sale-card-title" style="color: #495057; font-size: 18px;">⚡ Sale Actions</h4>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px; height: 100%;">
+                            <button type="button" id="btnHoldSale" class="btn btn-warning" onclick="holdSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="flex: 1; min-height: 48px; max-height: 55px; color: #856404; font-weight: bold; font-size: 16px; border-radius: 6px;">⏸️ Hold</button>
+                            
+                            <button type="button" id="btnClearCart" class="btn btn-cart-remove" onclick="clearCart()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="flex: 1; min-height: 48px; max-height: 55px; background-color: #dc3545; color: white; font-size: 16px; font-weight: bold; border-radius: 6px;">🗑️ Clear</button>
+                            
+                            <div style="flex-grow: 1;"></div>
+                            
+                            <button type="button" id="btnCompleteSale" class="btn btn-success" onclick="completeSale()" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}" style="min-height: 60px; font-size: 18px; font-weight: bold; border-radius: 6px; box-shadow: 0 4px 6px rgba(40,167,69,0.2);">✅ Complete Sale</button>
+                        </div>
+                    </div>
+                </div>"""
+
+new_html = new_html.replace('{CUSTOMER_HTML}', customer_html)
+
+with open('new_bottom.html', 'w', encoding='utf-8') as f:
+    f.write(new_html)

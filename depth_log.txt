@@ -1,0 +1,121 @@
+Line 1 (depth 0): <h4 style="margin: 0 0 15px 0; font-size: 22px; font-weight:
+Line 2 (depth 0): 
+Line 3 (depth 1): <div style="display: flex; gap: 15px;">
+Line 4 (depth 1): <!-- Form Flex Layout -->
+Line 5 (depth 2): <div class="compact-summary-grid" style="flex: 1; display: f
+Line 6 (depth 2): 
+Line 7 (depth 2): <!-- Row 1 -->
+Line 8 (depth 3): <div style="display: flex; gap: 10px; align-items: flex-end;
+Line 9 (depth 4): <div class="form-group">
+Line 10 (depth 4): <label>Subtotal (₹)</label>
+Line 11 (depth 4): <input type="number" id="cartSubtotal" step="0.01" readonly 
+Line 12 (depth 3): </div>
+Line 13 (depth 4): <div class="form-group">
+Line 14 (depth 4): <label>Total Item Disc. (₹)</label>
+Line 15 (depth 4): <input type="number" id="cartTotalItemDiscount" step="0.01" 
+Line 16 (depth 3): </div>
+Line 17 (depth 4): <div class="form-group">
+Line 18 (depth 4): <label>Ext.Discount (₹)</label>
+Line 19 (depth 4): <input type="number" id="discountAmount" min="0" step="0.01"
+Line 20 (depth 3): </div>
+Line 21 (depth 4): <div class="form-group">
+Line 22 (depth 4): <label>Courier Charges (₹)</label>
+Line 23 (depth 4): <input type="number" id="courierCharges" min="0" step="0.01"
+Line 24 (depth 3): </div>
+Line 25 (depth 2): </div>
+Line 26 (depth 2): 
+Line 27 (depth 2): <!-- Row 2 -->
+Line 28 (depth 3): <div style="display: flex; gap: 10px; align-items: flex-end;
+Line 29 (depth 4): <div class="form-group gst-field" id="summary-taxable" style
+Line 30 (depth 4): <label>Taxable Amount (₹)</label>
+Line 31 (depth 4): <input type="number" id="cartTaxableAmount" step="0.01" read
+Line 32 (depth 3): </div>
+Line 33 (depth 4): <div class="form-group gst-field" id="summary-cgst" style="d
+Line 34 (depth 4): <label>CGST (₹)</label>
+Line 35 (depth 4): <input type="number" id="cartCGST" step="0.01" readonly styl
+Line 36 (depth 3): </div>
+Line 37 (depth 4): <div class="form-group gst-field" id="summary-sgst" style="d
+Line 38 (depth 4): <label>SGST (₹)</label>
+Line 39 (depth 4): <input type="number" id="cartSGST" step="0.01" readonly styl
+Line 40 (depth 3): </div>
+Line 41 (depth 4): <div class="form-group gst-field" id="summary-igst" style="d
+Line 42 (depth 4): <label>IGST (₹)</label>
+Line 43 (depth 4): <input type="number" id="cartIGST" step="0.01" readonly styl
+Line 44 (depth 3): </div>
+Line 45 (depth 4): <div class="form-group">
+Line 46 (depth 4): <label>Total Amount (₹)</label>
+Line 47 (depth 4): <input type="number" id="cartTotal" step="0.01" readonly sty
+Line 48 (depth 3): </div>
+Line 49 (depth 2): </div>
+Line 50 (depth 2): 
+Line 51 (depth 3): <div style="display:none;">
+Line 52 (depth 3): <select id="saleTaxType" class="form-control" onchange="upda
+Line 53 (depth 3): <option value="auto">Auto (Detect from State)</option>
+Line 54 (depth 3): <option value="intra">Intra-State (CGST + SGST)</option>
+Line 55 (depth 3): <option value="inter">Inter-State (IGST)</option>
+Line 56 (depth 3): </select>
+Line 57 (depth 2): </div>
+Line 58 (depth 2): 
+Line 59 (depth 2): <!-- Row 3 -->
+Line 60 (depth 3): <div style="display: flex; gap: 10px; align-items: flex-end;
+Line 61 (depth 4): <div class="form-group">
+Line 62 (depth 4): <label>Payment Method</label>
+Line 63 (depth 4): <select id="paymentMethod" class="form-control" onchange="to
+Line 64 (depth 4): <option value="cash" selected>Cash Only</option>
+Line 65 (depth 4): <option value="card">Card</option>
+Line 66 (depth 4): <option value="upi">UPI</option>
+Line 67 (depth 4): <option value="credit">Credit</option>
+Line 68 (depth 4): <option value="mixed">Mixed (Cash + UPI/Balance)</option>
+Line 69 (depth 4): </select>
+Line 70 (depth 3): </div>
+Line 71 (depth 4): <div class="form-group" id="customerAmountGroup" style="disp
+Line 72 (depth 4): <label>Cash Received (₹) <span style="color: red;">*</span><
+Line 73 (depth 4): <input type="number" id="customerAmount" step="0.01" onchang
+Line 74 (depth 4): <small id="cashAmountError" style="position: absolute; left:
+Line 75 (depth 3): </div>
+Line 76 (depth 4): <div class="form-group" id="otherPaymentGroup" style="displa
+Line 77 (depth 4): <label>UPI/Balance Amount (₹)</label>
+Line 78 (depth 4): <input type="number" id="otherPaymentAmount" step="0.01" onc
+Line 79 (depth 3): </div>
+Line 80 (depth 4): <div class="form-group" id="changeAmountGroup" style="displa
+Line 81 (depth 4): <label>Give (₹)</label>
+Line 82 (depth 4): <input type="number" id="changeAmount" step="0.01" readonly 
+Line 83 (depth 5): <div id="negativeChangeInfo" style="position: absolute; left
+Line 84 (depth 5): <span id="negativeChangeText"></span> | Count: <span id="neg
+Line 85 (depth 4): </div>
+Line 86 (depth 3): </div>
+Line 87 (depth 2): </div>
+Line 88 (depth 2): 
+Line 89 (depth 3): <div id="creditPaymentGroup" style="display: none; padding: 
+Line 90 (depth 3): <h4 style="margin: 0 0 15px 0; color: #c53030; font-size: 15
+Line 91 (depth 3): 
+Line 92 (depth 4): <div style="display: flex; gap: 15px; align-items: start; wi
+Line 93 (depth 5): <div class="form-group">
+Line 94 (depth 5): <label>Initial Amount Paid (₹)</label>
+Line 95 (depth 5): <input type="number" id="creditAmountPaid" step="0.01" class
+Line 96 (depth 4): </div>
+Line 97 (depth 5): <div class="form-group">
+Line 98 (depth 5): <label>Outstanding Balance (₹)</label>
+Line 99 (depth 5): <input type="text" id="creditOutstanding" class="form-contro
+Line 100 (depth 4): </div>
+Line 101 (depth 4): 
+Line 102 (depth 5): <div class="form-group" id="inlineAdvancePaymentSection" sty
+Line 103 (depth 5): <label>Initial Payment Method</label>
+Line 104 (depth 5): <select id="creditPaymentMethod" class="form-control" onchan
+Line 105 (depth 5): <option value="cash">Cash</option>
+Line 106 (depth 5): <option value="upi">UPI</option>
+Line 107 (depth 5): <option value="card">Card</option>
+Line 108 (depth 5): <option value="bank">Bank Transfer</option>
+Line 109 (depth 5): <option value="cheque">Cheque</option>
+Line 110 (depth 5): <option value="other">Other</option>
+Line 111 (depth 5): </select>
+Line 112 (depth 4): </div>
+Line 113 (depth 5): <div class="form-group" id="inlineReferenceGroup" style="dis
+Line 114 (depth 5): <label>Reference No. (Optional)</label>
+Line 115 (depth 5): <input type="text" id="creditReference" class="form-control"
+Line 116 (depth 4): </div>
+Line 117 (depth 5): <div class="form-group">
+Line 118 (depth 5): <label>Due Date (Optional)</label>
+Line 119 (depth 5): <input type="date" id="creditDueDate" class="form-control">
+Line 120 (depth 4): </div>
+Line 121 (depth 3): </div>

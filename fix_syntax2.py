@@ -1,12 +1,19 @@
 import re
 
-file_path = '/Users/log/onebook/OneBook.html'
-
-with open(file_path, 'r', encoding='utf8') as f:
+with open('OneBook.html', 'r', encoding='utf-8') as f:
     content = f.read()
 
-# Fix the header Activate License button (line 1797)
-content = content.replace("window.location.href=\\'license.html\\'", "window.location.href='license.html'")
+target = """                const kbPanel = document.getElementById('keyboardShortcutsPanel');
+                if (kbPanel) {
+                    if (tabName === 'dashboard' || tabName === 'inventory' || tabName === 'sales') {
+                        kbPanel.style.display = 'block';
+                    } else {
+                        kbPanel.style.display = 'none';
+                    }
+                }"""
 
-with open(file_path, 'w', encoding='utf8') as f:
+content = content.replace(target, "")
+
+with open('OneBook.html', 'w', encoding='utf-8') as f:
     f.write(content)
+print("Removed duplicate!")

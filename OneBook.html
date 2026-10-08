@@ -12996,8 +12996,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Generate receipt number in format: {saleNumber}-{month}{year}
                 const receiptNumber = generateReceiptNumber();
 
-                // Create sale records and update stock
-                const saleId = Date.now();
                 let saleDate = new Date().toISOString();
                 const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
                 if (settings.enableSalesDate) {
@@ -13006,16 +13004,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                     } else {
                         const customDateVal = document.getElementById('customSaleDate') ? document.getElementById('customSaleDate').dataset.isoDate : '';
                         if (customDateVal) {
-                            // Use custom date but preserve current time for ordering
                             const now = new Date();
                             const timePart = now.toISOString().split('T')[1];
                             saleDate = `${customDateVal}T${timePart}`;
                         }
                     }
                 }
-                const saleItems = [];
 
-                // Calculate payment details
                 let cashAmount = 0;
                 let otherAmount = 0;
                 let change = 0;
@@ -13031,21 +13026,63 @@ input:focus, select:focus, textarea:focus, button:focus {
                     otherAmount = total;
                 }
 
+                // Construct Sale Data for SQLite
+                const saleData = {
+                    receipt_number: receiptNumber,
+                    date: saleDate,
+                    customer_id: customerId || null,
+                    customer_type: customerType,
+                    customer_name: customerName,
+                    subtotal: subtotal,
+                    discount: discount,
+                    payment_method: paymentMethod,
+                    total: total,
+                    courier: courier,
+                    cashAmount: cashAmount,
+                    otherPaymentAmount: otherAmount,
+                    customerAmount: totalReceived,
+                    change: change,
+                    gstApplied: settings.gstEnabled === true,
+                    paymentStatus: paymentMethod === 'credit' ? (creditOutstanding <= 0 ? 'fully_paid' : (creditAmountPaid > 0 ? 'partially_paid' : 'unpaid')) : 'fully_paid',
+                    amountPaid: paymentMethod === 'credit' ? creditAmountPaid : totalReceived,
+                    outstandingAmount: paymentMethod === 'credit' ? creditOutstanding : 0,
+                    dueDate: paymentMethod === 'credit' ? creditDueDate : '',
+                    items: cart.map(item => ({
+                        product_id: item.productId,
+                        product_name: item.productName,
+                        variant_id: item.variantId || undefined,
+                        quantity: item.quantity,
+                        price: item.price,
+                        discount: item.discount || 0,
+                        total: item.finalTotal !== undefined ? item.finalTotal : item.total,
+                        taxableValue: item.taxableValue || 0,
+                        cgst: item.cgst || 0,
+                        sgst: item.sgst || 0,
+                        igst: item.igst || 0
+                    }))
+                };
+
+                let newSaleId;
+                try {
+                    newSaleId = await window.electronAPI.sqlite.sales.create(saleData);
+                } catch (e) {
+                    console.error("Sale creation failed:", e);
+                    showAlert('❌ Sale creation failed: ' + (e.message || e), 'error');
+                    return; // abort completion
+                }
+
+                // The sale was created successfully in SQLite.
+                // We must update the UI state, the legacy `sales` array (for reports), and deduct local `products` stock.
+                
+                const saleItems = [];
                 cart.forEach(item => {
                     const product = products.find(p => p.id === item.productId);
                     if (product) {
-                        // Optimistically deduct stock locally for display (will be overwritten by cloud logic)
-                        // Actually, we should NOT update local stock yet. 
-                        // We will refresh from cloud after success.
-                        // But to keep UI snappy, we might want to?
-                        // "i dont want local data saving" -> User wants strict cloud truth.
-
                         const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null') || {};
-
                         const sale = {
-                            id: saleId + saleItems.length,
-                            saleId: saleId, // Group items from same sale
-                            receiptNumber: receiptNumber, // Receipt number in format
+                            id: newSaleId + saleItems.length,
+                            saleId: newSaleId, 
+                            receiptNumber: receiptNumber, 
                             isDemo: (typeof isDemoMode === 'function' && isDemoMode()),
                             userId: currentUser.id || '',
                             username: currentUser.username || currentUser.name || '',
@@ -13090,38 +13127,25 @@ input:focus, select:focus, textarea:focus, button:focus {
                             otherPaymentAmount: otherAmount,
                             customerAmount: totalReceived,
                             change: change,
-                            // Store base unit quantity for stock deduction logic
                             baseQuantity: item.baseQuantity || 1,
                             gstApplied: settings.gstEnabled === true,
-                            
-                            // Credit Payment Tracking
-                            paymentStatus: paymentMethod === 'credit' ? (creditOutstanding <= 0 ? 'fully_paid' : (creditAmountPaid > 0 ? 'partially_paid' : 'unpaid')) : 'fully_paid',
-                            amountPaid: paymentMethod === 'credit' ? creditAmountPaid : totalReceived,
-                            outstandingAmount: paymentMethod === 'credit' ? creditOutstanding : 0,
-                            dueDate: paymentMethod === 'credit' ? creditDueDate : '',
-                            paymentHistory: paymentMethod === 'credit' && creditAmountPaid > 0 ? [{
-                                date: saleDate,
-                                amount: creditAmountPaid,
-                                method: creditPaymentMethod,
-                                reference: document.getElementById('creditReference') ? document.getElementById('creditReference').value : '',
-                                notes: 'Initial Payment'
-                            }] : []
+                            paymentStatus: saleData.paymentStatus,
+                            amountPaid: saleData.amountPaid,
+                            outstandingAmount: saleData.outstandingAmount,
+                            dueDate: saleData.dueDate,
+                            paymentHistory: saleData.paymentHistory
                         };
-
-                        // sales.push(sale); // DO NOT PUSH LOCALLY YET
                         saleItems.push(sale);
                     }
                 });
 
-                // LOCAL SAVE
                 const currentUserObj = JSON.parse(sessionStorage.getItem('currentUser') || 'null') || {};
-                // Store sale data for receipt
                 lastSaleData = {
-                    saleId: saleId,
+                    saleId: newSaleId,
                     receiptNumber: receiptNumber,
                     date: saleDate,
                     counterCode: currentUserObj.userCode || '-',
-                    items: saleItems, // These are just the objects we created
+                    items: saleItems, 
                     customerName: customerName,
                     paymentMethod: paymentMethod,
                     subtotal: subtotal,
@@ -13152,7 +13176,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                             productRef.stock = parseFloat(((productRef.stock || 0) - qtyToDeduct).toFixed(3));
                         }
                         
-                        // Add to stock history
                         stockHistory.push({
                             date: sale.date,
                             productId: sale.productId,
@@ -13165,7 +13188,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 });
 
-                // Calculate discount distribution to prevent duplicating the bill discount
                 let remainingDiscount = lastSaleData.discount;
                 const totalAmountForDiscount = lastSaleData.subtotal;
                 
@@ -13180,28 +13202,24 @@ input:focus, select:focus, textarea:focus, button:focus {
                         }
                     }
 
-                    // Push to master sales array
                     sales.push({
                         ...sale,
-                        discount: itemDiscount, // OVERWRITE with proportional item discount
-                        billDiscount: lastSaleData.discount // Save total for reference if needed
+                        discount: itemDiscount, 
+                        billDiscount: lastSaleData.discount 
                     });
                 });
 
-                // Save locally
                 saveData();
 
-                // Clear cart and form
                 cart = [];
                 document.getElementById('addItemForm').reset();
                 if(typeof clearCustomerSelection === 'function') clearCustomerSelection();
                 if(document.getElementById('customerName')) document.getElementById('customerName').value = '';
                 
                 document.getElementById('otherPaymentAmount').value = '0';
-                document.getElementById('discountAmount').value = '0'; // Reset Discount
-                document.getElementById('courierCharges').value = '0'; // Reset Courier
+                document.getElementById('discountAmount').value = '0'; 
+                document.getElementById('courierCharges').value = '0'; 
                 document.getElementById('paymentMethod').value = 'cash';
-                 // Update combobox input
                 
                 updateCartDisplay();
                 togglePaymentFields();
@@ -13217,7 +13235,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 updateDashboard();
                 updateInventoryTable();
 
-                // Show receipt
                 showReceipt();
             });
         }
@@ -13951,7 +13968,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }, true); // Use capture phase to intercept before focused elements
 
-        function updateTodaysSales() {
+        async function updateTodaysSales() {
             const dateInput = document.getElementById('recordSalesDate');
             let selectedDate = new Date();
             let selectedDateString = "";
@@ -13961,7 +13978,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const [year, month, day] = selectedDateString.split('-');
                 selectedDate = new Date(year, month - 1, day);
             } else {
-                // Default to today
                 selectedDate = new Date();
                 const year = selectedDate.getFullYear();
                 const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
@@ -13973,118 +13989,65 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
 
             selectedDate.setHours(0, 0, 0, 0);
-
-            // Update Title
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             const dateLabel = selectedDate.toLocaleDateString('en-US', options);
             const titleEl = document.getElementById('recordSalesTitle');
             if (titleEl) titleEl.textContent = `Sales for ${dateLabel}`;
 
-            // Use LOCAL TIME strings (YYYY-MM-DD) to respect 12 AM - 12 AM in user's timezone
-            const getLocalDateString = (date) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            };
-
-            // selectedDateString is already defined above
-            // just to be safe, we can reassign it if we want, but it's a const!
-            // Wait, we defined it as `let selectedDateString` earlier.
-            // Let's just remove the const declaration here and assign it.
-            selectedDateString = getLocalDateString(selectedDate);
-
-            const todaySales = sales.filter(sale => {
-                if (!sale.date) return false;
-                const saleDate = new Date(sale.date);
-                return getLocalDateString(saleDate) === selectedDateString;
-            });
-
             const tbody = document.getElementById('todaySalesBody');
+            
+            try {
+                const todaySales = await window.electronAPI.sqlite.sales.getAll(selectedDateString);
 
-            if (todaySales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
-                return;
-            }
-
-            // Group sales by saleId to get complete transaction info
-            const salesByTransaction = {};
-            todaySales.forEach(sale => {
-                if (!salesByTransaction[sale.saleId]) {
-                    salesByTransaction[sale.saleId] = {
-                        saleId: sale.saleId,
-                        date: sale.date,
-                        createdAt: sale.createdAt,
-                        receiptNumber: sale.receiptNumber || '-',
-                        customerName: sale.customerName,
-                        paymentMethod: sale.paymentMethod,
-                        subtotal: 0,
-                        discount: 0,
-                        courier: 0,
-                        total: 0,
-                        items: [],
-                        cashAmount: sale.cashAmount,
-                        otherPaymentAmount: sale.otherPaymentAmount,
-                        hasBillLevelData: false
-                    };
+                if (!todaySales || todaySales.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
+                    return;
                 }
 
-                salesByTransaction[sale.saleId].items.push(sale);
-
-                // REFACTOR: We ALWAYS sum up item totals to ensure accuracy.
-                salesByTransaction[sale.saleId].subtotal += sale.total; // item grossAmount
-
-                if (sale.discount) {
-                    salesByTransaction[sale.saleId].discount = sale.discount;
-                }
-                if (sale.courier) {
-                    salesByTransaction[sale.saleId].courier = sale.courier;
-                }
-            });
-
-            // Calculate final totals
-            Object.values(salesByTransaction).forEach(transaction => {
-                transaction.total = transaction.subtotal - transaction.discount + (transaction.courier || 0);
-            });
-
-            // Convert to array and sort by date (most recent first)
-            const transactions = Object.values(salesByTransaction).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            // Generate rows - one row per BILL
-            const rows = transactions.map(transaction => {
-                let paymentDisplay = transaction.paymentMethod ? transaction.paymentMethod.toUpperCase() : '-';
-                if (transaction.paymentMethod === 'mixed') {
-                    if (transaction.cashAmount !== undefined && transaction.otherPaymentAmount !== undefined) {
-                        paymentDisplay = `Cash: ₹${transaction.cashAmount.toFixed(2)} + UPI: ₹${transaction.otherPaymentAmount.toFixed(2)}`;
-                    } else {
-                        paymentDisplay = 'Mixed';
+                // Generate rows - one row per BILL (which is exactly what SQLite gives us)
+                const rows = todaySales.map(transaction => {
+                    let paymentDisplay = transaction.payment_method ? transaction.payment_method.toUpperCase() : '-';
+                    if (transaction.payment_method === 'mixed') {
+                        if (transaction.cash_amount !== undefined && transaction.other_payment_amount !== undefined) {
+                            paymentDisplay = `Cash: ₹${transaction.cash_amount.toFixed(2)} + UPI: ₹${transaction.other_payment_amount.toFixed(2)}`;
+                        } else {
+                            paymentDisplay = 'Mixed';
+                        }
                     }
-                }
+                    
+                    const isCancelled = transaction.status === 'CANCELLED';
+                    const rowStyle = isCancelled ? 'text-decoration: line-through; opacity: 0.6; color: red;' : '';
 
-                return `
-                    <tr>
-                        <td>${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
-                        <td>${transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
-                        <td>${transaction.receiptNumber}</td>
-                        <td>₹${transaction.subtotal.toFixed(2)}</td>
-                        <td>₹${transaction.discount.toFixed(2)}</td>
-                        <td>₹${(transaction.courier || 0).toFixed(2)}</td>
-                        <td><strong>₹${transaction.total.toFixed(2)}</strong></td>
-                        <td>${transaction.customerName || '-'}</td>
-                        <td>${paymentDisplay}</td>
-                        <td>
-                            <button class="btn btn-sm btn-info" onclick="viewBill('${transaction.saleId}')" title="View Receipt">
-                                👁️ View
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteSale('${transaction.saleId}')" title="Delete this entire bill">
-                                🗑️ Delete
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
+                    return `
+                        <tr style="${rowStyle}">
+                            <td>${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
+                            <td>${transaction.created_at ? new Date(transaction.created_at).toLocaleString('en-GB') : 'N/A'}</td>
+                            <td>${transaction.receipt_number}</td>
+                            <td>₹${(transaction.subtotal || 0).toFixed(2)}</td>
+                            <td>₹${(transaction.discount || 0).toFixed(2)}</td>
+                            <td>₹${(transaction.courier || 0).toFixed(2)}</td>
+                            <td><strong>₹${(transaction.total || 0).toFixed(2)}</strong></td>
+                            <td>${transaction.customer_name || '-'}</td>
+                            <td>${paymentDisplay} ${isCancelled ? '(CANCELLED)' : ''}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewBill('${transaction.id}')" title="View Receipt">
+                                    👁️ View
+                                </button>
+                                ${!isCancelled ? `
+                                <button class="btn btn-sm btn-danger" onclick="deleteSale('${transaction.id}')" title="Cancel this entire bill">
+                                    ❌ Cancel
+                                </button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
 
-            tbody.innerHTML = rows.join('');
+                tbody.innerHTML = rows.join('');
+            } catch (err) {
+                console.error("Error fetching today's sales:", err);
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error loading sales</td></tr>';
+            }
         }
 
         function viewBill(saleId) {
@@ -14135,7 +14098,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Modal doesn't need scrollIntoView
         }
 
-        function searchBill() {
+        async function searchBill() {
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const billNumber = document.getElementById('billSearchInput').value.trim();
             const container = document.getElementById('billDetailsContainer');
@@ -14145,55 +14108,167 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            // Find all sales with this bill number
-            const billItems = sales.filter(sale => sale.receiptNumber === billNumber);
+            try {
+                // Find all sales matching this query (could be bill number, customer name, date, etc)
+                const searchResults = await window.electronAPI.sqlite.sales.search(billNumber);
 
-            if (billItems.length === 0) {
-                container.style.display = 'block';
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px;">
-                        <h4 style="color: #dc3545;">❌ Bill Not Found</h4>
-                        <p>No bill found with number: <strong>${billNumber}</strong></p>
-                        <p style="color: #6c757d; font-size: 0.9em;">Please check the bill number and try again.</p>
-                    </div>
-                `;
-                return;
+                if (!searchResults || searchResults.length === 0) {
+                    container.style.display = 'block';
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <h4 style="color: #dc3545;">❌ Bill Not Found</h4>
+                            <p>No results found for: <strong>${billNumber}</strong></p>
+                            <p style="color: #6c757d; font-size: 0.9em;">Please check your search query and try again.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // If multiple results (e.g. searched by customer name or date), show a list
+                if (searchResults.length > 1) {
+                    let rows = searchResults.map(sale => `
+                        <tr style="cursor: pointer; ${sale.status === 'CANCELLED' ? 'text-decoration: line-through; color: red;' : ''}" onclick="viewSearchedBill('${sale.id}')">
+                            <td>${new Date(sale.date).toLocaleDateString('en-GB')}</td>
+                            <td>${sale.receipt_number}</td>
+                            <td>${sale.customer_name || 'Walk-in'}</td>
+                            <td>₹${(sale.total || 0).toFixed(2)}</td>
+                            <td>${sale.payment_method}</td>
+                            <td>${sale.status === 'CANCELLED' ? 'CANCELLED' : (sale.payment_status || 'fully_paid')}</td>
+                        </tr>
+                    `).join('');
+
+                    container.style.display = 'block';
+                    container.innerHTML = `
+                        <h4 style="margin-bottom: 15px;">🔍 Multiple Results Found</h4>
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Bill No</th>
+                                    <th>Customer</th>
+                                    <th>Total</th>
+                                    <th>Payment</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button class="btn" style="background-color: #6c757d; color: white;" onclick="closeBillDetails()">✖️ Close</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Exactly 1 result found, display the receipt immediately
+                viewSearchedBill(searchResults[0].id);
+
+            } catch (err) {
+                console.error("Error searching bill:", err);
+                showAlert('Error searching for bill', 'error');
             }
-
-            // Get bill information (all items have same bill info)
-            const firstItem = billItems[0];
-            
-            const saleData = {
-                receiptNumber: billNumber,
-                date: firstItem.date,
-                customerName: firstItem.customerName,
-                customerGSTIN: firstItem.customerGSTIN,
-                customerAddress: firstItem.customerAddress,
-                customerState: firstItem.customerState,
-                taxType: firstItem.taxType,
-                paymentMethod: firstItem.paymentMethod,
-                items: billItems
-            };
-
-            const invoiceHtml = generateTAXInvoiceHTML(saleData);
-
-            // Display bill details
-            container.style.display = 'block';
-            container.innerHTML = `
-                ${invoiceHtml}
-
-                <div style="margin-top: 20px; text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-primary" onclick="printBillDetails('${billNumber}')">🖨️ Print Bill</button>
-                    <button class="btn btn-primary" onclick="printReceiptFromBill('${billNumber}')">🧾 Print Receipt</button>
-                    <button class="btn btn-warning" onclick="editBillSales('${billNumber}')" style="background-color: #ffc107; color: #000;">✏️ Edit Sales</button>
-                    <button class="btn btn-danger" onclick="deleteBillFromView('${billNumber}')">🗑️ Delete Bill</button>
-                    <button class="btn" style="background-color: #6c757d; color: white;" onclick="closeBillDetails()">✖️ Close</button>
-                </div>
-            `;
-            try { JsBarcode(".invoiceBarcode").init(); } catch(e) {}
         }
 
-        function printReceiptFromBill(billNumber) {
+        async function viewSearchedBill(saleId) {
+            const container = document.getElementById('billDetailsContainer');
+            try {
+                const saleDataSql = await window.electronAPI.sqlite.sales.get(saleId);
+                if (!saleDataSql) {
+                    showAlert('Sale details not found!', 'error');
+                    return;
+                }
+
+                // Reconstruct legacy format for generateTAXInvoiceHTML
+                const saleData = {
+                    receiptNumber: saleDataSql.receipt_number,
+                    date: saleDataSql.date,
+                    customerName: saleDataSql.customer_name || 'Walk-in',
+                    customerGSTIN: saleDataSql.customer_gstin || '',
+                    customerAddress: saleDataSql.customer_address || '',
+                    customerState: saleDataSql.customer_state || '',
+                    taxType: saleDataSql.tax_type || 'NONE',
+                    paymentMethod: saleDataSql.payment_method,
+                    items: saleDataSql.items.map(item => ({
+                        productName: item.product_name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        total: item.total,
+                        taxableValue: item.taxable_value,
+                        cgst: item.cgst,
+                        sgst: item.sgst,
+                        igst: item.igst
+                    }))
+                };
+
+                const invoiceHtml = generateTAXInvoiceHTML(saleData);
+
+                // Display bill details
+                container.style.display = 'block';
+                container.innerHTML = `
+                    ${saleDataSql.status === 'CANCELLED' ? '<div style="background: red; color: white; text-align: center; font-weight: bold; padding: 5px;">CANCELLED BILL</div>' : ''}
+                    ${invoiceHtml}
+                    <div style="margin-top: 20px; text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="btn btn-primary" onclick="printBillDetails('${saleDataSql.receipt_number}')">🖨️ Print Bill</button>
+                        <button class="btn btn-primary" onclick="printReceiptFromBillSql('${saleId}')">🧾 Print Receipt</button>
+                        ${saleDataSql.status !== 'CANCELLED' ? `<button class="btn btn-warning" onclick="editBillSales('${saleDataSql.receipt_number}')" style="background-color: #ffc107; color: #000;">✏️ Edit Sales</button>` : ''}
+                        ${saleDataSql.status !== 'CANCELLED' ? `<button class="btn btn-danger" onclick="deleteBillFromView('${saleDataSql.receipt_number}')">🗑️ Cancel Bill</button>` : ''}
+                        <button class="btn" style="background-color: #6c757d; color: white;" onclick="closeBillDetails()">✖️ Close</button>
+                    </div>
+                `;
+                try { JsBarcode(".invoiceBarcode").init(); } catch(e) {}
+            } catch (err) {
+                console.error("Error viewing searched bill:", err);
+                showAlert('Error loading bill details', 'error');
+            }
+        }
+
+        async function printReceiptFromBillSql(saleId) {
+            try {
+                const saleDataSql = await window.electronAPI.sqlite.sales.get(saleId);
+                if (!saleDataSql) return;
+                
+                const saleData = {
+                    receiptNumber: saleDataSql.receipt_number,
+                    date: saleDataSql.date,
+                    customerName: saleDataSql.customer_name || 'Walk-in',
+                    customerGSTIN: saleDataSql.customer_gstin || '',
+                    customerAddress: saleDataSql.customer_address || '',
+                    customerState: saleDataSql.customer_state || '',
+                    subtotal: saleDataSql.subtotal || 0,
+                    discount: saleDataSql.discount || 0,
+                    total: saleDataSql.total,
+                    cashAmount: saleDataSql.cash_amount || 0,
+                    otherPaymentAmount: saleDataSql.other_payment_amount || 0,
+                    customerAmount: saleDataSql.customer_amount || 0,
+                    change: saleDataSql.change_amount || 0,
+                    paymentMethod: saleDataSql.payment_method || 'cash',
+                    gstApplied: saleDataSql.gst_applied === 1,
+                    counterCode: '-',
+                    items: saleDataSql.items.map(item => ({
+                        productName: item.product_name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        total: item.total,
+                        taxableValue: item.taxable_value,
+                        cgst: item.cgst,
+                        sgst: item.sgst,
+                        igst: item.igst
+                    }))
+                };
+                
+                const tempLastSale = lastSaleData;
+                lastSaleData = saleData;
+                showReceipt();
+                setTimeout(() => {
+                    printReceipt();
+                    lastSaleData = tempLastSale;
+                }, 300);
+            } catch (e) {
+                console.error("Error printing receipt:", e);
+            }
+        }\n\n        function printReceiptFromBill(billNumber) {
             const billItems = sales.filter(sale => sale.receiptNumber === billNumber);
             if (billItems.length === 0) return;
             const saleData = {
@@ -14800,37 +14875,28 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // Delete Sale with Role-Based Access Control
-        function deleteSale(saleId) {
-            console.log('Attempting to delete sale with ID:', saleId);
-            console.log('Current sales:', sales.map(s => ({ id: s.saleId, product: s.productName })));
+        async function deleteSale(saleId) {
+            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can cancel sales.', 'error');
 
-            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-
-            // Confirm deletion
-            showConfirm('⚠️ Are you sure you want to delete this sale?<br><br>This action cannot be undone!',
-                function () {
-                    // Find and delete all items with this saleId (convert both to string for comparison)
-                    const originalLength = sales.length;
-                    sales = sales.filter(sale => String(sale.saleId) !== String(saleId));
-                    const deletedCount = originalLength - sales.length;
-
-                    console.log('Deleted count:', deletedCount);
-
-                    if (deletedCount > 0) {
-                        // Save changes to localStorage
+            showConfirm('⚠️ Are you sure you want to CANCEL this sale?<br><br>Stock will be restored. This action cannot be undone!',
+                async function () {
+                    try {
+                        await window.electronAPI.sqlite.sales.cancel(saleId);
+                        
+                        // Mark as cancelled in local legacy array
+                        // Wait, in legacy, sales were flat. We'll just filter them out for reports/dashboard
+                        sales = sales.filter(sale => String(sale.saleId) !== String(saleId) && String(sale.id) !== String(saleId));
                         saveData();
-
-                        // Refresh tables AFTER saving
-                        updateTodaysSales(); // Refresh today's sales table
-                        updateDashboard(); // Refresh dashboard
-
-                        // Firebase sync removed
-
-                        // Show success message
-                        console.log('About to show success alert...');
-                        showAlert(`✅ Sale deleted successfully!<br>${deletedCount} item(s) removed.`, '🗑️');
-                    } else {
-                        showAlert('❌ Sale not found! Check console for details.', '⚠️');
+                        
+                        // Refresh UI
+                        updateTodaysSales();
+                        updateDashboard();
+                        updateInventoryTable();
+                        
+                        showAlert(`✅ Sale cancelled successfully! Stock restored.`, '❌');
+                    } catch (e) {
+                        console.error(e);
+                        showAlert('❌ Error cancelling sale: ' + (e.message || e), 'error');
                     }
                 }
             );
