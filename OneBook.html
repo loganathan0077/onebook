@@ -8628,10 +8628,10 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // Save Purchase
-        function savePurchase() {
+        async function savePurchase() {
             if (!requireLicensedForWrite('creating a purchase')) return;
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
-            const invoice = document.getElementById('purchaseInvoiceNumber').value;
+            const invoice = document.getElementById('purchaseInvoiceNumber').value.trim();
             const supplierName = document.getElementById('purchaseSupplier').value;
             const date = document.getElementById('purchaseDate').value;
 
@@ -8645,7 +8645,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            // Ensure the supplier selected is actually in the Master
             const matchedSupplier = suppliers.find(s => s.name === supplierName || s.id === selectedSupplierId);
             if (!matchedSupplier) {
                 showAlert('Please select a valid supplier from the list, or Add New Supplier.', '⚠️');
@@ -8657,19 +8656,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            // Duplicate Check
-            const isDuplicate = purchases.some(p =>
-                p.invoiceNumber.toLowerCase() === invoice.toLowerCase() &&
-                (p.supplierId === matchedSupplier.id || (p.supplier && p.supplier.toLowerCase() === supplierName.toLowerCase()))
-            );
-
-            if (isDuplicate) {
-                showAlert('❌ Duplicate Found!\nThis Invoice Number already exists for this Supplier.', 'error');
-                return;
-            }
-
-            // Tax Type logic inference based on State
-            let taxType = 'intra'; // Default
+            // Tax Type logic
+            let taxType = 'intra';
             if (matchedSupplier && matchedSupplier.state) {
                 const storeState = (typeof settings !== 'undefined' && settings.storeState) ? settings.storeState : '';
                 if (storeState && storeState.toLowerCase().trim() !== matchedSupplier.state.toLowerCase().trim()) {
@@ -8690,8 +8678,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const record = {
-                id: Date.now(),
+            const purchaseData = {
                 invoiceNumber: invoice,
                 supplier: matchedSupplier.name,
                 supplierId: matchedSupplier.id,
@@ -8703,96 +8690,75 @@ input:focus, select:focus, textarea:focus, button:focus {
                 otherCharges: other,
                 totalAmount: total,
                 gstApplied: settings.gstEnabled === true,
-                
-                // Credit Payment Tracking
+                paymentMethod: paymentMethod,
                 paymentStatus: paymentMethod === 'credit' ? (creditOutstanding <= 0 ? 'fully_paid' : (creditAmountPaid > 0 ? 'partially_paid' : 'unpaid')) : 'fully_paid',
                 amountPaid: paymentMethod === 'credit' ? creditAmountPaid : total,
                 outstandingAmount: paymentMethod === 'credit' ? creditOutstanding : 0,
-                dueDate: paymentMethod === 'credit' ? creditDueDate : '',
-                paymentHistory: paymentMethod === 'credit' && creditAmountPaid > 0 ? [{
-                    date: date || new Date().toISOString().split('T')[0],
-                    amount: creditAmountPaid,
-                    method: creditPaymentMethod,
-                    reference: document.getElementById('creditReference') ? document.getElementById('creditReference').value : '',
-                    notes: 'Initial Payment'
-                }] : (paymentMethod !== 'credit' ? [{
-                    date: date || new Date().toISOString().split('T')[0],
-                    amount: total,
-                    method: paymentMethod,
-                    reference: '',
-                    notes: 'Fully Paid'
-                }] : [])
+                dueDate: paymentMethod === 'credit' ? creditDueDate : ''
             };
 
-            // Show Blocking Overlay
-            // LOCAL SAVE
-            
-            // 1. Add to purchases array
-            purchases.push(record);
+            try {
+                // Pre-check for duplicate invoice
+                const existing = await window.electronAPI.sqlite.purchases.search(invoice);
+                const isDuplicate = existing.some(p => 
+                    p.invoice_number.toLowerCase() === invoice.toLowerCase() && 
+                    p.supplier_id === matchedSupplier.id && p.status !== 'CANCELLED'
+                );
 
-            // 2. Update stock and stock history
-            record.items.forEach(item => {
-                const productIndex = products.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    const qtyToAdd = parseFloat(item.qty || item.quantity || 0);
-                    let productRef = products[productIndex];
-                    let variantRef = null;
-                    if (item.variantId) {
-                        variantRef = window.getVariantById(productRef, item.variantId);
-                    }
+                if (isDuplicate) {
+                    showAlert('❌ Duplicate Found!\nThis Invoice Number already exists for this Supplier.', 'error');
+                    return;
+                }
 
-                    if (variantRef) {
-                        variantRef.stock = parseFloat(((variantRef.stock || 0) + qtyToAdd).toFixed(3));
-                        if (item.price !== undefined && item.price !== null) {
-                            variantRef.buyingPrice = parseFloat(item.price);
-                        }
-                    } else {
-                        productRef.stock = parseFloat(((productRef.stock || 0) + qtyToAdd).toFixed(3));
-                        if (item.price !== undefined && item.price !== null) {
-                            productRef.costPrice = parseFloat(item.price);
-                        }
-                    }
-                    
+                const purchaseId = await window.electronAPI.sqlite.purchases.create(purchaseData);
+
+                // Add to local JSON legacy array for compatibility
+                const legacyRecord = { ...purchaseData, id: Date.now() }; // Fake ID for local array
+                purchases.push(legacyRecord);
+                
+                // Add legacy stock history items for dashboard reports
+                purchaseData.items.forEach(item => {
                     stockHistory.push({
-                        date: record.date,
+                        date: purchaseData.date,
                         productId: item.productId,
                         variantId: item.variantId || undefined,
                         productName: item.name || item.productName || 'Unknown Product',
                         type: 'purchase',
-                        quantity: qtyToAdd,
-                        details: `Purchased (Invoice: ${record.invoiceNumber})`
+                        quantity: parseFloat(item.qty || item.quantity || 0),
+                        details: `Purchased (Invoice: ${purchaseData.invoiceNumber})`
                     });
-                }
-            });
+                });
+                saveData();
 
-            // 3. Save to localStorage
-            saveData();
+                showAlert('Purchase Saved Successfully!', '✅');
 
-            showAlert('Purchase Saved Successfully!', '✅');
+                // Clear Data
+                purchaseCart = [];
+                document.getElementById('purchaseDiscount').value = 0;
+                document.getElementById('purchaseOtherCharges').value = 0;
+                document.getElementById('purchaseInvoiceNumber').value = '';
+                document.getElementById('purchaseSupplier').value = '';
+                if(document.getElementById('purchasePaymentMethod')) document.getElementById('purchasePaymentMethod').value = 'cash';
+                if(document.getElementById('purchaseCreditAmountPaid')) document.getElementById('purchaseCreditAmountPaid').value = '0';
+                if(document.getElementById('purchaseCreditOutstanding')) document.getElementById('purchaseCreditOutstanding').value = '0';
+                if(document.getElementById('purchaseCreditDueDate')) document.getElementById('purchaseCreditDueDate').value = '';
+                if(typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
+                selectedSupplierId = null;
 
-            // Clear Data
-            purchaseCart = [];
-            document.getElementById('purchaseDiscount').value = 0;
-            document.getElementById('purchaseOtherCharges').value = 0;
-            document.getElementById('purchaseInvoiceNumber').value = '';
-            document.getElementById('purchaseSupplier').value = '';
-            if(document.getElementById('purchasePaymentMethod')) document.getElementById('purchasePaymentMethod').value = 'cash';
-            if(document.getElementById('purchaseCreditAmountPaid')) document.getElementById('purchaseCreditAmountPaid').value = '0';
-            if(document.getElementById('purchaseCreditOutstanding')) document.getElementById('purchaseCreditOutstanding').value = '0';
-            if(document.getElementById('purchaseCreditDueDate')) document.getElementById('purchaseCreditDueDate').value = '';
-            if(typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
-            selectedSupplierId = null;
+                // Prepare Fresh Bill
+                updatePurchaseTable();
+                updateInventoryTable(); // Refresh inventory
+                renderPurchaseHistory(); // Refresh list if open
+                setTimeout(() => {
+                    document.getElementById('purchaseDate').focus();
+                }, 50);
 
-            // Prepare Fresh Bill
-            updatePurchaseTable();
-            setTimeout(() => {
-                document.getElementById('purchaseDate').focus();
-            }, 50);
-            
-            // Do NOT close modal
-            // closePurchaseModal();
-
+            } catch (err) {
+                console.error("Purchase error:", err);
+                showAlert("Error saving purchase: " + (err.message || err), 'error');
+            }
         }
+        
         // New Product Form Logic (Inline)
         function generateNewProductBarcode() {
             const code = 'DDS-' + Date.now().toString().slice(-6);
@@ -9528,22 +9494,18 @@ input:focus, select:focus, textarea:focus, button:focus {
             }, 500);
         }
 
-        function renderPurchaseHistory() {
+        async function renderPurchaseHistory() {
             try {
                 const tbody = document.getElementById('purchaseHistoryTableBody');
-                if (!tbody) {
-                    console.error('purchaseHistoryTableBody not found');
-                    return;
-                }
+                if (!tbody) return;
 
-                // Get Filter Values (Month & Year)
                 const monthInput = document.getElementById('phFilterMonth');
                 const yearInput = document.getElementById('phFilterYear');
+                const search = document.getElementById('phSearchInput') ? document.getElementById('phSearchInput').value.toLowerCase().trim() : '';
 
                 let selectedMonth = monthInput ? monthInput.value : '';
                 let selectedYear = yearInput ? yearInput.value : '';
 
-                // If undefined or empty, set defaults
                 const now = new Date();
                 if (!selectedMonth) {
                     selectedMonth = String(now.getMonth() + 1).padStart(2, '0');
@@ -9553,57 +9515,51 @@ input:focus, select:focus, textarea:focus, button:focus {
                     selectedYear = String(now.getFullYear());
                     if (yearInput) yearInput.value = selectedYear;
                 }
-
-                // Target YYYY-MM
-                const targetMonthStr = selectedYear + '-' + selectedMonth;
-
-                const search = document.getElementById('phSearchInput') ? document.getElementById('phSearchInput').value.toLowerCase().trim() : '';
-
-                let savedPurchases = JSON.parse(localStorage.getItem('purchases')) || [];
-
-                // Filter Logic
-                const filteredPurchases = savedPurchases.filter(pc => {
-                    let matchesDate = false;
-                    let matchesSearch = true;
-
-                    // Month Check
-                    if (pc.date) {
-                        const pcDate = new Date(pc.date);
-                        // Convert pcDate to YYYY-MM
-                        const pcMonthStr = pcDate.getFullYear() + '-' + String(pcDate.getMonth() + 1).padStart(2, '0');
-                        if (pcMonthStr === targetMonthStr) {
-                            matchesDate = true;
-                        }
-                    }
-
-                    // Search Filter
-                    if (search) {
-                        const invoice = (pc.invoiceNumber || '').toLowerCase();
-                        const supplier = (pc.supplier || '').toLowerCase();
-                        const dateStr = (pc.date || '').toLowerCase();
-                        matchesSearch = invoice.includes(search) || supplier.includes(search) || dateStr.includes(search);
-                    }
-
-                    return matchesDate && matchesSearch;
-                });
-
-                // Calculate Total
-                const totalAmount = filteredPurchases.reduce((sum, pc) => sum + (parseFloat(pc.totalAmount) || 0), 0);
-                const totalDisplay = document.getElementById('phTotalAmount');
-                if (totalDisplay) {
-                    totalDisplay.textContent = totalAmount.toFixed(2);
+                
+                let results = [];
+                if (search) {
+                    results = await window.electronAPI.sqlite.purchases.search(search);
+                } else {
+                    results = await window.electronAPI.sqlite.purchases.getAll();
                 }
 
+                const targetMonthStr = selectedYear + '-' + selectedMonth;
+                
+                // Filter by month string
+                const filteredPurchases = results.filter(pc => {
+                    if (search) return true; // if searching, don't restrict by month unless we want to
+                    if (pc.date) {
+                        const pcDate = new Date(pc.date);
+                        const pcMonthStr = pcDate.getFullYear() + '-' + String(pcDate.getMonth() + 1).padStart(2, '0');
+                        return pcMonthStr === targetMonthStr;
+                    }
+                    return false;
+                });
+
+                const totalAmount = filteredPurchases.reduce((sum, pc) => sum + (parseFloat(pc.total) || 0), 0);
+                const totalDisplay = document.getElementById('phTotalAmount');
+                if (totalDisplay) totalDisplay.textContent = totalAmount.toFixed(2);
+
                 if (filteredPurchases.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6c757d;">No matching records found for ' + monthInput.options[monthInput.selectedIndex].text + ' ' + selectedYear + '</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6c757d;">No matching records found.</td></tr>';
                     return;
                 }
 
-                // Sort by date desc (newest first)
                 filteredPurchases.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-                // Render List View
-                tbody.innerHTML = filteredPurchases.map(pc => renderPurchaseRow(pc)).join('');
+                tbody.innerHTML = filteredPurchases.map(pc => {
+                    // Map SQLite fields to renderPurchaseRow expectations
+                    const legacyPc = {
+                        id: pc.id,
+                        date: pc.date,
+                        invoiceNumber: pc.invoice_number,
+                        supplier: pc.supplier_name,
+                        totalAmount: pc.total,
+                        paymentStatus: pc.payment_status,
+                        status: pc.status
+                    };
+                    return renderPurchaseRow(legacyPc);
+                }).join('');
 
                 updateUIForRole();
             } catch (error) {
@@ -9612,6 +9568,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error loading history</td></tr>';
             }
         }
+
+        
 
         function renderPurchaseRow(pc) {
             const items = Array.isArray(pc.items) ? pc.items : [];
@@ -9640,56 +9598,99 @@ input:focus, select:focus, textarea:focus, button:focus {
             `;
         }
 
-        function deletePurchase(id) {
-            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-            showConfirm('Are you sure you want to delete this purchase record?\nInventory adjustment is NOT handled automatically.', () => {
-                let savedPurchases = JSON.parse(localStorage.getItem('purchases')) || [];
-                savedPurchases = savedPurchases.filter(p => p.id !== id);
-                localStorage.setItem('purchases', JSON.stringify(savedPurchases));
-                purchases = savedPurchases;
+        async function deletePurchase(id) {
+            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can cancel purchases.', 'error');
+            showConfirm('⚠️ Are you sure you want to CANCEL this purchase?<br><br>Inventory will be reduced automatically. This action cannot be undone!', async () => {
+                try {
+                    await window.electronAPI.sqlite.purchases.cancel(id);
+                    
+                    // Remove from legacy array to keep reports in sync
+                    purchases = purchases.filter(p => String(p.id) !== String(id));
+                    saveData();
 
-                // Refresh views
-                renderPurchaseHistory();
-                closePurchaseDetailsModal(); // Close details if open
+                    // Refresh views
+                    renderPurchaseHistory();
+                    updateInventoryTable();
+                    closePurchaseDetailsModal(); // Close details if open
 
-                showAlert('Purchase record deleted successfully.', '🗑️');
+                    showAlert('✅ Purchase cancelled and stock reversed successfully.', '❌');
+                } catch (e) {
+                    console.error("Cancel purchase error:", e);
+                    showAlert('❌ Error cancelling purchase: ' + (e.message || e), 'error');
+                }
             });
         }
+        
 
-        function viewPurchaseDetails(id) {
+        async function viewPurchaseDetails(id) {
+            const modal = document.getElementById('purchaseDetailsModal');
+            const content = document.getElementById('purchaseDetailsContent');
+            if (!modal || !content) return;
+            
             try {
-                const savedPurchases = JSON.parse(localStorage.getItem('purchases')) || [];
-                const pc = savedPurchases.find(p => p.id === id);
-                if (!pc) return;
-
-                const setText = (id, val) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = val || '-';
-                };
-
-                let supplierName = pc.supplier;
-                let supplierPhone = pc.supplierPhone;
-                let supplierAddress = pc.supplierAddress;
-                
-                if (pc.supplierId) {
-                    const sup = suppliers.find(s => s.id === pc.supplierId);
-                    if (sup) {
-                        supplierName = sup.name;
-                        supplierPhone = sup.phone || pc.supplierPhone;
-                        supplierAddress = sup.address || pc.supplierAddress;
-                    }
+                const pc = await window.electronAPI.sqlite.purchases.get(id);
+                if (!pc) {
+                    showAlert('Purchase not found', 'error');
+                    return;
                 }
 
-                setText('detailSupplier', supplierName);
-                setText('detailSupplierPhone', supplierPhone);
-                setText('detailSupplierAddress', supplierAddress);
-                setText('detailInvoice', pc.invoiceNumber);
-                setText('detailDate', pc.date);
-                setText('detailNotes', pc.notes);
+                const isCancelled = pc.status === 'CANCELLED';
+                const itemsHtml = pc.items.map(item => `
+                    <tr>
+                        <td>${item.product_name}</td>
+                        <td>${item.quantity}</td>
+                        <td>₹${(item.price || 0).toFixed(2)}</td>
+                        <td>₹${(item.total || 0).toFixed(2)}</td>
+                    </tr>
+                `).join('');
 
-                const tbody = document.getElementById('detailTableBody');
-                const items = Array.isArray(pc.items) ? pc.items : [];
-                tbody.innerHTML = items.map((item, index) => `
+                content.innerHTML = `
+                    ${isCancelled ? '<div style="background: red; color: white; text-align: center; padding: 5px; font-weight: bold; margin-bottom: 10px; border-radius: 4px;">CANCELLED</div>' : ''}
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                        <div>
+                            <strong>Invoice:</strong> ${pc.invoice_number}<br>
+                            <strong>Date:</strong> ${new Date(pc.date).toLocaleDateString()}
+                        </div>
+                        <div style="text-align: right;">
+                            <strong>Supplier:</strong> ${pc.supplier_name}<br>
+                            <strong>Status:</strong> <span class="badge ${pc.payment_status === 'fully_paid' ? 'bg-success' : 'bg-warning'}">${(pc.payment_status || 'fully_paid').replace('_', ' ').toUpperCase()}</span>
+                        </div>
+                    </div>
+                    
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: right; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
+                        <p><strong>Subtotal:</strong> ₹${(pc.subtotal || 0).toFixed(2)}</p>
+                        ${pc.discount > 0 ? `<p><strong>Discount:</strong> -₹${pc.discount.toFixed(2)}</p>` : ''}
+                        ${pc.other_charges > 0 ? `<p><strong>Other Charges:</strong> +₹${pc.other_charges.toFixed(2)}</p>` : ''}
+                        <h4><strong>Grand Total:</strong> ₹${(pc.total || 0).toFixed(2)}</h4>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                        ${!isCancelled ? `<button class="btn btn-danger" onclick="deletePurchase('${pc.id}')">🗑️ Cancel Purchase</button>` : ''}
+                    </div>
+                `;
+
+                modal.style.display = 'block';
+            } catch (err) {
+                console.error("Error viewing purchase:", err);
+                showAlert("Error loading details.", "error");
+            }
+        }
+
+        
                 <tr>
                     <td>${index + 1}</td>
                     <td>${item.name}</td>

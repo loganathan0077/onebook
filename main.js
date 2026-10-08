@@ -724,7 +724,7 @@ app.on('window-all-closed', () => {
 
 // --- SQLITE IPC HANDLERS ---
 const productService = require('./services/productService');
-const salesService = require('./services/salesService');
+const salesService = require('./services/salesService');\nconst purchaseService = require('./services/purchaseService');
 const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
 
