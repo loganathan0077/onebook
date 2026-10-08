@@ -8109,12 +8109,20 @@ input:focus, select:focus, textarea:focus, button:focus {
             showAlert('Supplier saved successfully', '✅');
         }
 
-        function deleteSupplier(id) {
+        async function deleteSupplier(id) {
             if (!window.hasPermission('delete')) return showAlert('Unauthorized: You do not have permission to delete suppliers.', 'error');
-            showConfirm('Are you sure you want to delete this supplier?', () => {
-                suppliers = suppliers.filter(s => s.id !== id);
-                saveData();
-                renderSupplierTable();
+            showConfirm('Are you sure you want to archive this supplier?', async () => {
+                const res = await window.electronAPI.sqlite.suppliers.archive(id);
+                if (res.success) {
+                    // SQLITE COMPATIBILITY - SYNC FOR REPORTS
+                    const allSuppliers = await window.electronAPI.sqlite.suppliers.getAll();
+                    suppliers = allSuppliers;
+                    // END SYNC
+                    renderSupplierTable();
+                    showAlert('Supplier archived successfully', '✅');
+                } else {
+                    showAlert('Error archiving supplier: ' + res.error, 'error');
+                }
             });
         }
 
@@ -17669,13 +17677,28 @@ input:focus, select:focus, textarea:focus, button:focus {
             downloadAnchorNode.remove();
         }
 
-        function deletePO(poId) {
+        async function deletePO(poId) {
             if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-            showConfirm(`Are you sure you want to delete Purchase Order ${poId}? This cannot be undone.`, () => {
-                purchaseOrders = purchaseOrders.filter(p => p.id !== poId);
-                saveData();
-                renderPOHistory();
-                showAlert(`PO ${poId} deleted`, '🗑️');
+            showConfirm(`Are you sure you want to cancel Purchase Order ${poId}? This cannot be undone.`, async () => {
+                
+                // Find internal ID
+                const existing = await window.electronAPI.sqlite.purchaseOrders.search(poId);
+                const exactMatch = existing && Array.isArray(existing) ? existing.find(p => p.po_number === poId) : null;
+                
+                if (!exactMatch) return showAlert('PO not found', 'error');
+
+                const res = await window.electronAPI.sqlite.purchaseOrders.cancel(exactMatch.id);
+                if (res.success) {
+                    // SQLITE COMPATIBILITY - SYNC FOR REPORTS
+                    const allPOs = await window.electronAPI.sqlite.purchaseOrders.getAll();
+                    purchaseOrders = allPOs;
+                    // END SYNC
+                    
+                    renderPOHistory();
+                    showAlert(`PO ${poId} cancelled`, '🗑️');
+                } else {
+                    showAlert('Error cancelling PO: ' + res.error, 'error');
+                }
             });
         }
 
@@ -17870,7 +17893,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('poSearchInput').value = '';
         }
 
-        function savePO() {
+        async function savePO() {
             if (!requireLicensedForWrite('saving a purchase order')) return;
             if (poCart.length === 0) {
                 showAlert('PO List is empty!', '⚠️');
@@ -17882,34 +17905,57 @@ input:focus, select:focus, textarea:focus, button:focus {
             const date = document.getElementById('poDate').value;
 
             const newPO = {
-                id: poId,
+                poNumber: poId,
                 date: date,
-                supplier: supplier,
+                supplierName: supplier,
                 items: poCart,
-                status: 'Pending',
-                createdAt: new Date().toISOString()
+                status: 'Pending'
             };
 
-            // Check if exists
-            const existingIndex = purchaseOrders.findIndex(p => p.id === poId);
-            if (existingIndex >= 0) {
-                purchaseOrders[existingIndex] = newPO;
-            } else {
-                purchaseOrders.push(newPO);
+            try {
+                // Check if it already exists in SQLite to decide create vs update
+                // For simplicity, we can just try to create, and if duplicate, try update. Or we can just check if we are editing.
+                // In OneBook UI, savePO can overwrite if it exists, but typically they use 'poId' directly.
+                // Let's use update if it exists, otherwise create.
+                let isExisting = false;
+                try {
+                    const existing = await window.electronAPI.sqlite.purchaseOrders.get(poId);
+                    if (existing && existing.id) {
+                        isExisting = true;
+                        newPO.id = existing.id; // Map to internal SQLite ID
+                    }
+                } catch(e) {} // Not found
+
+                if (isExisting) {
+                    const res = await window.electronAPI.sqlite.purchaseOrders.update(newPO.id, newPO);
+                    if (!res.success) return showAlert('Error updating PO: ' + res.error, 'error');
+                } else {
+                    const res = await window.electronAPI.sqlite.purchaseOrders.create(newPO);
+                    if (!res.success) {
+                        if (res.code === 'PO_NUMBER_DUPLICATE') return showAlert('PO Number already exists!', 'error');
+                        return showAlert('Error creating PO: ' + res.error, 'error');
+                    }
+                }
+
+                // SQLITE COMPATIBILITY - SYNC FOR REPORTS
+                const allPOs = await window.electronAPI.sqlite.purchaseOrders.getAll();
+                purchaseOrders = allPOs;
+                // END SYNC
+
+                showAlert(`Purchase Order ${poId} Saved Successfully!`, '✅');
+
+                // Clear cart to ensure next PO starts fresh
+                poCart = [];
+                updatePOTable();
+                updatePOCount();
+
+                closePOModal();
+            } catch (err) {
+                showAlert('Error saving PO', 'error');
             }
-
-            saveData();
-            showAlert(`Purchase Order ${poId} Saved Successfully!`, '✅');
-
-            // Clear cart to ensure next PO starts fresh
-            poCart = [];
-            updatePOTable();
-            updatePOCount();
-
-            closePOModal();
         }
 
-        function receivePOStock() {
+        async function receivePOStock() {
             if (poCart.length === 0) {
                 showAlert('PO List is empty!', '⚠️');
                 return;
@@ -17917,71 +17963,66 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             if (!confirm('Are you sure you want to add these items to your inventory?')) return;
 
-            // Save as Received PO
             const poId = document.getElementById('poNumber').value;
-            const supplier = document.getElementById('poSupplier').value || 'Unknown Supplier';
-            const date = document.getElementById('poDate').value;
-
-            const newPO = {
-                id: poId,
-                date: date,
-                supplier: supplier,
-                items: poCart,
-                status: 'Received',
-                receivedAt: new Date().toISOString()
-            };
-
-            // Check if exists
-            const existingIndex = purchaseOrders.findIndex(p => p.id === poId);
-            if (existingIndex >= 0) {
-                purchaseOrders[existingIndex] = newPO;
-            } else {
-                purchaseOrders.push(newPO);
-            }
-
-            // Update Stock
-            poCart.forEach(item => {
-                const product = products.find(p => String(p.id) === String(item.product.id));
-                if (product) {
-                    let variant = null;
-                    if (item.product.variantId) {
-                        variant = window.getVariantById(product, item.product.variantId);
-                    }
-
-                    if (variant) {
-                        variant.stock = (parseInt(variant.stock) || 0) + parseInt(item.qty);
-                        stockHistory.push({
-                            date: new Date().toISOString(),
-                            productId: product.id,
-                            variantId: variant.id,
-                            productName: window.getVariantDisplayName(product, variant),
-                            change: parseInt(item.qty),
-                            reason: `PO Receive (${poId})`,
-                            newStock: variant.stock
-                        });
-                    } else {
-                        product.stock = (parseInt(product.stock) || 0) + parseInt(item.qty);
-                        stockHistory.push({
-                            date: new Date().toISOString(),
-                            productId: product.id,
-                            productName: product.name,
-                            change: parseInt(item.qty),
-                            reason: `PO Receive (${poId})`,
-                            newStock: product.stock
-                        });
-                    }
+            
+            try {
+                // First ensure PO is saved
+                let internalId;
+                const existing = await window.electronAPI.sqlite.purchaseOrders.search(poId);
+                const exactMatch = existing && Array.isArray(existing) ? existing.find(p => p.po_number === poId) : null;
+                
+                if (exactMatch) {
+                    internalId = exactMatch.id;
+                    // Update it with current cart
+                    const updateRes = await window.electronAPI.sqlite.purchaseOrders.update(internalId, {
+                        poNumber: poId,
+                        date: document.getElementById('poDate').value,
+                        supplierName: document.getElementById('poSupplier').value || 'Unknown Supplier',
+                        items: poCart,
+                        status: 'Pending'
+                    });
+                    if (!updateRes.success) return showAlert('Error updating PO before receive: ' + updateRes.error, 'error');
+                } else {
+                    const createRes = await window.electronAPI.sqlite.purchaseOrders.create({
+                        poNumber: poId,
+                        date: document.getElementById('poDate').value,
+                        supplierName: document.getElementById('poSupplier').value || 'Unknown Supplier',
+                        items: poCart,
+                        status: 'Pending'
+                    });
+                    if (!createRes.success) return showAlert('Error creating PO before receive: ' + createRes.error, 'error');
+                    internalId = createRes.id;
                 }
-            });
 
-            saveData();
-            showAlert(`Stock updated & PO ${poId} Saved!`, '✅');
+                // Now Receive it (this will call purchaseService internally and update stock properly)
+                const res = await window.electronAPI.sqlite.purchaseOrders.receive(internalId);
+                
+                if (!res.success) {
+                    if (res.code === 'PO_ALREADY_RECEIVED') return showAlert('PO already received!', 'error');
+                    return showAlert('Error receiving PO: ' + res.error, 'error');
+                }
 
-            // Clear cart
-            poCart = [];
-            updatePOTable();
-            updatePOCount();
+                // SQLITE COMPATIBILITY - SYNC FOR REPORTS
+                const allPOs = await window.electronAPI.sqlite.purchaseOrders.getAll();
+                purchaseOrders = allPOs;
+                // END SYNC
+                
+                showAlert(`Stock updated & PO ${poId} Received!`, '✅');
 
-            closePOModal();
+                poCart = [];
+                updatePOTable();
+                updatePOCount();
+
+                closePOModal();
+                
+                // Note: The UI might need a full refresh if we want stock numbers to update immediately in the DOM,
+                // but similar to purchase creation, it relies on the user closing and reopening views.
+                // However, we should refresh products list if needed.
+                if (typeof loadProducts === 'function') loadProducts(); // Reload products from SQLite
+
+            } catch (err) {
+                showAlert('Error receiving PO', 'error');
+            }
         }
 
         function printPO() {
