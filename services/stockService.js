@@ -16,14 +16,29 @@ class StockService {
         }
     }
 
-    adjustStock(variantId, quantity, reason, referenceType, referenceId, date = null) {
+    adjustStock(productId, variantId, quantity, reason, referenceType, referenceId, date = null) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
             const v = db.prepare('SELECT id, product_id, stock FROM product_variants WHERE id = ?').get(variantId);
-            if (!v) throw new Error('VARIANT_NOT_FOUND');
+            if (!v) {
+                const err = new Error('VARIANT_NOT_FOUND');
+                err.code = 'VARIANT_NOT_FOUND';
+                throw err;
+            }
+            if (String(v.product_id) !== String(productId)) {
+                const err = new Error('VARIANT_PRODUCT_MISMATCH');
+                err.code = 'VARIANT_PRODUCT_MISMATCH';
+                throw err;
+            }
             
             const prevStock = v.stock;
             const newStock = prevStock + quantity;
+            
+            if (newStock < 0) {
+                const err = new Error('INSUFFICIENT_STOCK');
+                err.code = 'INSUFFICIENT_STOCK';
+                throw err;
+            }
             
             db.prepare('UPDATE product_variants SET stock = ? WHERE id = ?').run(newStock, variantId);
             

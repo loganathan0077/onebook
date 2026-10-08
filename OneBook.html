@@ -10254,17 +10254,14 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
         }
 
-        function updateInventoryTable() {
+        async function updateInventoryTable() {
             if (typeof window.inventorySelectedIndex !== 'undefined') window.inventorySelectedIndex = -1;
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const tbody = document.getElementById('inventoryTableBody');
-            if (!tbody) return; // Prevent crash if element missing
+            if (!tbody) return;
 
             const searchInput = document.getElementById('inventorySearch');
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
-            // Note: Category and Stock filters are not currently in the UI for this section, 
-            // so we default to showing all matching the search term.
 
             const expiryFilterEl = document.getElementById('expiryFilter');
             const expiryFilter = expiryFilterEl ? expiryFilterEl.value : 'all';
@@ -10276,14 +10273,50 @@ input:focus, select:focus, textarea:focus, button:focus {
             const next30 = new Date(today);
             next30.setDate(today.getDate() + 30);
 
-            // Filter Logic
-            const searchMatchedProducts = searchProductsUnified(searchTerm, products);
+            let searchMatchedProducts = [];
+            if (window.DATA_BACKEND === 'sqlite') {
+                if (searchTerm) {
+                    searchMatchedProducts = await window.electronAPI.sqlite.products.search(searchTerm);
+                } else {
+                    searchMatchedProducts = await window.electronAPI.sqlite.products.getAll();
+                }
+                
+                searchMatchedProducts = searchMatchedProducts.map(p => {
+                    return {
+                        ...p,
+                        id: p.id,
+                        barcode: p.barcode,
+                        name: p.name,
+                        category: p.category,
+                        price: p.price,
+                        costPrice: p.cost_price,
+                        stock: p.stock,
+                        minStock: p.min_stock,
+                        productDiscount: p.productDiscount,
+                        expiryDate: p.expiryDate,
+                        hsn: p.hsn,
+                        gstRate: p.gst_rate,
+                        variants: (p.variants || []).map(v => ({
+                            id: v.id,
+                            productId: v.productId,
+                            variantName: v.variantName,
+                            sku: v.sku,
+                            barcode: v.barcode,
+                            buyingPrice: v.buyingPrice,
+                            sellingPrice: v.sellingPrice,
+                            stock: v.stock,
+                            minimumStock: p.min_stock
+                        }))
+                    };
+                });
+            } else {
+                searchMatchedProducts = searchProductsUnified(searchTerm, products);
+            }
+
             const filteredProducts = searchMatchedProducts.filter(product => {
                 if (expiryFilter === 'all') return true;
-
                 if (expiryFilter === 'no_expiry') return !product.expiryDate;
-
-                if (!product.expiryDate) return false; // Other filters require expiryDate
+                if (!product.expiryDate) return false;
 
                 const exp = new Date(product.expiryDate);
                 exp.setHours(0,0,0,0);
@@ -10297,11 +10330,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
 
             if (filteredProducts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No matching products found</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${settings.gstEnabled ? '10' : '8'}" style="text-align: center;">No matching products found</td></tr>`;
                 return;
             }
 
-            // Use existing sort function
             const sortedProducts = getSortedProducts(filteredProducts);
 
             tbody.innerHTML = sortedProducts.map(product => {
@@ -10328,15 +10360,15 @@ input:focus, select:focus, textarea:focus, button:focus {
                         if (!parentMatches) {
                             variantsToRender = product.variants.filter(v => 
                                 (v.variantName && v.variantName.toLowerCase().includes(searchTerm)) ||
-                                (v.barcode && String(v.barcode).toLowerCase().includes(searchTerm))
+                                (v.barcode && String(v.barcode).toLowerCase().includes(searchTerm)) ||
+                                (v.sku && String(v.sku).toLowerCase().includes(searchTerm))
                             );
                         }
                     }
 
-                    // Render each variant as an independent flat row
                     variantsToRender.forEach(v => {
                         let vStock = parseInt(v.stock) || 0;
-                        let vMinStock = parseInt(v.minimumStock) || 0;
+                        let vMinStock = parseInt(v.minimumStock) || parseInt(product.minStock) || 0;
                         let stockStatus = vStock <= 0 ? 'stock-low' : (vStock <= vMinStock ? 'stock-low' : 'stock-ok');
                         let statusText = vStock <= 0 ? '🔴 Out of Stock' : (vStock <= vMinStock ? '🟡 Low Stock' : '🟢 In Stock');
                         let totalValue = ((v.sellingPrice || 0) * vStock).toFixed(2);
@@ -10346,7 +10378,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         
                         rows += `
                         <tr data-product-id="${product.id}" data-variant-id="${v.id}">
-                            <td>${v.barcode || '-'}</td>
+                            <td>${v.barcode || v.sku || '-'}</td>
                             <td>${vDisplayName}</td>
                             ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
                             <td>${product.category || 'Uncategorized'}</td>
@@ -10367,19 +10399,30 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                     return rows;
                 } else {
+                    let vStock = 0;
+                    let vPrice = 0;
+                    
+                    if (window.DATA_BACKEND === 'sqlite' && product.variants && product.variants.length > 0) {
+                        vStock = parseInt(product.variants[0].stock) || 0;
+                        vPrice = parseFloat(product.variants[0].sellingPrice) || 0;
+                    } else {
+                        vStock = parseInt(product.stock) || 0;
+                        vPrice = parseFloat(product.price) || 0;
+                    }
+
                     let stockStatus = '';
                     let statusText = '';
-                    if (product.stock <= 0) {
+                    if (vStock <= 0) {
                         stockStatus = 'stock-low';
                         statusText = '🔴 Out of Stock';
-                    } else if (product.stock <= product.minStock) {
+                    } else if (vStock <= (parseInt(product.minStock) || 0)) {
                         stockStatus = 'stock-low';
                         statusText = '🟡 Low Stock';
                     } else {
                         stockStatus = 'stock-ok';
                         statusText = '🟢 In Stock';
                     }
-                    const totalValue = (product.price * product.stock).toFixed(2);
+                    const totalValue = (vPrice * vStock).toFixed(2);
                     
                     return `
                     <tr data-product-id="${product.id}" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
@@ -10389,8 +10432,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                         ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                         <td>${product.category || 'Uncategorized'}</td>
                         <td class="expiry-tracking-feature">${expiryDisplay}</td>
-                        <td class="${stockStatus}">${product.stock}</td>
-                        <td>₹${product.price.toFixed(2)}</td>
+                        <td class="${stockStatus}">${vStock}</td>
+                        <td>₹${vPrice.toFixed(2)}</td>
                         <td>${displayDiscount}</td>
                         <td>₹${totalValue}</td>
                         <td class="${stockStatus}">${statusText}</td>
@@ -10440,7 +10483,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
         }
 
-        function updateStockAndPrice() {
+        async function updateStockAndPrice() {
             if (!requireLicensedForWrite('updating stock')) return;
             if (!navigator.onLine) {
                 showAlert('⚠️ Warning: You are offline. Changes will be saved locally.', 'offline');
@@ -10448,7 +10491,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const productIdStr = document.getElementById('updateStockProductId').value;
             const productId = !isNaN(parseInt(productIdStr)) ? parseInt(productIdStr) : productIdStr;
             const variantIdField = document.getElementById('updateStockVariantId');
-            const variantId = variantIdField ? variantIdField.value : '';
+            let variantId = variantIdField ? variantIdField.value : '';
             
             const qtyStr = document.getElementById('addStockQuantity').value;
             const priceStr = document.getElementById('updateStockPrice').value;
@@ -10469,8 +10512,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            if (hasQuantity && quantity <= 0) {
-                showAlert('Quantity must be greater than 0.', '⚠️');
+            if (hasQuantity && quantity === 0) {
+                showAlert('Quantity must be non-zero to adjust.', '⚠️');
                 return;
             }
 
@@ -10479,72 +10522,135 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            const product = products.find(p => String(p.id) === String(productId));
-            if (product) {
-                let variantRef = null;
-                if (variantId) {
-                    variantRef = window.getVariantById(product, variantId);
-                }
+            if (window.DATA_BACKEND === 'sqlite') {
+                try {
+                    let product = await window.electronAPI.sqlite.products.get(productId);
+                    if (!product) {
+                        showAlert('Product not found!', '❌');
+                        return;
+                    }
+                    if (!variantId && product.variants && product.variants.length > 0) {
+                        variantId = String(product.variants[0].id);
+                    }
+                    
+                    let variantRef = product.variants.find(v => String(v.id) === String(variantId));
+                    if (!variantRef) variantRef = product.variants[0];
 
-                if (hasQuantity) {
-                    if (product.quantityType === 'decimal') {
-                        const prec = product.decimalPrecision || 0.01;
-                        const multiplier = Math.round(1 / prec);
-                        if (Math.abs((quantity * multiplier) % 1) > 0.001) {
-                            showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
-                            return;
+                    if (hasQuantity) {
+                        const qtyType = product.quantityType || product.quantity_type || 'piece';
+                        if (qtyType === 'decimal') {
+                            const prec = product.decimalPrecision || 0.01;
+                            const multiplier = Math.round(1 / prec);
+                            if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                                showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                                return;
+                            }
+                        } else {
+                            if (!Number.isInteger(quantity)) {
+                                showAlert(`This product requires a whole number quantity.`, '⚠️');
+                                return;
+                            }
                         }
-                    } else {
-                        if (!Number.isInteger(quantity)) {
-                            showAlert(`This product requires a whole number quantity.`, '⚠️');
-                            return;
+                        
+                        await window.electronAPI.sqlite.stock.adjust(productId, variantId, quantity, 'addition', null, null);
+                    }
+
+                    if (hasPrice) {
+                        if (variantRef) {
+                            variantRef.sellingPrice = parseFloat(price.toFixed(2));
+                            variantRef.selling_price = parseFloat(price.toFixed(2));
+                        }
+                        await window.electronAPI.sqlite.products.update(productId, product);
+                    }
+                    
+                    if (typeof updateInventoryTable === 'function') updateInventoryTable();
+                    if (typeof updateDashboard === 'function') updateDashboard();
+                    
+                    document.getElementById('updateStockProductId').value = '';
+                    if(variantIdField) variantIdField.value = '';
+                    if(document.getElementById('stockBarcode')) document.getElementById('stockBarcode').value = '';
+                    document.getElementById('addStockQuantity').value = '';
+                    if(document.getElementById('updateStockPrice')) document.getElementById('updateStockPrice').value = '';
+                    if(document.getElementById('addStockUnit')) document.getElementById('addStockUnit').innerText = '';
+                    if(document.getElementById('stockBarcodeClear')) document.getElementById('stockBarcodeClear').style.display = 'none';
+                    
+                    const dispName = window.getVariantDisplayName(product, variantRef);
+                    let msg = `Successfully updated ${dispName}!`;
+                    if(hasQuantity && hasPrice) msg = `Successfully added ${quantity} units and updated price to ₹${price} for ${dispName}`;
+                    else if(hasQuantity) msg = `Successfully adjusted ${quantity} units for ${dispName}`;
+                    else if(hasPrice) msg = `Successfully updated price to ₹${price} for ${dispName}`;
+                    showAlert(msg, '✅');
+                } catch (e) {
+                    showAlert(e.message || 'Error updating stock/price', '❌');
+                }
+            } else {
+                const product = products.find(p => String(p.id) === String(productId));
+                if (product) {
+                    let variantRef = null;
+                    if (variantId) {
+                        variantRef = window.getVariantById(product, variantId);
+                    }
+
+                    if (hasQuantity) {
+                        if (product.quantityType === 'decimal') {
+                            const prec = product.decimalPrecision || 0.01;
+                            const multiplier = Math.round(1 / prec);
+                            if (Math.abs((quantity * multiplier) % 1) > 0.001) {
+                                showAlert(`Enter a valid quantity. This product allows quantities in steps of ${prec}.`, '⚠️');
+                                return;
+                            }
+                        } else {
+                            if (!Number.isInteger(quantity)) {
+                                showAlert(`This product requires a whole number quantity.`, '⚠️');
+                                return;
+                            }
+                        }
+
+                        if (variantRef) {
+                            variantRef.stock = parseFloat(((variantRef.stock || 0) + quantity).toFixed(3));
+                        } else {
+                            product.stock = parseFloat(((product.stock || 0) + quantity).toFixed(3));
+                        }
+
+                        stockHistory.push({
+                            date: new Date().toISOString(),
+                            productId: product.id,
+                            variantId: variantId || undefined,
+                            productName: window.getVariantDisplayName(product, variantRef),
+                            type: 'addition',
+                            quantity: quantity,
+                            newStock: variantRef ? variantRef.stock : product.stock
+                        });
+                    }
+                    
+                    if (hasPrice) {
+                        if (variantRef) {
+                            variantRef.sellingPrice = parseFloat(price.toFixed(2));
+                        } else {
+                            product.price = parseFloat(price.toFixed(2));
                         }
                     }
 
-                    if (variantRef) {
-                        variantRef.stock = parseFloat(((variantRef.stock || 0) + quantity).toFixed(3));
-                    } else {
-                        product.stock = parseFloat(((product.stock || 0) + quantity).toFixed(3));
-                    }
+                    saveData();
+                    updateInventoryTable();
+                    updateDashboard();
 
-                    stockHistory.push({
-                        date: new Date().toISOString(),
-                        productId: product.id,
-                        variantId: variantId || undefined,
-                        productName: window.getVariantDisplayName(product, variantRef),
-                        type: 'addition',
-                        quantity: quantity,
-                        newStock: variantRef ? variantRef.stock : product.stock
-                    });
+                    document.getElementById('updateStockProductId').value = '';
+                    if(variantIdField) variantIdField.value = '';
+                    if(document.getElementById('stockBarcode')) document.getElementById('stockBarcode').value = '';
+                    document.getElementById('addStockQuantity').value = '';
+                    if(document.getElementById('updateStockPrice')) document.getElementById('updateStockPrice').value = '';
+                    if(document.getElementById('addStockUnit')) document.getElementById('addStockUnit').innerText = '';
+                    if(document.getElementById('stockBarcodeClear')) document.getElementById('stockBarcodeClear').style.display = 'none';
+                    
+                    const dispName = window.getVariantDisplayName(product, variantRef);
+                    let msg = `Successfully updated ${dispName}!`;
+                    if(hasQuantity && hasPrice) msg = `Successfully added ${quantity} units and updated price to ₹${price} for ${dispName}`;
+                    else if(hasQuantity) msg = `Successfully added ${quantity} units to ${dispName}`;
+                    else if(hasPrice) msg = `Successfully updated price to ₹${price} for ${dispName}`;
+
+                    showAlert(msg, '✅');
                 }
-                
-                if (hasPrice) {
-                    if (variantRef) {
-                        variantRef.sellingPrice = parseFloat(price.toFixed(2));
-                    } else {
-                        product.price = parseFloat(price.toFixed(2));
-                    }
-                }
-
-                saveData();
-                updateInventoryTable();
-                updateDashboard();
-
-                document.getElementById('updateStockProductId').value = '';
-                if(variantIdField) variantIdField.value = '';
-                document.getElementById('stockBarcode').value = '';
-                document.getElementById('addStockQuantity').value = '';
-                if(document.getElementById('updateStockPrice')) document.getElementById('updateStockPrice').value = '';
-                if(document.getElementById('addStockUnit')) document.getElementById('addStockUnit').innerText = '';
-                document.getElementById('stockBarcodeClear').style.display = 'none';
-                
-                const dispName = window.getVariantDisplayName(product, variantRef);
-                let msg = `Successfully updated ${dispName}!`;
-                if(hasQuantity && hasPrice) msg = `Successfully added ${quantity} units and updated price to ₹${price} for ${dispName}`;
-                else if(hasQuantity) msg = `Successfully added ${quantity} units to ${dispName}`;
-                else if(hasPrice) msg = `Successfully updated price to ₹${price} for ${dispName}`;
-
-                showAlert(msg, '✅');
             }
         }
 

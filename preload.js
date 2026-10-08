@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         stock: {
             get: (pId) => ipcRenderer.invoke('sqlite:stock:get', pId),
             movements: (pId) => ipcRenderer.invoke('sqlite:stock:movements', pId),
-            adjust: (pId, qty, type, refId) => ipcRenderer.invoke('sqlite:stock:adjust', pId, qty, type, refId)
+            adjust: (productId, variantId, qty, reason, refType, refId) => ipcRenderer.invoke('sqlite:stock:adjust', productId, variantId, qty, reason, refType, refId)
         },
         customers: {
             getAll: () => ipcRenderer.invoke('sqlite:customers:getAll'),

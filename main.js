@@ -758,7 +758,7 @@ ipcMain.handle('sqlite:products:lowStock', (e) => handleSqlite(e, () => productS
 // Stock
 ipcMain.handle('sqlite:stock:get', (e, pId) => handleSqlite(e, () => stockService.getCurrentStock(pId)));
 ipcMain.handle('sqlite:stock:movements', (e, pId) => handleSqlite(e, () => stockService.getStockMovements(pId)));
-ipcMain.handle('sqlite:stock:adjust', (e, pId, qty, type, refId) => handleSqlite(e, () => stockService.adjustStock(pId, qty, type, refId)));
+ipcMain.handle('sqlite:stock:adjust', (e, productId, variantId, qty, reason, refType, refId) => handleSqlite(e, () => stockService.adjustStock(productId, variantId, qty, reason, refType, refId)));
 
 // Customers
 ipcMain.handle('sqlite:customers:getAll', (e) => handleSqlite(e, () => customerService.getCustomers()));
