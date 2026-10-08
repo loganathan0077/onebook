@@ -727,6 +727,7 @@ const productService = require('./services/productService');
 const salesService = require('./services/salesService');\nconst purchaseService = require('./services/purchaseService');
 const supplierService = require('./services/supplierService');
 const purchaseOrderService = require('./services/purchaseOrderService');
+const paymentService = require('./services/paymentService');
 const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
 

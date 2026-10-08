@@ -23176,7 +23176,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }).join('');
         }
 
-        function openPaymentModal(type, invoice) {
+        async function openPaymentModal(type, invoice) {
             document.getElementById('pm-ctx-type').value = type;
             document.getElementById('pm-ctx-invoice').value = invoice;
             
@@ -23187,7 +23187,6 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('pm-new-ref').value = '';
             document.getElementById('pm-new-notes').value = '';
 
-            let recordObj = null;
             let entityName = '';
             let date = '';
             let total = 0;
@@ -23196,70 +23195,72 @@ input:focus, select:focus, textarea:focus, button:focus {
             let status = 'unpaid';
             let history = [];
 
-            if (type === 'sale') {
-                document.getElementById('pm-entity-label').textContent = 'Customer';
-                // Find all sale items for this invoice
-                const saleItems = sales.filter(s => s.receiptNumber === invoice);
-                if (saleItems.length === 0) return;
+            try {
+                if (type === 'sale') {
+                    document.getElementById('pm-entity-label').textContent = 'Customer';
+                    const existingSale = await window.electronAPI.sqlite.sales.search(invoice);
+                    const exactSale = existingSale && Array.isArray(existingSale) ? existingSale.find(s => s.receipt_number === invoice) : null;
+                    if (!exactSale) return showAlert('Sale not found', 'error');
+                    
+                    entityName = exactSale.customer_name || 'Unknown';
+                    date = new Date(exactSale.date).toLocaleDateString();
+                    total = exactSale.total || 0;
+                    paid = exactSale.amount_paid || 0;
+                    outstanding = exactSale.outstanding_amount !== undefined ? exactSale.outstanding_amount : (total - paid);
+                    status = exactSale.payment_status || 'unpaid';
+                    
+                    history = await window.electronAPI.sqlite.payments.getSalePayments(exactSale.id);
+                } else if (type === 'purchase') {
+                    document.getElementById('pm-entity-label').textContent = 'Supplier';
+                    const existingPurchase = await window.electronAPI.sqlite.purchases.search(invoice);
+                    const exactPurchase = existingPurchase && Array.isArray(existingPurchase) ? existingPurchase.find(p => p.invoice_number === invoice) : null;
+                    if (!exactPurchase) return showAlert('Purchase not found', 'error');
+                    
+                    entityName = exactPurchase.supplier_name || 'Unknown';
+                    date = new Date(exactPurchase.date).toLocaleDateString();
+                    total = exactPurchase.total || 0;
+                    paid = exactPurchase.amount_paid || 0;
+                    outstanding = exactPurchase.outstanding_amount !== undefined ? exactPurchase.outstanding_amount : (total - paid);
+                    status = exactPurchase.payment_status || 'unpaid';
+                    
+                    history = await window.electronAPI.sqlite.payments.getPurchasePayments(exactPurchase.id);
+                }
+
+                document.getElementById('pm-invoice').textContent = invoice;
+                document.getElementById('pm-date').textContent = date;
+                document.getElementById('pm-entity-name').textContent = entityName;
+                document.getElementById('pm-total').textContent = '₹' + total.toFixed(2);
+                document.getElementById('pm-paid').textContent = '₹' + paid.toFixed(2);
+                document.getElementById('pm-outstanding').textContent = '₹' + outstanding.toFixed(2);
                 
-                // Aggregate logic similar to renderReceivablesTable
-                const firstItem = saleItems[0];
-                entityName = firstItem.customerName || 'Unknown';
-                date = new Date(firstItem.date).toLocaleDateString();
-                
-                total = saleItems.reduce((sum, s) => sum + (s.total || (s.subtotal + s.totalTax)), 0);
-                
-                // For paid/outstanding/history we just take the last updated state from any item
-                // (Since they are updated identically across the invoice bundle)
-                paid = firstItem.amountPaid || 0;
-                outstanding = firstItem.outstandingAmount !== undefined ? firstItem.outstandingAmount : (total - paid);
-                status = firstItem.paymentStatus || 'unpaid';
-                history = firstItem.paymentHistory || [];
-            } else if (type === 'purchase') {
-                document.getElementById('pm-entity-label').textContent = 'Supplier';
-                const p = purchases.find(p => p.invoiceNumber === invoice);
-                if (!p) return;
-                
-                entityName = p.supplier || 'Unknown';
-                date = new Date(p.date).toLocaleDateString();
-                total = p.totalAmount || 0;
-                paid = p.amountPaid || 0;
-                outstanding = p.outstandingAmount !== undefined ? p.outstandingAmount : (total - paid);
-                status = p.paymentStatus || 'unpaid';
-                history = p.paymentHistory || [];
+                // Handle floating point precision issues for outstanding
+                if (outstanding < 0.01) outstanding = 0;
+
+                const badge = document.getElementById('pm-status-badge');
+                if (status === 'fully_paid' || outstanding <= 0) {
+                    badge.textContent = 'Paid';
+                    badge.style.background = '#28a745';
+                    badge.style.color = 'white';
+                    document.getElementById('pm-submit-btn').disabled = true;
+                } else if (status === 'partially_paid' || paid > 0) {
+                    badge.textContent = 'Partial';
+                    badge.style.background = '#ffc107';
+                    badge.style.color = 'black';
+                    document.getElementById('pm-submit-btn').disabled = false;
+                } else {
+                    badge.textContent = 'Unpaid';
+                    badge.style.background = '#dc3545';
+                    badge.style.color = 'white';
+                    document.getElementById('pm-submit-btn').disabled = false;
+                }
+
+                renderPaymentHistory(history);
+
+                document.getElementById('paymentModal').style.display = 'flex';
+            } catch (err) {
+                showAlert('Error loading payment details', 'error');
+                console.error(err);
             }
-
-            document.getElementById('pm-invoice').textContent = invoice;
-            document.getElementById('pm-date').textContent = date;
-            document.getElementById('pm-entity-name').textContent = entityName;
-            document.getElementById('pm-total').textContent = '₹' + total.toFixed(2);
-            document.getElementById('pm-paid').textContent = '₹' + paid.toFixed(2);
-            document.getElementById('pm-outstanding').textContent = '₹' + outstanding.toFixed(2);
-            
-            // Handle floating point precision issues for outstanding
-            if (outstanding < 0.01) outstanding = 0;
-
-            const badge = document.getElementById('pm-status-badge');
-            if (status === 'fully_paid' || outstanding <= 0) {
-                badge.textContent = 'Paid';
-                badge.style.background = '#28a745';
-                badge.style.color = 'white';
-                document.getElementById('pm-submit-btn').disabled = true;
-            } else if (status === 'partially_paid' || paid > 0) {
-                badge.textContent = 'Partial';
-                badge.style.background = '#ffc107';
-                badge.style.color = 'black';
-                document.getElementById('pm-submit-btn').disabled = false;
-            } else {
-                badge.textContent = 'Unpaid';
-                badge.style.background = '#dc3545';
-                badge.style.color = 'white';
-                document.getElementById('pm-submit-btn').disabled = false;
-            }
-
-            renderPaymentHistory(history);
-
-            document.getElementById('paymentModal').style.display = 'flex';
         }
 
         function closePaymentModal() {
@@ -23288,7 +23289,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             `).join('');
         }
 
-        function submitPayment() {
+        async function submitPayment() {
             const type = document.getElementById('pm-ctx-type').value;
             const invoice = document.getElementById('pm-ctx-invoice').value;
             
@@ -23308,240 +23309,166 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            // Get current outstanding
-            let total = 0;
-            let currentPaid = 0;
-            let history = [];
-            
-            if (type === 'sale') {
-                const saleItems = sales.filter(s => s.receiptNumber === invoice);
-                total = saleItems.reduce((sum, s) => sum + (s.total || (s.subtotal + s.totalTax)), 0);
-                currentPaid = saleItems[0].amountPaid || 0;
-                history = saleItems[0].paymentHistory || [];
-            } else {
-                const p = purchases.find(p => p.invoiceNumber === invoice);
-                total = p.totalAmount || 0;
-                currentPaid = p.amountPaid || 0;
-                history = p.paymentHistory || [];
-            }
-
-            let currentOutstanding = total - currentPaid;
-            // Float fix
-            if (currentOutstanding < 0.01) currentOutstanding = 0;
-
-            if (amount > (currentOutstanding + 0.01)) { // 0.01 margin for float errors
-                showAlert(`Payment amount (₹${amount}) cannot exceed the outstanding amount (₹${currentOutstanding.toFixed(2)}).`, '⚠️');
-                return;
-            }
-
-            // Create new payment record
-            const newPayment = {
-                date: date,
+            const data = {
+                invoice: invoice,
                 amount: amount,
                 method: method,
                 reference: reference,
                 notes: notes,
-                id: Date.now()
+                date: date
             };
 
-            const newHistory = [...history, newPayment];
-            const newPaid = currentPaid + amount;
-            const newOutstanding = total - newPaid;
-            
-            let newStatus = 'unpaid';
-            if (newOutstanding <= 0.01) {
-                newStatus = 'fully_paid';
-            } else if (newPaid > 0) {
-                newStatus = 'partially_paid';
-            }
-
-            // Update Database
-            if (type === 'sale') {
-                let savedSales = JSON.parse(localStorage.getItem('sales')) || [];
+            try {
+                if (type === 'sale') {
+                    const res = await window.electronAPI.sqlite.payments.createSalePayment(data);
+                    if (!res.success) return showAlert('Error creating sale payment: ' + res.error, 'error');
+                } else if (type === 'purchase') {
+                    const res = await window.electronAPI.sqlite.payments.createPurchasePayment(data);
+                    if (!res.success) return showAlert('Error creating purchase payment: ' + res.error, 'error');
+                }
                 
-                // Update in memory and localstorage
-                sales.forEach(s => {
-                    if (s.receiptNumber === invoice) {
-                        s.amountPaid = newPaid;
-                        s.outstandingAmount = newOutstanding;
-                        s.paymentStatus = newStatus;
-                        s.paymentHistory = newHistory;
-                    }
-                });
-                savedSales.forEach(s => {
-                    if (s.receiptNumber === invoice) {
-                        s.amountPaid = newPaid;
-                        s.outstandingAmount = newOutstanding;
-                        s.paymentStatus = newStatus;
-                        s.paymentHistory = newHistory;
-                    }
-                });
-                localStorage.setItem('sales', JSON.stringify(savedSales));
-                renderReceivablesTable();
-            } else {
-                let savedPurchases = JSON.parse(localStorage.getItem('purchases')) || [];
-                purchases.forEach(p => {
-                    if (p.invoiceNumber === invoice) {
-                        p.amountPaid = newPaid;
-                        p.outstandingAmount = newOutstanding;
-                        p.paymentStatus = newStatus;
-                        p.paymentHistory = newHistory;
-                    }
-                });
-                savedPurchases.forEach(p => {
-                    if (p.invoiceNumber === invoice) {
-                        p.amountPaid = newPaid;
-                        p.outstandingAmount = newOutstanding;
-                        p.paymentStatus = newStatus;
-                        p.paymentHistory = newHistory;
-                    }
-                });
-                localStorage.setItem('purchases', JSON.stringify(savedPurchases));
-                renderPayablesTable();
-            }
+                // SQLITE COMPATIBILITY - SYNC FOR REPORTS/UI
+                if (type === 'sale') {
+                    // Update in memory and localstorage for legacy compatibility
+                    // (Real source of truth is SQLite now)
+                    let savedSales = JSON.parse(localStorage.getItem('sales')) || [];
+                    // Need to fetch fresh payments to update history
+                    // But for now, we just rely on the modal reopening which will fetch fresh data from SQLite!
+                    // Wait, OneBook needs the arrays to be accurate for renderReceivablesTable()
+                    // Let's just reload sales from SQLite!
+                    const allSales = await window.electronAPI.sqlite.sales.getAll();
+                    sales = allSales;
+                    localStorage.setItem('sales', JSON.stringify(allSales));
+                    renderReceivablesTable();
+                } else {
+                    const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
+                    purchases = allPurchases;
+                    localStorage.setItem('purchases', JSON.stringify(allPurchases));
+                    renderPayablesTable();
+                }
+                // END SYNC
 
-            // If cash, update petty cash / day closing
-            if (method === 'cash') {
-                const pcDesc = type === 'sale' ? `Sale Collection - ${invoice}` : `Purchase Payment - ${invoice}`;
-                const pcType = type === 'sale' ? 'income' : 'expense';
-                const pcCat = type === 'sale' ? 'Customer Payment' : 'Purchase';
-                
-                try {
-                    let pcTransactions = JSON.parse(localStorage.getItem('pettyCashTransactions') || '[]');
-                    let transaction = {
-                        id: Date.now().toString(),
-                        date: date,
-                        type: pcType,
-                        amount: amount,
-                        description: pcDesc,
-                        remarks: notes,
-                        timestamp: Date.now(),
-                        account: 'cash',
-                        category: pcCat,
-                        voucherNo: 'V-' + Math.floor(Math.random() * 1000000) // simplified
-                    };
-                    pcTransactions.push(transaction);
-                    localStorage.setItem('pettyCashTransactions', JSON.stringify(pcTransactions));
-                    if (typeof calculatePCBalances === 'function') {
-                        calculatePCBalances();
-                        renderPCLedger();
-                    }
-                } catch(e) { console.error("Petty cash integration error", e); }
-            }
+                // If cash, update petty cash / day closing (UNCHANGED BEHAVIOUR)
+                if (method === 'cash') {
+                    const pcDesc = type === 'sale' ? `Sale Collection - ${invoice}` : `Purchase Payment - ${invoice}`;
+                    const pcType = type === 'sale' ? 'income' : 'expense';
+                    const pcCat = type === 'sale' ? 'Customer Payment' : 'Purchase';
+                    
+                    try {
+                        let pcTransactions = JSON.parse(localStorage.getItem('pettyCashTransactions') || '[]');
+                        let transaction = {
+                            id: Date.now().toString(),
+                            date: date,
+                            type: pcType,
+                            amount: amount,
+                            description: pcDesc,
+                            remarks: notes,
+                            timestamp: Date.now(),
+                            account: 'cash',
+                            category: pcCat,
+                            voucherNo: 'V-' + Math.floor(Math.random() * 1000000)
+                        };
+                        pcTransactions.push(transaction);
+                        localStorage.setItem('pettyCashTransactions', JSON.stringify(pcTransactions));
+                        if (typeof calculatePCBalances === 'function') {
+                            calculatePCBalances();
+                            renderPCLedger();
+                        }
+                    } catch(e) { console.error("Petty cash integration error", e); }
+                }
 
-            showAlert('Payment recorded successfully!', '✅');
-            openPaymentModal(type, invoice); // Refresh modal
+                showAlert('Payment recorded successfully!', '✅');
+                openPaymentModal(type, invoice); // Refresh modal
+            } catch (err) {
+                showAlert('Error recording payment', 'error');
+            }
         }
 
-        function deletePayment(index) {
-            if (!confirm('Are you sure you want to delete this payment? This will increase the outstanding amount.')) return;
+        async function deletePayment(index) {
+            if (!confirm('Are you sure you want to cancel this payment? This will increase the outstanding amount.')) return;
             
             const type = document.getElementById('pm-ctx-type').value;
             const invoice = document.getElementById('pm-ctx-invoice').value;
             
-            let total = 0;
-            let currentPaid = 0;
-            let history = [];
+            // To get the ID, we must fetch the history from SQLite (it's sorted newest first in UI)
+            let paymentIdToCancel = null;
+            let deletedPayment = null;
             
-            if (type === 'sale') {
-                const saleItems = sales.filter(s => s.receiptNumber === invoice);
-                total = saleItems.reduce((sum, s) => sum + (s.total || (s.subtotal + s.totalTax)), 0);
-                history = [...(saleItems[0].paymentHistory || [])];
-            } else {
-                const p = purchases.find(p => p.invoiceNumber === invoice);
-                total = p.totalAmount || 0;
-                history = [...(p.paymentHistory || [])];
-            }
-
-            // Sort history to match UI so we delete the right one
-            history.sort((a,b) => new Date(b.date) - new Date(a.date));
-            const deletedPayment = history.splice(index, 1)[0];
-            
-            // Recalculate
-            currentPaid = history.reduce((sum, h) => sum + parseFloat(h.amount), 0);
-            const newOutstanding = total - currentPaid;
-            
-            let newStatus = 'unpaid';
-            if (newOutstanding <= 0.01) {
-                newStatus = 'fully_paid';
-            } else if (currentPaid > 0) {
-                newStatus = 'partially_paid';
-            }
-
-            // Update Database
-            if (type === 'sale') {
-                let savedSales = JSON.parse(localStorage.getItem('sales')) || [];
-                sales.forEach(s => {
-                    if (s.receiptNumber === invoice) {
-                        s.amountPaid = currentPaid;
-                        s.outstandingAmount = newOutstanding;
-                        s.paymentStatus = newStatus;
-                        s.paymentHistory = history;
-                    }
-                });
-                savedSales.forEach(s => {
-                    if (s.receiptNumber === invoice) {
-                        s.amountPaid = currentPaid;
-                        s.outstandingAmount = newOutstanding;
-                        s.paymentStatus = newStatus;
-                        s.paymentHistory = history;
-                    }
-                });
-                localStorage.setItem('sales', JSON.stringify(savedSales));
-                renderReceivablesTable();
-            } else {
-                let savedPurchases = JSON.parse(localStorage.getItem('purchases')) || [];
-                purchases.forEach(p => {
-                    if (p.invoiceNumber === invoice) {
-                        p.amountPaid = currentPaid;
-                        p.outstandingAmount = newOutstanding;
-                        p.paymentStatus = newStatus;
-                        p.paymentHistory = history;
-                    }
-                });
-                savedPurchases.forEach(p => {
-                    if (p.invoiceNumber === invoice) {
-                        p.amountPaid = currentPaid;
-                        p.outstandingAmount = newOutstanding;
-                        p.paymentStatus = newStatus;
-                        p.paymentHistory = history;
-                    }
-                });
-                localStorage.setItem('purchases', JSON.stringify(savedPurchases));
-                renderPayablesTable();
-            }
-
-            // If cash, update petty cash / day closing (revert)
-            if (deletedPayment.method === 'cash') {
-                const pcDesc = type === 'sale' ? `Revert Sale Collection - ${invoice}` : `Revert Purchase Payment - ${invoice}`;
-                const pcType = type === 'sale' ? 'expense' : 'income'; // inverted for reverting
-                const pcCat = type === 'sale' ? 'Customer Refund' : 'Refund Received';
+            try {
+                if (type === 'sale') {
+                    // Need to find sale_id first
+                    const existingSale = await window.electronAPI.sqlite.sales.search(invoice);
+                    const exactSale = existingSale && Array.isArray(existingSale) ? existingSale.find(s => s.receipt_number === invoice) : null;
+                    if (!exactSale) return showAlert('Sale not found', 'error');
+                    
+                    const history = await window.electronAPI.sqlite.payments.getSalePayments(exactSale.id);
+                    // UI sorts it: newest first. Service already returns ORDER BY date DESC, id DESC
+                    if (!history || history.length <= index) return showAlert('Payment not found in history', 'error');
+                    
+                    paymentIdToCancel = history[index].id;
+                    const res = await window.electronAPI.sqlite.payments.cancelSalePayment(paymentIdToCancel);
+                    if (!res.success) return showAlert('Error cancelling payment: ' + res.error, 'error');
+                    deletedPayment = res.result.payment;
+                    
+                    // Sync
+                    const allSales = await window.electronAPI.sqlite.sales.getAll();
+                    sales = allSales;
+                    localStorage.setItem('sales', JSON.stringify(allSales));
+                    renderReceivablesTable();
+                } else if (type === 'purchase') {
+                    const existingPurchase = await window.electronAPI.sqlite.purchases.search(invoice);
+                    const exactPurchase = existingPurchase && Array.isArray(existingPurchase) ? existingPurchase.find(p => p.invoice_number === invoice) : null;
+                    if (!exactPurchase) return showAlert('Purchase not found', 'error');
+                    
+                    const history = await window.electronAPI.sqlite.payments.getPurchasePayments(exactPurchase.id);
+                    if (!history || history.length <= index) return showAlert('Payment not found in history', 'error');
+                    
+                    paymentIdToCancel = history[index].id;
+                    const res = await window.electronAPI.sqlite.payments.cancelPurchasePayment(paymentIdToCancel);
+                    if (!res.success) return showAlert('Error cancelling payment: ' + res.error, 'error');
+                    deletedPayment = res.result.payment;
+                    
+                    // Sync
+                    const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
+                    purchases = allPurchases;
+                    localStorage.setItem('purchases', JSON.stringify(allPurchases));
+                    renderPayablesTable();
+                }
                 
-                try {
-                    let pcTransactions = JSON.parse(localStorage.getItem('pettyCashTransactions') || '[]');
-                    let transaction = {
-                        id: Date.now().toString(),
-                        date: new Date().toISOString().split('T')[0],
-                        type: pcType,
-                        amount: parseFloat(deletedPayment.amount),
-                        description: pcDesc,
-                        remarks: 'Reverted',
-                        timestamp: Date.now(),
-                        account: 'cash',
-                        category: pcCat,
-                        voucherNo: 'V-' + Math.floor(Math.random() * 1000000) // simplified
-                    };
-                    pcTransactions.push(transaction);
-                    localStorage.setItem('pettyCashTransactions', JSON.stringify(pcTransactions));
-                    if (typeof calculatePCBalances === 'function') {
-                        calculatePCBalances();
-                        renderPCLedger();
-                    }
-                } catch(e) { console.error("Petty cash integration error", e); }
-            }
+                // If cash, update petty cash / day closing (revert) - UNCHANGED BEHAVIOUR
+                if (deletedPayment && deletedPayment.method === 'cash') {
+                    const pcDesc = type === 'sale' ? `Revert Sale Collection - ${invoice}` : `Revert Purchase Payment - ${invoice}`;
+                    const pcType = type === 'sale' ? 'expense' : 'income'; // inverted for reverting
+                    const pcCat = type === 'sale' ? 'Customer Refund' : 'Refund Received';
+                    
+                    try {
+                        let pcTransactions = JSON.parse(localStorage.getItem('pettyCashTransactions') || '[]');
+                        let transaction = {
+                            id: Date.now().toString(),
+                            date: new Date().toISOString().split('T')[0],
+                            type: pcType,
+                            amount: parseFloat(deletedPayment.amount),
+                            description: pcDesc,
+                            remarks: 'Reverted',
+                            timestamp: Date.now(),
+                            account: 'cash',
+                            category: pcCat,
+                            voucherNo: 'V-' + Math.floor(Math.random() * 1000000)
+                        };
+                        pcTransactions.push(transaction);
+                        localStorage.setItem('pettyCashTransactions', JSON.stringify(pcTransactions));
+                        if (typeof calculatePCBalances === 'function') {
+                            calculatePCBalances();
+                            renderPCLedger();
+                        }
+                    } catch(e) { console.error("Petty cash integration error", e); }
+                }
 
-            showAlert('Payment deleted.', '🗑️');
-            openPaymentModal(type, invoice); // Refresh modal
+                showAlert('Payment cancelled.', '🗑️');
+                openPaymentModal(type, invoice); // Refresh modal
+            } catch (err) {
+                showAlert('Error processing cancellation', 'error');
+            }
         }
 
         document.addEventListener('click', function(e) {
@@ -24007,7 +23934,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('ledgerPaymentModal').style.display = 'none';
         }
 
-        function saveLedgerPayment() {
+        async function saveLedgerPayment() {
             if (!requireLicensedForWrite('saving a ledger payment')) return;
             const partyId = document.getElementById('lp-party-id').value;
             const partyType = document.getElementById('lp-party-type').value;
@@ -24022,24 +23949,35 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            let partyPayments = JSON.parse(localStorage.getItem('partyPayments')) || [];
-            
-            partyPayments.push({
-                id: Date.now().toString(),
-                partyId,
-                partyType,
-                date: new Date(date).toISOString(),
-                amount,
-                method,
-                reference,
-                notes
-            });
+            try {
+                const data = {
+                    partyId: partyId,
+                    partyType: partyType,
+                    date: new Date(date).toISOString(),
+                    amount: amount,
+                    method: method,
+                    reference: reference,
+                    notes: notes
+                };
+                
+                const res = await window.electronAPI.sqlite.payments.createLedgerPayment(data);
+                if (!res.success) return showAlert('Error creating ledger payment: ' + res.error, 'error');
 
-            localStorage.setItem('partyPayments', JSON.stringify(partyPayments));
-            
-            closeLedgerPaymentModal();
-            showAlert('Account Payment Recorded Successfully!', '✅');
-            generatePartyLedgerData(); // Refresh the ledger view immediately
+                // SQLITE COMPATIBILITY - SYNC FOR REPORTS
+                const allLedgerPayments = await window.electronAPI.sqlite.payments.getLedgerPayments();
+                partyPayments = allLedgerPayments;
+                localStorage.setItem('partyPayments', JSON.stringify(allLedgerPayments));
+                // END SYNC
+
+                closeLedgerPaymentModal();
+                showAlert('Account Payment Recorded Successfully!', '✅');
+                
+                if (typeof generatePartyLedgerData === 'function') {
+                    generatePartyLedgerData(); // Refresh the ledger view immediately
+                }
+            } catch (err) {
+                showAlert('Error recording ledger payment', 'error');
+            }
         }
 
         function printLedger() {
