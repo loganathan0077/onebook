@@ -1,4 +1,5 @@
 const dbManager = require('../database');
+const cashBankService = require('./cashBankService');
 const stockService = require('./stockService');
 
 class SalesService {
@@ -49,7 +50,7 @@ class SalesService {
             const gst_applied = saleData.gstApplied ? 1 : 0;
             
             const payment_status = saleData.paymentStatus || 'fully_paid';
-            const amount_paid = saleData.amountPaid || saleData.total || 0;
+            const amount_paid = saleData.amountPaid !== undefined ? parseFloat(saleData.amountPaid) : (saleData.payment_method === 'credit' ? 0 : (saleData.total || 0));
             const outstanding_amount = saleData.outstandingAmount || 0;
             const due_date = saleData.dueDate || null;
             
@@ -93,9 +94,25 @@ class SalesService {
                     item.quantity, item.price, item.discount || 0, item.total,
                     item.taxableValue || 0, item.cgst || 0, item.sgst || 0, item.igst || 0
                 );
-                stockService.adjustStock(item.variant_id, -item.quantity, 'SALE', 'SALE', saleId, saleData.date);
+                stockService.adjustStock(item.product_id, item.variant_id, -item.quantity, 'SALE', 'SALE', saleId, saleData.date);
             }
             
+            // Record Cash / Bank movement for immediate payment
+            if (amount_paid > 0 && saleData.payment_method !== 'credit') {
+                if (cash_amount > 0) {
+                    cashBankService.recordPaymentMovement('cash', 'IN', cash_amount, saleId, 'SALE', 'Sale Cash Receipt #' + receiptNum, saleData.date, 'cash', receiptNum);
+                }
+                if (other_payment_amount > 0) {
+                    const otherMethod = (saleData.payment_method === 'cash') ? 'upi' : (saleData.payment_method || 'bank');
+                    cashBankService.recordPaymentMovement('bank', 'IN', other_payment_amount, saleId, 'SALE', 'Sale Bank/UPI Receipt #' + receiptNum, saleData.date, otherMethod, receiptNum);
+                }
+                if (cash_amount <= 0 && other_payment_amount <= 0) {
+                    const method = (saleData.payment_method || 'cash').toLowerCase();
+                    const accType = (method === 'cash') ? 'cash' : 'bank';
+                    cashBankService.recordPaymentMovement(accType, 'IN', amount_paid, saleId, 'SALE', 'Sale Receipt #' + receiptNum, saleData.date, method, receiptNum);
+                }
+            }
+
             if (testFailure) {
                 let err = new Error("TEST_FAILURE_ROLLBACK");
                 err.code = "DATABASE_ERROR";
@@ -178,11 +195,12 @@ class SalesService {
                         err.code = 'VARIANT_PRODUCT_MISMATCH';
                         throw err;
                     }
-                    stockService.adjustStock(item.variant_id, item.quantity, 'SALE_CANCELLED', 'SALE', saleId);
+                    stockService.adjustStock(item.product_id, item.variant_id, item.quantity, 'SALE_CANCELLED', 'SALE', saleId);
                 }
             }
 
             db.prepare("UPDATE sales SET status = 'CANCELLED' WHERE id = ?").run(saleId);
+            cashBankService.cancelLinkedMovement('SALE', saleId);
             db.prepare('INSERT INTO audit_log (action, record_type, record_id) VALUES (?, ?, ?)').run('SALE_CANCELLED', 'SALE', saleId);
             
             return true;

@@ -724,10 +724,17 @@ app.on('window-all-closed', () => {
 
 // --- SQLITE IPC HANDLERS ---
 const productService = require('./services/productService');
-const salesService = require('./services/salesService');\nconst purchaseService = require('./services/purchaseService');
+const salesService = require('./services/salesService');
+const purchaseService = require('./services/purchaseService');
 const supplierService = require('./services/supplierService');
 const purchaseOrderService = require('./services/purchaseOrderService');
 const paymentService = require('./services/paymentService');
+const cashBankService = require('./services/cashBankService');
+const pettyCashService = require('./services/pettyCashService');
+const dayClosingService = require('./services/dayClosingService');
+const calculatorService = require('./services/calculatorService');
+const reportService = require('./services/reportService');
+const dashboardService = require('./services/dashboardService');
 const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
 
@@ -738,16 +745,14 @@ async function handleSqlite(event, handlerFn) {
         return { success: true, data: result };
     } catch (e) {
         console.error('SQLite IPC Error:', e);
-        // Map structured errors if present
         if (e.code) {
             return { success: false, error: { code: e.code, message: e.message } };
         }
         if (e.message && e.message.includes('Insufficient stock')) {
             return { success: false, error: { code: 'INSUFFICIENT_STOCK', message: e.message } };
         }
-        return { success: false, error: { code: 'DATABASE_ERROR', message: 'The operation could not be completed.', technicalDetails: e.message } };
+        return { success: false, error: { code: 'DATABASE_ERROR', message: e.message || 'The operation could not be completed.' } };
     }
-}
 }
 
 // Products
@@ -777,4 +782,82 @@ ipcMain.handle('sqlite:sales:getAll', (e, dateStr) => handleSqlite(e, () => sale
 ipcMain.handle('sqlite:sales:search', (e, query) => handleSqlite(e, () => salesService.searchSales(query)));
 ipcMain.handle('sqlite:sales:get', (e, id) => handleSqlite(e, () => salesService.getSaleById(id)));
 ipcMain.handle('sqlite:sales:cancel', (e, id) => handleSqlite(e, () => salesService.cancelSale(id)));
-// Note: sales.getAll and sales.get would need to be in salesService. Skipping for now if not implemented.
+
+// Purchases
+ipcMain.handle('sqlite:purchases:create', (e, data) => handleSqlite(e, () => purchaseService.createPurchase(data)));
+ipcMain.handle('sqlite:purchases:getAll', (e, dateStr) => handleSqlite(e, () => purchaseService.getPurchases(dateStr)));
+ipcMain.handle('sqlite:purchases:search', (e, query) => handleSqlite(e, () => purchaseService.searchPurchases(query)));
+ipcMain.handle('sqlite:purchases:get', (e, id) => handleSqlite(e, () => purchaseService.getPurchaseById(id)));
+ipcMain.handle('sqlite:purchases:cancel', (e, id) => handleSqlite(e, () => purchaseService.cancelPurchase(id)));
+
+// Suppliers
+ipcMain.handle('sqlite:suppliers:getAll', (e) => handleSqlite(e, () => supplierService.getSuppliers()));
+ipcMain.handle('sqlite:suppliers:get', (e, id) => handleSqlite(e, () => supplierService.getSupplier(id)));
+ipcMain.handle('sqlite:suppliers:create', (e, data) => handleSqlite(e, () => supplierService.createSupplier(data)));
+ipcMain.handle('sqlite:suppliers:update', (e, id, data) => handleSqlite(e, () => supplierService.updateSupplier(id, data)));
+ipcMain.handle('sqlite:suppliers:archive', (e, id) => handleSqlite(e, () => supplierService.archiveSupplier(id)));
+ipcMain.handle('sqlite:suppliers:search', (e, query) => handleSqlite(e, () => supplierService.searchSuppliers(query)));
+
+// Purchase Orders
+ipcMain.handle('sqlite:purchaseOrders:create', (e, data) => handleSqlite(e, () => purchaseOrderService.createPO(data)));
+ipcMain.handle('sqlite:purchaseOrders:update', (e, id, data) => handleSqlite(e, () => purchaseOrderService.updatePO(id, data)));
+ipcMain.handle('sqlite:purchaseOrders:getAll', (e) => handleSqlite(e, () => purchaseOrderService.getPOs()));
+ipcMain.handle('sqlite:purchaseOrders:get', (e, id) => handleSqlite(e, () => purchaseOrderService.getPO(id)));
+ipcMain.handle('sqlite:purchaseOrders:search', (e, query) => handleSqlite(e, () => purchaseOrderService.searchPOs(query)));
+ipcMain.handle('sqlite:purchaseOrders:cancel', (e, id) => handleSqlite(e, () => purchaseOrderService.cancelPO(id)));
+ipcMain.handle('sqlite:purchaseOrders:receive', (e, id) => handleSqlite(e, () => purchaseOrderService.receivePO(id)));
+
+// Payments
+ipcMain.handle('sqlite:payments:getSalePayments', (e, saleId) => handleSqlite(e, () => paymentService.getSalePayments(saleId)));
+ipcMain.handle('sqlite:payments:createSalePayment', (e, data) => handleSqlite(e, () => paymentService.createSalePayment(data)));
+ipcMain.handle('sqlite:payments:cancelSalePayment', (e, id) => handleSqlite(e, () => paymentService.cancelSalePayment(id)));
+ipcMain.handle('sqlite:payments:getPurchasePayments', (e, purchaseId) => handleSqlite(e, () => paymentService.getPurchasePayments(purchaseId)));
+ipcMain.handle('sqlite:payments:createPurchasePayment', (e, data) => handleSqlite(e, () => paymentService.createPurchasePayment(data)));
+ipcMain.handle('sqlite:payments:cancelPurchasePayment', (e, id) => handleSqlite(e, () => paymentService.cancelPurchasePayment(id)));
+ipcMain.handle('sqlite:payments:getLedgerPayments', (e) => handleSqlite(e, () => paymentService.getLedgerPayments()));
+ipcMain.handle('sqlite:payments:createLedgerPayment', (e, data) => handleSqlite(e, () => paymentService.createLedgerPayment(data)));
+
+// Cash & Bank (Phase 4E.11)
+ipcMain.handle('sqlite:cashBank:getCashSummary', (e) => handleSqlite(e, () => cashBankService.getCashSummary()));
+ipcMain.handle('sqlite:cashBank:getBankSummary', (e) => handleSqlite(e, () => cashBankService.getBankSummary()));
+ipcMain.handle('sqlite:cashBank:getTransactions', (e, accountType, filters) => handleSqlite(e, () => cashBankService.getTransactions(accountType, filters)));
+ipcMain.handle('sqlite:cashBank:getTransaction', (e, id, accountType) => handleSqlite(e, () => cashBankService.getTransaction(id, accountType)));
+ipcMain.handle('sqlite:cashBank:createTransaction', (e, data) => handleSqlite(e, () => cashBankService.createTransaction(data)));
+ipcMain.handle('sqlite:cashBank:updateTransaction', (e, id, data) => handleSqlite(e, () => cashBankService.updateTransaction(id, data)));
+ipcMain.handle('sqlite:cashBank:cancelTransaction', (e, id, accountType) => handleSqlite(e, () => cashBankService.cancelTransaction(id, accountType)));
+ipcMain.handle('sqlite:cashBank:getOpeningBalance', (e, accountType) => handleSqlite(e, () => cashBankService.getOpeningBalance(accountType)));
+ipcMain.handle('sqlite:cashBank:setOpeningBalance', (e, accountType, amount) => handleSqlite(e, () => cashBankService.setOpeningBalance(accountType, amount)));
+ipcMain.handle('sqlite:cashBank:transfer', (e, data) => handleSqlite(e, () => cashBankService.transfer(data)));
+
+// Petty Cash (Phase 4E.12)
+ipcMain.handle('sqlite:pettyCash:getSummary', (e) => handleSqlite(e, () => pettyCashService.getSummary()));
+ipcMain.handle('sqlite:pettyCash:getOpeningBalances', (e) => handleSqlite(e, () => pettyCashService.getOpeningBalances()));
+ipcMain.handle('sqlite:pettyCash:setOpeningBalances', (e, cash, bank) => handleSqlite(e, () => pettyCashService.setOpeningBalances(cash, bank)));
+ipcMain.handle('sqlite:pettyCash:getCategories', (e) => handleSqlite(e, () => pettyCashService.getCategories()));
+ipcMain.handle('sqlite:pettyCash:saveCategories', (e, cats) => handleSqlite(e, () => pettyCashService.saveCategories(cats)));
+ipcMain.handle('sqlite:pettyCash:getTransactions', (e, filters) => handleSqlite(e, () => pettyCashService.getTransactions(filters)));
+ipcMain.handle('sqlite:pettyCash:getTransaction', (e, id) => handleSqlite(e, () => pettyCashService.getTransaction(id)));
+ipcMain.handle('sqlite:pettyCash:createTransaction', (e, data) => handleSqlite(e, () => pettyCashService.createTransaction(data)));
+ipcMain.handle('sqlite:pettyCash:updateTransaction', (e, id, data) => handleSqlite(e, () => pettyCashService.updateTransaction(id, data)));
+ipcMain.handle('sqlite:pettyCash:deleteTransaction', (e, id) => handleSqlite(e, () => pettyCashService.deleteTransaction(id)));
+ipcMain.handle('sqlite:pettyCash:cancelTransaction', (e, id) => handleSqlite(e, () => pettyCashService.cancelTransaction(id)));
+
+// Day Closing (Phase 4E.13)
+ipcMain.handle('sqlite:dayClosing:getAll', (e, filters) => handleSqlite(e, () => dayClosingService.getAllClosings(filters)));
+ipcMain.handle('sqlite:dayClosing:get', (e, id) => handleSqlite(e, () => dayClosingService.getClosing(id)));
+ipcMain.handle('sqlite:dayClosing:getByDate', (e, dateStr) => handleSqlite(e, () => dayClosingService.getClosingByDate(dateStr)));
+ipcMain.handle('sqlite:dayClosing:save', (e, data) => handleSqlite(e, () => dayClosingService.saveClosing(data)));
+ipcMain.handle('sqlite:dayClosing:delete', (e, id) => handleSqlite(e, () => dayClosingService.deleteClosing(id)));
+
+// Calculator (Phase 4E.14)
+ipcMain.handle('sqlite:calculator:getHistory', (e) => handleSqlite(e, () => calculatorService.getHistory()));
+ipcMain.handle('sqlite:calculator:saveHistory', (e, expression, result) => handleSqlite(e, () => calculatorService.saveHistory(expression, result)));
+ipcMain.handle('sqlite:calculator:deleteHistory', (e, id) => handleSqlite(e, () => calculatorService.deleteHistory(id)));
+ipcMain.handle('sqlite:calculator:clearAllHistory', (e) => handleSqlite(e, () => calculatorService.clearAllHistory()));
+
+// Reports (Phase 4E.15)
+ipcMain.handle('sqlite:reports:getReportSales', (e, filters) => handleSqlite(e, () => reportService.getReportSales(filters)));
+ipcMain.handle('sqlite:reports:getSummary', (e, filters) => handleSqlite(e, () => reportService.getCustomReportSummary(filters)));
+
+// Dashboard (Phase 4E.17)
+ipcMain.handle('sqlite:dashboard:getMetrics', (e, options) => handleSqlite(e, () => dashboardService.getDashboardMetrics(options)));

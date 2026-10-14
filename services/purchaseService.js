@@ -1,4 +1,5 @@
 const dbManager = require('../database');
+const cashBankService = require('./cashBankService');
 const stockService = require('./stockService');
 
 class PurchaseService {
@@ -101,6 +102,13 @@ class PurchaseService {
                 stockService.adjustStock(item.productId, item.variantId, qtyToAdd, 'PURCHASE', 'PURCHASE', purchaseId, date);
             }
             
+            // Record Cash / Bank movement for immediate payment
+            if (amount_paid > 0) {
+                const method = (payment_method || 'cash').toLowerCase();
+                const accType = (method === 'cash') ? 'cash' : 'bank';
+                cashBankService.recordPaymentMovement(accType, 'OUT', amount_paid, purchaseId, 'PURCHASE', 'Purchase Payment #' + invoiceNum, date, method, invoiceNum);
+            }
+
             if (testFailure) {
                 let err = new Error("TEST_FAILURE_ROLLBACK");
                 err.code = "DATABASE_ERROR";
@@ -186,6 +194,7 @@ class PurchaseService {
             }
 
             db.prepare("UPDATE purchases SET status = 'CANCELLED' WHERE id = ?").run(purchaseId);
+            cashBankService.cancelLinkedMovement('PURCHASE', purchaseId);
             db.prepare('INSERT INTO audit_log (action, record_type, record_id) VALUES (?, ?, ?)').run('PURCHASE_CANCELLED', 'PURCHASE', purchaseId);
             
             return true;

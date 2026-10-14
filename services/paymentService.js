@@ -1,4 +1,5 @@
 const dbManager = require('../database');
+const cashBankService = require('./cashBankService');
 
 class PaymentService {
     // -------------------------------------------------------------
@@ -56,6 +57,11 @@ class PaymentService {
             );
             const paymentId = result.lastInsertRowid;
 
+            const method = (data.method || 'cash').toLowerCase();
+            const accType = (method === 'cash') ? 'cash' : 'bank';
+            const desc = 'Customer Payment - Sale #' + (sale.receipt_number || saleId);
+            cashBankService.recordPaymentMovement(accType, 'IN', amount, paymentId, 'PAYMENT', desc, data.date, method, data.reference || '');
+
             if (testFailure === 'AFTER_INSERT') throw new Error('TEST_FAILURE_AFTER_INSERT');
 
             // Update Sale
@@ -96,6 +102,7 @@ class PaymentService {
 
             // Cancel payment
             db.prepare("UPDATE payments SET status = 'CANCELLED' WHERE id = ?").run(paymentId);
+            cashBankService.cancelLinkedMovement('PAYMENT', paymentId);
 
             // Recalculate sale totals
             const existingPayments = db.prepare("SELECT sum(amount) as totalPaid FROM payments WHERE sale_id = ? AND status != 'CANCELLED'").get(sale.id);
@@ -176,6 +183,11 @@ class PaymentService {
             );
             const paymentId = result.lastInsertRowid;
 
+            const method = (data.method || 'cash').toLowerCase();
+            const accType = (method === 'cash') ? 'cash' : 'bank';
+            const desc = 'Supplier Payment - Purchase #' + (purchase.invoice_number || purchaseId);
+            cashBankService.recordPaymentMovement(accType, 'OUT', amount, paymentId, 'PARTY_PAYMENT', desc, data.date, method, data.reference || '');
+
             if (testFailure === 'AFTER_INSERT') throw new Error('TEST_FAILURE_AFTER_INSERT');
 
             // Update Purchase
@@ -216,6 +228,7 @@ class PaymentService {
 
             // Cancel payment
             db.prepare("UPDATE party_payments SET status = 'CANCELLED' WHERE id = ?").run(paymentId);
+            cashBankService.cancelLinkedMovement('PARTY_PAYMENT', paymentId);
 
             // Recalculate purchase totals
             const existingPayments = db.prepare("SELECT sum(amount) as totalPaid FROM party_payments WHERE purchase_id = ? AND status != 'CANCELLED'").get(purchase.id);
@@ -274,6 +287,10 @@ class PaymentService {
                 const res = insert.run(data.partyId, amount, data.method || 'cash', data.reference || '', data.notes || '', data.date);
                 paymentId = res.lastInsertRowid;
                 db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PAYMENT', ?)").run('LEDGER_PAYMENT_CREATED', paymentId);
+                const method = (data.method || 'cash').toLowerCase();
+                const accType = (method === 'cash') ? 'cash' : 'bank';
+                const desc = 'Ledger Payment (Customer ' + data.partyId + ')' + (data.notes ? ' - ' + data.notes : '');
+                cashBankService.recordPaymentMovement(accType, 'IN', amount, paymentId, 'PAYMENT', desc, data.date, method, data.reference || '');
             } else if (data.partyType === 'supplier') {
                 const insert = db.prepare(`
                     INSERT INTO party_payments (supplier_id, purchase_id, amount, method, reference, notes, date, status)
@@ -282,6 +299,10 @@ class PaymentService {
                 const res = insert.run(data.partyId, amount, data.method || 'cash', data.reference || '', data.notes || '', data.date);
                 paymentId = res.lastInsertRowid;
                 db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PARTY_PAYMENT', ?)").run('LEDGER_PAYMENT_CREATED', paymentId);
+                const method = (data.method || 'cash').toLowerCase();
+                const accType = (method === 'cash') ? 'cash' : 'bank';
+                const desc = 'Ledger Payment (Supplier ' + data.partyId + ')' + (data.notes ? ' - ' + data.notes : '');
+                cashBankService.recordPaymentMovement(accType, 'OUT', amount, paymentId, 'PARTY_PAYMENT', desc, data.date, method, data.reference || '');
             } else {
                 throw new Error('INVALID_PARTY_TYPE');
             }

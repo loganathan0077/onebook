@@ -368,6 +368,73 @@ function createSchema() {
         db.exec('ALTER TABLE customers ADD COLUMN opening_balance REAL DEFAULT 0');
     }
 
+    // Runtime column migration for cash_transactions & bank_transactions (Phase 4E.11)
+    const cashCols = db.prepare('PRAGMA table_info(cash_transactions)').all().map(c => c.name);
+    if (!cashCols.includes('payment_method')) db.exec('ALTER TABLE cash_transactions ADD COLUMN payment_method TEXT');
+    if (!cashCols.includes('reference_number')) db.exec('ALTER TABLE cash_transactions ADD COLUMN reference_number TEXT');
+    if (!cashCols.includes('category')) db.exec('ALTER TABLE cash_transactions ADD COLUMN category TEXT');
+    if (!cashCols.includes('created_at')) db.exec('ALTER TABLE cash_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+    const bankCols = db.prepare('PRAGMA table_info(bank_transactions)').all().map(c => c.name);
+    if (!bankCols.includes('payment_method')) db.exec('ALTER TABLE bank_transactions ADD COLUMN payment_method TEXT');
+    if (!bankCols.includes('reference_number')) db.exec('ALTER TABLE bank_transactions ADD COLUMN reference_number TEXT');
+    if (!bankCols.includes('category')) db.exec('ALTER TABLE bank_transactions ADD COLUMN category TEXT');
+    if (!bankCols.includes('created_at')) db.exec('ALTER TABLE bank_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+    // Runtime column migration for petty_cash_transactions (Phase 4E.12)
+    const pcCols = db.prepare('PRAGMA table_info(petty_cash_transactions)').all().map(c => c.name);
+    if (!pcCols.includes('original_id')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN original_id TEXT');
+    if (!pcCols.includes('account')) db.exec("ALTER TABLE petty_cash_transactions ADD COLUMN account TEXT DEFAULT 'cash'");
+    if (!pcCols.includes('from_account')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN from_account TEXT');
+    if (!pcCols.includes('to_account')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN to_account TEXT');
+    if (!pcCols.includes('voucher_no')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN voucher_no TEXT');
+    if (!pcCols.includes('remarks')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN remarks TEXT');
+    if (!pcCols.includes('created_at')) db.exec('ALTER TABLE petty_cash_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_pc_date ON petty_cash_transactions(date);
+        CREATE INDEX IF NOT EXISTS idx_pc_voucher ON petty_cash_transactions(voucher_no);
+        CREATE INDEX IF NOT EXISTS idx_pc_orig_id ON petty_cash_transactions(original_id);
+    `);
+
+    // Runtime column migration for day_closings (Phase 4E.13)
+    const dcCols = db.prepare('PRAGMA table_info(day_closings)').all().map(c => c.name);
+    if (!dcCols.includes('original_id')) db.exec('ALTER TABLE day_closings ADD COLUMN original_id TEXT');
+    if (!dcCols.includes('bank_sales')) db.exec('ALTER TABLE day_closings ADD COLUMN bank_sales REAL DEFAULT 0');
+    if (!dcCols.includes('online_sales')) db.exec('ALTER TABLE day_closings ADD COLUMN online_sales REAL DEFAULT 0');
+    if (!dcCols.includes('total_sales')) db.exec('ALTER TABLE day_closings ADD COLUMN total_sales REAL DEFAULT 0');
+    if (!dcCols.includes('denominations_json')) db.exec('ALTER TABLE day_closings ADD COLUMN denominations_json TEXT');
+    if (!dcCols.includes('status')) db.exec('ALTER TABLE day_closings ADD COLUMN status TEXT');
+    if (!dcCols.includes('opening_cash')) db.exec('ALTER TABLE day_closings ADD COLUMN opening_cash REAL DEFAULT 0');
+    if (!dcCols.includes('expected_cash')) db.exec('ALTER TABLE day_closings ADD COLUMN expected_cash REAL DEFAULT 0');
+    if (!dcCols.includes('actual_cash')) db.exec('ALTER TABLE day_closings ADD COLUMN actual_cash REAL DEFAULT 0');
+
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_dc_date ON day_closings(date);
+        CREATE INDEX IF NOT EXISTS idx_dc_orig_id ON day_closings(original_id);
+    `);
+
+    // Calculator History (Phase 4E.14)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS calculator_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_id TEXT,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expression TEXT NOT NULL,
+            result REAL NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_calc_hist_date ON calculator_history(date);
+        CREATE INDEX IF NOT EXISTS idx_calc_hist_orig_id ON calculator_history(original_id);
+    `);
+
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_cash_tx_date ON cash_transactions(date);
+        CREATE INDEX IF NOT EXISTS idx_cash_tx_ref ON cash_transactions(reference_type, reference_id);
+        CREATE INDEX IF NOT EXISTS idx_bank_tx_date ON bank_transactions(date);
+        CREATE INDEX IF NOT EXISTS idx_bank_tx_ref ON bank_transactions(reference_type, reference_id);
+    `);
+
         // Migration Audit Log
     db.exec(`
         CREATE TABLE IF NOT EXISTS migration_audit (
