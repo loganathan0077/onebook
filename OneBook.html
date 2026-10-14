@@ -10282,20 +10282,22 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         async function updateDashboard() {
-            // SQLITE DIRECT INTEGRATION FOR DASHBOARD (Phase 4E.17)
+            const todayEl = document.getElementById('todaySalesAmount');
+            const todayCnt = document.getElementById('todaySalesCount');
+            const weekEl = document.getElementById('weekSalesAmount');
+            const weekCnt = document.getElementById('weekSalesCount');
+            const monthEl = document.getElementById('monthSalesAmount');
+            const monthCnt = document.getElementById('monthSalesCount');
+            const prodEl = document.getElementById('totalProducts');
+            const outEl = document.getElementById('dashboardOutstandingAmount');
+            const alertDiv = document.getElementById('lowStockAlert');
+            const recentTbody = document.getElementById('recentSalesBody');
+
+            // SQLITE DIRECT INTEGRATION FOR DASHBOARD (Phase 4E.17A)
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.dashboard) {
                 try {
                     const metrics = await window.electronAPI.sqlite.dashboard.getMetrics();
                     if (metrics) {
-                        const todayEl = document.getElementById('todaySalesAmount');
-                        const todayCnt = document.getElementById('todaySalesCount');
-                        const weekEl = document.getElementById('weekSalesAmount');
-                        const weekCnt = document.getElementById('weekSalesCount');
-                        const monthEl = document.getElementById('monthSalesAmount');
-                        const monthCnt = document.getElementById('monthSalesCount');
-                        const prodEl = document.getElementById('totalProducts');
-                        const outEl = document.getElementById('dashboardOutstandingAmount');
-
                         if (todayEl) todayEl.textContent = '₹' + Number(metrics.todaySalesAmount || 0).toFixed(2);
                         if (todayCnt) todayCnt.textContent = (metrics.todaySalesCount || 0) + ' transactions';
                         if (weekEl) weekEl.textContent = '₹' + Number(metrics.weekSalesAmount || 0).toFixed(2);
@@ -10311,65 +10313,32 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 } catch (err) {
                     console.error('Failed to load dashboard metrics from SQLite:', err);
+                    // Safe error state: Show visible error rather than calculating fallback from stale legacy arrays
+                    if (todayEl) todayEl.textContent = 'Error';
+                    if (todayCnt) todayCnt.textContent = 'Failed to load';
+                    if (weekEl) weekEl.textContent = 'Error';
+                    if (weekCnt) weekCnt.textContent = 'Failed to load';
+                    if (monthEl) monthEl.textContent = 'Error';
+                    if (monthCnt) monthCnt.textContent = 'Failed to load';
+                    if (prodEl) prodEl.textContent = 'Error';
+                    if (outEl) outEl.textContent = 'Error';
+                    if (alertDiv) alertDiv.innerHTML = '<div class="alert alert-danger">⚠️ Error loading inventory status from database.</div>';
+                    if (recentTbody) recentTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">⚠️ Error loading recent transactions.</td></tr>';
+                    return;
                 }
             }
 
-            // Fallback for legacy environment if SQLite API unavailable
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const weekStart = new Date(today);
-            const dayOfWeek = weekStart.getDay();
-            const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            weekStart.setDate(today.getDate() - diffToMonday);
-
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-            const todaySales = (sales || []).filter(sale => {
-                const saleDate = new Date(sale.date);
-                saleDate.setHours(0, 0, 0, 0);
-                return saleDate.getTime() === today.getTime();
-            });
-
-            const weekSales = (sales || []).filter(sale => {
-                const saleDate = new Date(sale.date);
-                return saleDate >= weekStart;
-            });
-
-            const monthSales = (sales || []).filter(sale => {
-                const saleDate = new Date(sale.date);
-                return saleDate >= monthStart;
-            });
-
-            const todayEl = document.getElementById('todaySalesAmount');
-            const todayCnt = document.getElementById('todaySalesCount');
-            const weekEl = document.getElementById('weekSalesAmount');
-            const weekCnt = document.getElementById('weekSalesCount');
-            const monthEl = document.getElementById('monthSalesAmount');
-            const monthCnt = document.getElementById('monthSalesCount');
-            const prodEl = document.getElementById('totalProducts');
-            const outEl = document.getElementById('dashboardOutstandingAmount');
-
-            if (todayEl) todayEl.textContent = '₹' + calculateNetTotal(todaySales).toFixed(2);
-            if (todayCnt) todayCnt.textContent = new Set(todaySales.map(s => s.saleId)).size + ' transactions';
-
-            if (weekEl) weekEl.textContent = '₹' + calculateNetTotal(weekSales).toFixed(2);
-            if (weekCnt) weekCnt.textContent = new Set(weekSales.map(s => s.saleId)).size + ' transactions';
-
-            if (monthEl) monthEl.textContent = '₹' + calculateNetTotal(monthSales).toFixed(2);
-            if (monthCnt) monthCnt.textContent = new Set(monthSales.map(s => s.saleId)).size + ' transactions';
-
-            if (prodEl) prodEl.textContent = (products || []).length;
-
-            let totalOutstanding = 0;
-            (customers || []).forEach(c => {
-                const bal = calculatePartyLedgerBalance(c, 'customer').balance;
-                totalOutstanding += bal;
-            });
-            if (outEl) outEl.textContent = '₹' + totalOutstanding.toFixed(2);
-
-            updateLowStockAlert();
-            updateRecentSales();
+            // If SQLite API is missing completely (e.g. non-electron browser environment)
+            if (todayEl) todayEl.textContent = 'N/A';
+            if (todayCnt) todayCnt.textContent = 'SQLite API Unavailable';
+            if (weekEl) weekEl.textContent = 'N/A';
+            if (weekCnt) weekCnt.textContent = 'SQLite API Unavailable';
+            if (monthEl) monthEl.textContent = 'N/A';
+            if (monthCnt) monthCnt.textContent = 'SQLite API Unavailable';
+            if (prodEl) prodEl.textContent = 'N/A';
+            if (outEl) outEl.textContent = 'N/A';
+            if (alertDiv) alertDiv.innerHTML = '<div class="alert alert-warning">⚠️ SQLite Database API unavailable in this environment.</div>';
+            if (recentTbody) recentTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6c757d;">Database unavailable</td></tr>';
         }
 
         function updateLowStockAlert(sqliteLowStock) {

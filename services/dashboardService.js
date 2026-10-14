@@ -4,7 +4,14 @@ class DashboardService {
     getDashboardMetrics(options = {}) {
         const db = dbManager.getDatabase();
 
-        const now = options.now ? new Date(options.now) : new Date();
+        let now = new Date();
+        if (options && options.now !== undefined && options.now !== null) {
+            const parsed = new Date(options.now);
+            if (isNaN(parsed.getTime())) {
+                throw new Error("INVALID_DATE_PARAMETER: options.now must be a valid date or timestamp string.");
+            }
+            now = parsed;
+        }
 
         const todayStart = new Date(now);
         todayStart.setHours(0, 0, 0, 0);
