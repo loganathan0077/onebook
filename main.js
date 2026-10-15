@@ -691,7 +691,78 @@ ipcMain.on('focus-window', (event) => {
 
 
 
+
+// --- SQLite Database Lifecycle Management ---
+const dbManager = require('./database');
+
+let sqliteStatus = {
+    initialized: false,
+    path: null,
+    error: null,
+    message: null
+};
+
+function resolveSqlitePath() {
+    // Priority 1: CLI flag (--sqlite-path=...)
+    for (const arg of process.argv) {
+        if (arg.startsWith('--sqlite-path=')) {
+            return arg.split('=')[1].trim();
+        }
+    }
+    // Priority 2: Environment variable
+    if (process.env.ONEBOOK_SQLITE_PATH && process.env.ONEBOOK_SQLITE_PATH.trim()) {
+        return process.env.ONEBOOK_SQLITE_PATH.trim();
+    }
+    // Priority 3: config.json (sqliteDatabasePath)
+    try {
+        const p = getConfigPath();
+        if (fs.existsSync(p)) {
+            const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+            if (data.sqliteDatabasePath && typeof data.sqliteDatabasePath === 'string' && data.sqliteDatabasePath.trim()) {
+                return data.sqliteDatabasePath.trim();
+            }
+        }
+    } catch (e) {
+        console.error('Error reading sqliteDatabasePath from config:', e);
+    }
+    return null;
+}
+
+function initSqliteAtStartup() {
+    const targetPath = resolveSqlitePath();
+    if (!targetPath) {
+        sqliteStatus = {
+            initialized: false,
+            path: null,
+            error: 'SQLITE_NOT_CONFIGURED',
+            message: 'No SQLite database path is configured. Please select an existing database file.'
+        };
+        console.log('[SQLite Startup] No SQLite database configured.');
+        return;
+    }
+
+    try {
+        dbManager.initializeDatabase(targetPath, { allowCreate: false });
+        sqliteStatus = {
+            initialized: true,
+            path: targetPath,
+            error: null,
+            message: null
+        };
+        console.log('[SQLite Startup] Successfully connected to SQLite database at:', targetPath);
+    } catch (e) {
+        sqliteStatus = {
+            initialized: false,
+            path: targetPath,
+            error: e.code || 'DATABASE_INIT_ERROR',
+            message: e.message
+        };
+        console.error('[SQLite Startup Error]:', e.message);
+    }
+}
+
 app.whenReady().then(() => {
+    initSqliteAtStartup();
 
     createWindow();
 
@@ -754,6 +825,62 @@ async function handleSqlite(event, handlerFn) {
         return { success: false, error: { code: 'DATABASE_ERROR', message: e.message || 'The operation could not be completed.' } };
     }
 }
+
+
+// System SQLite status and connection IPC
+ipcMain.handle('sqlite:system:getStatus', () => {
+    return {
+        initialized: sqliteStatus.initialized,
+        path: sqliteStatus.path,
+        error: sqliteStatus.error,
+        message: sqliteStatus.message || null
+    };
+});
+
+ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select SQLite Database File',
+        filters: [
+            { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3'] },
+            { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+    });
+
+    if (canceled || !filePaths || filePaths.length === 0) {
+        return { success: false, error: 'SELECTION_CANCELLED' };
+    }
+
+    const chosenPath = filePaths[0];
+
+    try {
+        if (!dbManager.isDatabaseOpen()) {
+            dbManager.initializeDatabase(chosenPath, { allowCreate: false });
+        } else {
+            return { success: false, error: 'ALREADY_CONNECTED', message: 'A database is already connected. Please restart the app to switch databases.' };
+        }
+
+        // Persist to config.json
+        const p = getConfigPath();
+        let data = {};
+        if (fs.existsSync(p)) {
+            data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        }
+        data.sqliteDatabasePath = chosenPath;
+        fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+
+        sqliteStatus = {
+            initialized: true,
+            path: chosenPath,
+            error: null,
+            message: null
+        };
+
+        return { success: true, path: chosenPath };
+    } catch (e) {
+        return { success: false, error: e.code || 'CONNECTION_FAILED', message: e.message };
+    }
+});
 
 // Products
 ipcMain.handle('sqlite:products:getAll', (e) => handleSqlite(e, () => productService.getProducts()));

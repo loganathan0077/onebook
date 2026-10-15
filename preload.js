@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value)),
 
     sqlite: {
+        system: {
+            getStatus: () => ipcRenderer.invoke('sqlite:system:getStatus'),
+            selectAndConnect: () => ipcRenderer.invoke('sqlite:system:selectAndConnect')
+        },
         products: {
             getAll: () => ipcRenderer.invoke('sqlite:products:getAll'),
             get: (id) => ipcRenderer.invoke('sqlite:products:get', id),

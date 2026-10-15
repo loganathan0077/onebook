@@ -3,19 +3,44 @@ const path = require('path');
 const fs = require('fs');
 
 let db = null;
+let currentDbPath = null;
 
-function initializeDatabase(dbPath) {
+function initializeDatabase(dbPath, { allowCreate = false } = {}) {
     if (db) {
         throw new Error('Database already initialized.');
     }
+    if (!dbPath || typeof dbPath !== 'string') {
+        const err = new Error('INVALID_DATABASE_PATH: Path must be a non-empty string.');
+        err.code = 'INVALID_DATABASE_PATH';
+        throw err;
+    }
+    if (!allowCreate && !fs.existsSync(dbPath)) {
+        const err = new Error(`DATABASE_FILE_NOT_FOUND: The SQLite database file does not exist at "${dbPath}". Silent database creation is disallowed.`);
+        err.code = 'DATABASE_FILE_NOT_FOUND';
+        throw err;
+    }
+    if (!allowCreate) {
+        const stats = fs.statSync(dbPath);
+        if (stats.size === 0) {
+            const err = new Error(`DATABASE_FILE_EMPTY: The SQLite database file at "${dbPath}" is 0 bytes.`);
+            err.code = 'DATABASE_FILE_EMPTY';
+            throw err;
+        }
+    }
     
-    // Ensure the directory exists
+    // Ensure directory exists if creation is explicitly allowed
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
+        if (!allowCreate) {
+            const err = new Error(`DATABASE_DIRECTORY_NOT_FOUND: Directory "${dir}" does not exist.`);
+            err.code = 'DATABASE_DIRECTORY_NOT_FOUND';
+            throw err;
+        }
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    db = new Database(dbPath);
+    db = new Database(dbPath, { fileMustExist: !allowCreate });
+    currentDbPath = dbPath;
 
     // Apply PRAGMAs
     db.pragma('journal_mode = WAL');
@@ -27,6 +52,10 @@ function initializeDatabase(dbPath) {
     createSchema();
 
     return db;
+}
+
+function getDatabasePath() {
+    return currentDbPath;
 }
 
 function getDatabase() {
@@ -516,5 +545,6 @@ module.exports = {
     backupDatabase,
     verifyDatabase,
     closeDatabase,
-    isDatabaseOpen
+    isDatabaseOpen,
+    getDatabasePath
 };

@@ -2,32 +2,69 @@ const dbManager = require('../database');
 const purchaseService = require('./purchaseService');
 
 class PurchaseOrderService {
+    _mapPO(row, items = []) {
+        return {
+            ...row,
+            id: row.po_number || String(row.id),
+            internal_id: row.id,
+            po_number: row.po_number,
+            date: row.date ? row.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            createdAt: row.created_at || row.date,
+            supplier: row.supplier_name || "Unknown Supplier",
+            supplierName: row.supplier_name || "Unknown Supplier",
+            supplierId: row.supplier_id || null,
+            total: row.total || 0,
+            status: row.status || "Pending",
+            notes: row.notes || "",
+            items: items.map(item => ({
+                id: item.id,
+                productId: item.product_id,
+                variantId: item.variant_id,
+                name: item.product_name,
+                productName: item.product_name,
+                qty: item.quantity,
+                quantity: item.quantity,
+                price: item.price,
+                rate: item.price,
+                total: item.total,
+                product: {
+                    id: item.product_id,
+                    name: item.product_name,
+                    variantId: item.variant_id,
+                    price: item.price
+                }
+            }))
+        };
+    }
+
     getPurchaseOrders() {
         const db = dbManager.getDatabase();
         const pos = db.prepare('SELECT * FROM purchase_orders ORDER BY date DESC, id DESC').all();
-        pos.forEach(po => {
-            po.items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+        return pos.map(po => {
+            const items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+            return this._mapPO(po, items);
         });
-        return pos;
     }
 
     getPurchaseOrder(id) {
         const db = dbManager.getDatabase();
-        const po = db.prepare('SELECT * FROM purchase_orders WHERE id = ?').get(id);
+        // Allow query by numeric id or po_number string
+        const po = db.prepare('SELECT * FROM purchase_orders WHERE id = ? OR po_number = ?').get(id, id);
         if (po) {
-            po.items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+            const items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+            return this._mapPO(po, items);
         }
-        return po;
+        return null;
     }
 
     searchPurchaseOrders(query) {
         const db = dbManager.getDatabase();
         const q = '%' + query + '%';
         const pos = db.prepare('SELECT * FROM purchase_orders WHERE po_number LIKE ? OR supplier_name LIKE ? ORDER BY date DESC LIMIT 50').all(q, q);
-        pos.forEach(po => {
-            po.items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+        return pos.map(po => {
+            const items = db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?').all(po.id);
+            return this._mapPO(po, items);
         });
-        return pos;
     }
 
     createPurchaseOrder(data, testFailure = false) {
@@ -50,7 +87,9 @@ class PurchaseOrderService {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `);
             
-            const total = data.totalAmount || data.items.reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0)), 0);
+            const total = (data.totalAmount !== undefined && data.totalAmount !== null)
+                ? parseFloat(data.totalAmount)
+                : (data.items ? data.items.reduce((sum, item) => sum + ((parseFloat(item.price || item.rate) || 0) * (parseFloat(item.qty || item.quantity) || 0)), 0) : 0);
 
             const result = insertPO.run(
                 poNumber,
@@ -141,7 +180,9 @@ class PurchaseOrderService {
                 throw err;
             }
 
-            const total = data.totalAmount || data.items.reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (parseFloat(item.qty) || 0)), 0);
+            const total = (data.totalAmount !== undefined && data.totalAmount !== null)
+                ? parseFloat(data.totalAmount)
+                : (data.items ? data.items.reduce((sum, item) => sum + ((parseFloat(item.price || item.rate) || 0) * (parseFloat(item.qty || item.quantity) || 0)), 0) : existing.total);
 
             db.prepare(`
                 UPDATE purchase_orders SET 
@@ -191,7 +232,7 @@ class PurchaseOrderService {
                     if (!productName) productName = 'Unknown';
 
                     insertItem.run(
-                        poId,
+                        id,
                         productId,
                         variantId,
                         productName,
@@ -244,9 +285,9 @@ class PurchaseOrderService {
 
             // Map PO items to Purchase items
             const purchaseItems = po.items.map(item => ({
-                productId: item.product_id,
-                variantId: item.variant_id,
-                qty: item.quantity,
+                productId: item.productId !== undefined ? item.productId : item.product_id,
+                variantId: item.variantId !== undefined ? item.variantId : item.variant_id,
+                qty: item.qty !== undefined ? item.qty : item.quantity,
                 price: item.price,
                 total: item.total
             }));
@@ -276,6 +317,15 @@ class PurchaseOrderService {
             return { poId: id, purchaseId };
         });
     }
+
+    // Aliases to match main.js IPC handler names
+    createPO(data) { return this.createPurchaseOrder(data); }
+    updatePO(id, data) { return this.updatePurchaseOrder(id, data); }
+    getPOs() { return this.getPurchaseOrders(); }
+    getPO(id) { return this.getPurchaseOrder(id); }
+    searchPOs(query) { return this.searchPurchaseOrders(query); }
+    cancelPO(id) { return this.cancelPurchaseOrder(id); }
+    receivePO(id) { return this.receivePurchaseOrder(id); }
 }
 
 module.exports = new PurchaseOrderService();

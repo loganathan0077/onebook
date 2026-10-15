@@ -7302,7 +7302,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             localStorage.setItem('sales', JSON.stringify(sales));
                 if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
             localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
-            localStorage.setItem('purchaseOrders', JSON.stringify(purchaseOrders));
+            // localStorage purchaseOrders write removed in Phase 4E.19 (SQLite cutover)
             localStorage.setItem('purchases', JSON.stringify(purchases));
             localStorage.setItem('suppliers', JSON.stringify(suppliers));
             localStorage.setItem('customers', JSON.stringify(customers));
@@ -8433,10 +8433,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                     '<td>' + (c.state || '-') + '</td>' +
                     '<td>' + (c.phone || '-') + '</td>' +
                     '<td>' +
-                        '<button class="btn btn-info btn-sm" onclick="viewCustomer('' + c.id + '')" title="View Details">👁️</button> ' +
-                        '<button class="btn btn-secondary btn-sm" onclick="openPartyLedger('' + c.id + '', 'customer')" title="View Ledger">📖</button> ' +
-                        '<button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, '' + c.id + '')" title="Edit">✏️</button> ' +
-                        (window.hasPermission('delete') ? '<button class="btn btn-danger btn-sm" onclick="deleteCustomer('' + c.id + '')" title="Delete">🗑️</button>' : '') +
+                        '<button class="btn btn-info btn-sm" onclick="viewCustomer(\'' + c.id + '\')" title="View Details">👁️</button> ' +
+                        '<button class="btn btn-secondary btn-sm" onclick="openPartyLedger(\'' + c.id + '\', \'customer\')" title="View Ledger">📖</button> ' +
+                        '<button class="btn btn-warning btn-sm" onclick="openAddCustomerModal(null, \'' + c.id + '\')" title="Edit">✏️</button> ' +
+                        (window.hasPermission('delete') ? '<button class="btn btn-danger btn-sm" onclick="deleteCustomer(\'' + c.id + '\')" title="Delete">🗑️</button>' : '') +
                     '</td>' +
                     '</tr>'
                 ).join('');
@@ -8541,9 +8541,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (!editId && !canCreateDemoCustomer()) { showDemoLimitMessage('customers'); return; }
             }
 
-            const normalizedName = name.replace(/s+/g, ' ');
+            const normalizedName = name.replace(/\s+/g, ' ');
             const matchName = normalizedName.toLowerCase();
-            const matchPhone = phone.replace(/[s-()+]/g, '').replace(/^91/, '');
+            const matchPhone = phone.replace(/[\s\-()+]/g, '').replace(/^91/, '');
             const matchGSTIN = gstin;
 
             // Duplicate check against SQLite cache + legacy suppliers
@@ -8554,8 +8554,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const checkDuplicate = (record) => {
                 if (record.id === editId) return false;
                 let matches = [];
-                const recName = (record.name || '').replace(/s+/g, ' ').trim().toLowerCase();
-                const recPhone = (record.phone || '').replace(/[s-()+]/g, '').replace(/^91/, '');
+                const recName = (record.name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const recPhone = (record.phone || '').replace(/[\s\-()+]/g, '').replace(/^91/, '');
                 const recGSTIN = (record.gstin || '').trim().toUpperCase();
                 if (matchName && recName === matchName) matches.push('Customer Name');
                 if (matchPhone && recPhone === matchPhone) matches.push('Phone Number');
@@ -9886,38 +9886,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${item.name}</td>
-                    <td>${item.qty}</td>
-                    <td>₹${(item.price || 0).toFixed(2)}</td>
-                    <td>₹${(item.total || 0).toFixed(2)}</td>
-                </tr>
-             `).join('');
 
-                if (items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No items in this record</td></tr>';
-                }
-
-                document.getElementById('detailSubtotal').textContent = (pc.subtotal || 0).toFixed(2);
-                document.getElementById('detailDiscount').textContent = (pc.discount || 0).toFixed(2);
-                document.getElementById('detailOtherCharges').textContent = (pc.otherCharges || 0).toFixed(2);
-                document.getElementById('detailGrandTotal').textContent = (pc.totalAmount || 0).toFixed(2);
-
-                const deleteBtn = document.getElementById('deletePurchaseBtn');
-                if (deleteBtn) {
-                    deleteBtn.onclick = () => deletePurchase(pc.id);
-                    deleteBtn.style.display = ''; // Ensure it's not hidden by inline style, class handles role
-                }
-
-                document.getElementById('purchaseDetailsModal').style.display = 'flex';
-                updateUIForRole();
-            } catch (error) {
-                console.error('Error viewing details:', error);
-                alert('Error viewing details: ' + error.message);
-            }
-        }
 
         function closePurchaseDetailsModal() {
             document.getElementById('purchaseDetailsModal').style.display = 'none';
@@ -14502,7 +14471,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             } catch (e) {
                 console.error("Error printing receipt:", e);
             }
-        }\n\n        function printReceiptFromBill(billNumber) {
+        }
+
+        function printReceiptFromBill(billNumber) {
             const billItems = sales.filter(sale => sale.receiptNumber === billNumber);
             if (billItems.length === 0) return;
             const saleData = {
@@ -17578,15 +17549,23 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function deleteCurrentPO() {
             if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-            showConfirm("Are you sure you want to delete this Purchase Order?", () => {
+            showConfirm("Are you sure you want to delete this Purchase Order?", async () => {
                 const poId = document.getElementById('poNumber').value;
-                const existingIndex = purchaseOrders.findIndex(p => p.id === poId);
-
-                if (existingIndex >= 0) {
-                    purchaseOrders.splice(existingIndex, 1);
-                    saveData();
-                    renderPOHistory(); // Update history if open
-                    showAlert(`PO ${poId} Deleted`, '🗑️');
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchaseOrders) {
+                    try {
+                        const existing = await window.electronAPI.sqlite.purchaseOrders.search(poId);
+                        const match = existing && Array.isArray(existing) ? existing.find(p => p.po_number === poId || p.id === poId) : null;
+                        if (match) {
+                            await window.electronAPI.sqlite.purchaseOrders.cancel(match.internal_id || match.id);
+                            await loadPurchaseOrdersFromSQLite();
+                            renderPOHistory();
+                            showAlert(`PO ${poId} Cancelled`, '🗑️');
+                        } else {
+                            showAlert('Draft PO Discarded', '🗑️');
+                        }
+                    } catch(e) {
+                        showAlert('Error cancelling PO: ' + e.message, 'error');
+                    }
                 } else {
                     showAlert('Draft PO Discarded', '🗑️');
                 }
@@ -17718,7 +17697,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             pendingProductToAdd = null;
         }
 
-        function addToPOFromInventory(productId, variantId = null) {
+        async function addToPOFromInventory(productId, variantId = null) {
+            await loadPurchaseOrdersFromSQLite();
             const product = products.find(p => String(p.id) === String(productId));
             if (!product) return;
 
@@ -17798,7 +17778,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('selectPOModal').classList.add('active');
         }
 
-        function confirmAddToPO(targetId) {
+        async function confirmAddToPO(targetId) {
             if (!pendingProductToAdd) return;
 
             if (targetId === 'new') {
@@ -17812,17 +17792,24 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Add to existing saved PO
                 const po = purchaseOrders.find(p => p.id === targetId);
                 if (po) {
-                    // Check if item exists in that PO (matching id and variantId)
                     const existingItem = po.items.find(item => String(item.product.id) === String(pendingProductToAdd.id) && String(item.product.variantId || '') === String(pendingProductToAdd.variantId || ''));
                     if (existingItem) {
                         existingItem.qty++;
                     } else {
                         po.items.push({
                             product: pendingProductToAdd,
+                            productId: pendingProductToAdd.id,
+                            variantId: pendingProductToAdd.variantId,
+                            productName: pendingProductToAdd.name,
+                            price: pendingProductToAdd.price || 0,
                             qty: 1
                         });
                     }
-                    saveData(); // Persist changes
+                    if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchaseOrders) {
+                        const targetInternalId = po.internal_id || po.id;
+                        await window.electronAPI.sqlite.purchaseOrders.update(targetInternalId, po);
+                        await loadPurchaseOrdersFromSQLite();
+                    }
                     showToast(`Added to ${po.id}!`);
                 }
             }
@@ -17869,7 +17856,22 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
         // --- PO History Logic ---
-        function openPOHistoryModal() {
+        
+        async function loadPurchaseOrdersFromSQLite() {
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchaseOrders) {
+                try {
+                    const allPOs = await window.electronAPI.sqlite.purchaseOrders.getAll();
+                    if (Array.isArray(allPOs)) {
+                        purchaseOrders = allPOs;
+                    }
+                } catch (e) {
+                    console.error("Failed to load purchase orders from SQLite:", e);
+                }
+            }
+        }
+
+        async function openPOHistoryModal() {
+            await loadPurchaseOrdersFromSQLite();
             document.getElementById('poHistoryModal').classList.add('active');
             renderPOHistory();
         }
@@ -20203,9 +20205,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }, true);
 
+        // Check SQLite connection status on startup
+        async function checkSqliteSystemStatus() {
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                try {
+                    const status = await window.electronAPI.sqlite.system.getStatus();
+                    if (!status.initialized) {
+                        console.warn('[SQLite System Status]:', status.message || status.error);
+                    } else {
+                        console.log('[SQLite System Status]: Connected to', status.path);
+                    }
+                    return status;
+                } catch (e) {
+                    console.warn('[SQLite System Status Check Failed]:', e);
+                }
+            }
+            return { initialized: false };
+        }
+
         // Initialize on load
         document.addEventListener('DOMContentLoaded', async () => {
+            await checkSqliteSystemStatus();
             initDenominationForm();
+            if (typeof loadPurchaseOrdersFromSQLite === 'function') await loadPurchaseOrdersFromSQLite();
             if (typeof loadCalculatorHistoryFromSQLite === 'function') await loadCalculatorHistoryFromSQLite();
             renderCalcHistory();
             await loadDayClosingsFromSQLite();
@@ -23786,7 +23808,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // END SYNC
 
                 // PETTY CASH IS SEPARATE (Phase 4E.11) - Do not automatically sync customer/supplier payments with Petty Cash
-                }
 
                 showAlert('Payment recorded successfully!', '✅');
                 openPaymentModal(type, invoice); // Refresh modal
@@ -23847,7 +23868,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 
                 // PETTY CASH IS SEPARATE (Phase 4E.11) - Do not automatically sync payment cancellation with Petty Cash
-                }
 
                 showAlert('Payment cancelled.', '🗑️');
                 openPaymentModal(type, invoice); // Refresh modal
