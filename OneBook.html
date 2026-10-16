@@ -5054,7 +5054,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <label>Product Discount (%) <small style="color:#888;font-weight:normal;">Overrides Category Discount</small></label>
                                     <input type="number" id="newProductDiscount" placeholder="0" min="0" max="100" step="0.01" value="0">
                                 </div>
-                                <div class="form-group" id="newProductPurchasePriceContainer">
+                                <div class="form-group buying-price-feature" id="newProductPurchasePriceContainer">
                                     <label>Buying Price (₹)</label>
                                     <input type="number" id="newProductPurchasePrice" placeholder="0.00">
                                 </div>
@@ -8973,9 +8973,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
             if (document.getElementById('newProductPurchasePriceContainer')) {
                 if (window.isAddingFromInventory || window.isAddingFromSale) {
-                    document.getElementById('newProductPurchasePriceContainer').style.display = buyTrack ? 'block' : 'none';
+                    document.getElementById('newProductPurchasePriceContainer').style.display = buyTrack ? '' : 'none';
                 } else {
-                    document.getElementById('newProductPurchasePriceContainer').style.display = 'block';
+                    document.getElementById('newProductPurchasePriceContainer').style.display = '';
                 }
             }
             
@@ -21011,6 +21011,10 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function applySettingsToUI(settings) {
+            const saleDateContainer = document.getElementById("customSaleDateContainer");
+            if (saleDateContainer) {
+                saleDateContainer.style.display = settings.enableSalesDate === true ? "block" : "none";
+            }
             const bName = settings.businessName || 'Business Name';
             const tagline = settings.tagline || 'Inventory & Sales System';
             
