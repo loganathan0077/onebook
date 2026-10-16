@@ -225,19 +225,32 @@ window.searchProductsUnified = function(query, allProducts) {
                 const trackedKeys = ['products', 'sales', 'stockHistory', 'purchaseOrders', 'purchases', 'calculatorHistory', 'dayClosings', 'negativeChangeCount', 'draftSales', 'settings', 'customers', 'suppliers', 'users', 'partyPayments', 'masterCategories', 'masterUnits', 'customCategories', 'categoryDiscounts', 'receiptCounters', 'pettyCashCategories', 'pettyCashOpening', 'pettyCashTransactions'];
 
                 localStorage.getItem = function(key) {
+                    let val = null;
                     const f = originalGetItem.call(localStorage, 'database_folder');
                     if (trackedKeys.includes(key) && f) {
-                        const data = window.electronAPI.loadDataSync({ folder: f, key });
-                        if (data !== null) return data;
+                        val = window.electronAPI.loadDataSync({ folder: f, key });
                     }
-                    return originalGetItem.call(localStorage, key);
+                    if (val === null || val === undefined) {
+                        val = originalGetItem.call(localStorage, key);
+                    }
+                    if (typeof val === 'string' && val.startsWith('[object Object]')) {
+                        console.warn(`[Storage Auto-Heal]: Detected corrupted [object Object] for key "${key}". Resetting to null.`);
+                        val = null;
+                        try { originalSetItem.call(localStorage, key, 'null'); } catch(e){}
+                    }
+                    return val;
                 };
 
                 localStorage.setItem = function(key, data) {
-                    originalSetItem.call(localStorage, key, data);
+                    let safeData = data;
+                    if (typeof safeData === 'object' && safeData !== null) {
+                        console.warn(`[Storage Warning]: Non-string object passed to localStorage.setItem("${key}"). Auto-stringifying.`);
+                        safeData = JSON.stringify(safeData);
+                    }
+                    originalSetItem.call(localStorage, key, safeData);
                     const f = originalGetItem.call(localStorage, 'database_folder');
                     if (trackedKeys.includes(key) && f) {
-                        window.electronAPI.saveDataSync({ folder: f, key, data });
+                        window.electronAPI.saveDataSync({ folder: f, key, data: safeData });
                     }
                 };
             }
@@ -6780,8 +6793,15 @@ input:focus, select:focus, textarea:focus, button:focus {
             };
         }
 
-        // Initialize data structure
-        let products = JSON.parse(localStorage.getItem('products')) || [];
+        // Initialize data structure safely
+        let products = (function() {
+            try {
+                const raw = localStorage.getItem('products');
+                if (!raw || raw.startsWith('[object Object]')) return [];
+                const p = JSON.parse(raw);
+                return Array.isArray(p) ? p : [];
+            } catch(e) { return []; }
+        })();
         // MIGRATION: Async load products from SQLite if active
         window.addEventListener('DOMContentLoaded', async () => {
             if (window.DATA_BACKEND === 'sqlite') {
@@ -6855,14 +6875,23 @@ input:focus, select:focus, textarea:focus, button:focus {
             return name;
         };
 
-        let calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
-        let dayClosings = JSON.parse(localStorage.getItem('dayClosings')) || [];
-        let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        function _safeParseStorageArray(k) {
+            try {
+                const raw = localStorage.getItem(k);
+                if (!raw || raw.startsWith('[object Object]')) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch(e) { return []; }
+        }
+
+        calculatorHistory = _safeParseStorageArray('calculatorHistory');
+        let dayClosings = _safeParseStorageArray('dayClosings');
+        let sales = _safeParseStorageArray('sales');
         let isDataLoaded = false;
-        let stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
-        let purchaseOrders = JSON.parse(localStorage.getItem('purchaseOrders')) || [];
-        var categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
-        let draftSales = JSON.parse(localStorage.getItem('draftSales')) || []; // Initialize drafts
+        let stockHistory = _safeParseStorageArray('stockHistory');
+        let purchaseOrders = _safeParseStorageArray('purchaseOrders');
+        var categoryDiscounts = _safeParseStorageArray('categoryDiscounts');
+        let draftSales = _safeParseStorageArray('draftSales'); // Initialize drafts
         let modalScanner = null;
         let currentScanMode = '';
         let cart = []; // Shopping cart for multi-item sales
@@ -6871,9 +6900,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         let negativeChangeCount = parseInt(localStorage.getItem('negativeChangeCount')) || 0;
 
         // Purchase Feature Globals
-        let purchases = JSON.parse(localStorage.getItem('purchases')) || [];
+        let purchases = _safeParseStorageArray('purchases');
         let purchaseCart = [];
-        let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+        let suppliers = _safeParseStorageArray('suppliers');
         
         // One-time migration for legacy purchases without supplierId
         if (suppliers.length === 0 && purchases.length > 0) {
@@ -6953,14 +6982,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
         }
 
-        var masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+        var masterCategories = _safeParseStorageArray('masterCategories');
         if (masterCategories.length === 0) {
             const defaultCategories = ['Stationery', 'Office Supplies', 'Grocery', 'Food & Beverages', 'Electronics', 'Electrical', 'Hardware', 'Garments', 'Cosmetics', 'Household', 'Toys', 'Books', 'Furniture', 'General', 'Other'];
             masterCategories = defaultCategories.map(name => ({ id: 'cat_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
             localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
         }
 
-        var masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+        var masterUnits = _safeParseStorageArray('masterUnits');
         if (masterUnits.length === 0) {
             const defaultUnits = ['Piece', 'Box', 'Pack', 'Set', 'Pair', 'Kg', 'Gram', 'Litre', 'ml', 'Meter', 'Feet', 'Dozen', 'Carton', 'Bundle', 'Roll', 'Bottle', 'Other'];
             masterUnits = defaultUnits.map(name => ({ id: 'unit_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
@@ -10515,9 +10544,11 @@ input:focus, select:focus, textarea:focus, button:focus {
             let searchMatchedProducts = [];
             if (window.DATA_BACKEND === 'sqlite') {
                 if (searchTerm) {
-                    searchMatchedProducts = await window.electronAPI.sqlite.products.search(searchTerm);
+                    const res = await window.electronAPI.sqlite.products.search(searchTerm);
+                    searchMatchedProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
                 } else {
-                    searchMatchedProducts = await window.electronAPI.sqlite.products.getAll();
+                    const res = await window.electronAPI.sqlite.products.getAll();
+                    searchMatchedProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
                 }
                 
                 searchMatchedProducts = searchMatchedProducts.map(p => {
@@ -16373,19 +16404,24 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             if (window.DATA_BACKEND === 'sqlite') {
                 if (searchTerm) {
-                    filteredProducts = await window.electronAPI.sqlite.products.search(searchTerm);
+                    const res = await window.electronAPI.sqlite.products.search(searchTerm);
+                    filteredProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
                 } else {
-                    filteredProducts = await window.electronAPI.sqlite.products.getAll();
+                    const res = await window.electronAPI.sqlite.products.getAll();
+                    filteredProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
                 }
                 // Map SQLite product format back to UI format if needed, though they should be similar
                 // Ensure variant data is mapped if UI expects it flat
                 filteredProducts = filteredProducts.map(p => {
                     const defVar = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+                    const rawPrice = defVar ? defVar.selling_price : (p.price !== undefined ? p.price : 0);
+                    const rawCost = defVar ? defVar.buying_price : (p.cost_price !== undefined ? p.cost_price : (p.costPrice !== undefined ? p.costPrice : 0));
+                    const rawStock = defVar ? defVar.stock : (p.stock !== undefined ? p.stock : 0);
                     return {
                         ...p,
-                        stock: defVar ? defVar.stock : 0,
-                        price: defVar ? defVar.selling_price : 0,
-                        costPrice: defVar ? defVar.buying_price : 0,
+                        stock: rawStock,
+                        price: Number(rawPrice) || 0,
+                        costPrice: Number(rawCost) || 0,
                         barcode: defVar ? defVar.barcode : p.barcode,
                         expiryDays: p.expiry_days,
                         minStock: p.min_stock
@@ -16473,7 +16509,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <td>${product.category}</td>
                     ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control form-control-sm" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 60px; height: 26px; font-size: 13px; text-align: right; margin: 0 0 0 auto; padding: 2px 5px;" placeholder="—"></td>` : ''}
                     <td style="text-align: right;">${product.stock} ${product.unit || ''}</td>
-                    <td style="text-align: right;">₹${product.price.toFixed(2)}</td>
+                    <td style="text-align: right;">₹${(Number(product.price) || 0).toFixed(2)}</td>
                     <td style="text-align: center;">
                         <input type="number" class="form-control form-control-sm main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" style="width: 60px; height: 26px; font-size: 13px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)" onkeydown="handleLabelQtyKeydown(event, this)">
                     </td>
@@ -18765,6 +18801,18 @@ input:focus, select:focus, textarea:focus, button:focus {
     
     
     <script>
+        // Hoist calculatorHistory in global script scope to prevent TDZ ReferenceErrors
+        var calculatorHistory = (function() {
+            try {
+                const raw = localStorage.getItem('calculatorHistory');
+                if (!raw || raw.startsWith('[object Object]')) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch(e) {
+                return [];
+            }
+        })();
+
         // --- Calculator Logic (SQLite Integrated - Phase 4E.14) ---
         // SQLITE COMPATIBILITY — REMOVE AFTER ALL DEPENDENT MODULES ARE MIGRATED
         function syncCalculatorCompatibility() {
@@ -20566,6 +20614,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
+            if(paneId === 'settings-pane-product') {
+                if(typeof loadMasterCategoriesAndUnits === 'function') {
+                    loadMasterCategoriesAndUnits();
+                } else if(typeof renderMasterDataSettings === 'function') {
+                    renderMasterDataSettings();
+                }
+            }
+
             // Add active class to clicked button
             if (btnElement) {
                 btnElement.classList.add('active');
@@ -20573,8 +20629,14 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function loadSettings() {
-            const savedSettings = JSON.parse(localStorage.getItem('settings') || 'null');
-            const settings = { ...getDefaultSettings(), ...savedSettings };
+            let savedSettings = null;
+            try {
+                const raw = localStorage.getItem('settings');
+                if (raw && !raw.startsWith('[object Object]')) {
+                    savedSettings = JSON.parse(raw);
+                }
+            } catch(e) { savedSettings = null; }
+            const settings = { ...getDefaultSettings(), ...(savedSettings || {}) };
 
             const businessNameInput = document.getElementById('settingsBusinessName');
             if(document.getElementById('settingsEnableSalesDate')) document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate === true;
@@ -20978,18 +21040,34 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function toggleSetting(setting, value) {
+            function _getSafeSettings() {
+                try {
+                    const raw = localStorage.getItem('settings');
+                    if (raw && !raw.startsWith('[object Object]')) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && typeof parsed === 'object') return { ...getDefaultSettings(), ...parsed };
+                    }
+                } catch(e) {}
+                return getDefaultSettings();
+            }
+
             if (typeof window.isAdminUser !== 'undefined' && !window.isAdminUser) {
                 showAlert('Unauthorized: Only Administrators can change settings.', 'error');
-                const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+                const settings = _getSafeSettings();
                 if(setting === 'expiryTracking') document.getElementById('settingsExpiryTracking').checked = settings.expiryTracking || false;
                 if(setting === 'buyingPriceTracking') document.getElementById('settingsBuyingPriceTracking').checked = settings.buyingPriceTracking || false;
                 if(setting === 'enableSalesDate') document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate || false;
                 if(setting === 'quickSaleBarcode') document.getElementById('settingsQuickSaleBarcode').checked = settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true;
                 return;
             }
-            const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            const currentSettings = _getSafeSettings();
             currentSettings[setting] = value;
-            localStorage.setItem('settings', JSON.stringify(currentSettings));
+            try {
+                localStorage.setItem('settings', JSON.stringify(currentSettings));
+            } catch(e) {
+                console.error('Failed to save settings:', e);
+                showAlert('Failed to save settings.', '❌');
+            }
             
             const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
             const buyTrack = currentSettings.buyingPriceTracking !== undefined ? currentSettings.buyingPriceTracking : false;
@@ -21296,7 +21374,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                     if (confirm('Restoring a backup will replace the current application data with the selected backup. Are you sure you want to proceed?')) {
                         localStorage.clear();
                         for (let key in data) {
-                            localStorage.setItem(key, data[key]);
+                            const val = data[key];
+                            const serialized = (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+                            localStorage.setItem(key, serialized);
                         }
                         alert('Backup restored successfully! Application will now reload.');
                         window.location.reload();
@@ -22497,30 +22577,51 @@ input:focus, select:focus, textarea:focus, button:focus {
                 try {
                     const status = await window.electronAPI.sqlite.system.getStatus();
                     if (status && status.initialized) {
+                        if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
+                            try {
+                                const raw = localStorage.getItem('masterCategories');
+                                masterCategories = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                            } catch(e) { masterCategories = []; }
+                        }
+                        if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
+                            try {
+                                const raw = localStorage.getItem('masterUnits');
+                                masterUnits = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                            } catch(e) { masterUnits = []; }
+                        }
+
                         const catRes = await window.electronAPI.sqlite.categories.getAll();
-                        if (catRes && catRes.success && catRes.data) {
-                            // If SQLite is empty, auto-migrate current masterCategories
-                            if (catRes.data.length === 0 && masterCategories.length > 0) {
+                        if (catRes && catRes.success && Array.isArray(catRes.data)) {
+                            // If SQLite is empty, auto-migrate default/current masterCategories
+                            if (catRes.data.length === 0) {
+                                if (masterCategories.length === 0) {
+                                    const defaultCategories = ['Stationery', 'Office Supplies', 'Grocery', 'Food & Beverages', 'Electronics', 'Electrical', 'Hardware', 'Garments', 'Cosmetics', 'Household', 'Toys', 'Books', 'Furniture', 'General', 'Other'];
+                                    masterCategories = defaultCategories.map(name => ({ id: 'cat_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
+                                }
                                 await window.electronAPI.sqlite.categories.migrate(masterCategories);
                                 const reloadCat = await window.electronAPI.sqlite.categories.getAll();
-                                if (reloadCat && reloadCat.success && reloadCat.data) {
+                                if (reloadCat && reloadCat.success && Array.isArray(reloadCat.data)) {
                                     masterCategories = reloadCat.data.map(c => ({ id: 'sqlite_' + c.id, sqlite_id: c.id, name: c.name, active: (c.active !== undefined ? Boolean(c.active) : (c.is_active !== undefined ? Boolean(c.is_active) : true)) }));
                                 }
-                            } else if (catRes.data.length > 0) {
+                            } else {
                                 masterCategories = catRes.data.map(c => ({ id: 'sqlite_' + c.id, sqlite_id: c.id, name: c.name, active: (c.active !== undefined ? Boolean(c.active) : (c.is_active !== undefined ? Boolean(c.is_active) : true)) }));
                             }
                         }
 
                         const unitRes = await window.electronAPI.sqlite.units.getAll();
-                        if (unitRes && unitRes.success && unitRes.data) {
-                            // If SQLite is empty, auto-migrate current masterUnits
-                            if (unitRes.data.length === 0 && masterUnits.length > 0) {
+                        if (unitRes && unitRes.success && Array.isArray(unitRes.data)) {
+                            // If SQLite is empty, auto-migrate default/current masterUnits
+                            if (unitRes.data.length === 0) {
+                                if (masterUnits.length === 0) {
+                                    const defaultUnits = ['Piece', 'Box', 'Pack', 'Set', 'Pair', 'Kg', 'Gram', 'Litre', 'ml', 'Meter', 'Feet', 'Dozen', 'Carton', 'Bundle', 'Roll', 'Bottle', 'Other'];
+                                    masterUnits = defaultUnits.map(name => ({ id: 'unit_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
+                                }
                                 await window.electronAPI.sqlite.units.migrate(masterUnits);
                                 const reloadUnit = await window.electronAPI.sqlite.units.getAll();
-                                if (reloadUnit && reloadUnit.success && reloadUnit.data) {
+                                if (reloadUnit && reloadUnit.success && Array.isArray(reloadUnit.data)) {
                                     masterUnits = reloadUnit.data.map(u => ({ id: 'sqlite_' + u.id, sqlite_id: u.id, name: u.name, active: (u.active !== undefined ? Boolean(u.active) : (u.is_active !== undefined ? Boolean(u.is_active) : true)) }));
                                 }
-                            } else if (unitRes.data.length > 0) {
+                            } else {
                                 masterUnits = unitRes.data.map(u => ({ id: 'sqlite_' + u.id, sqlite_id: u.id, name: u.name, active: (u.active !== undefined ? Boolean(u.active) : (u.is_active !== undefined ? Boolean(u.is_active) : true)) }));
                             }
                         }
@@ -22544,7 +22645,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function populateCategoryDropdowns() {
             if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
-                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+                try {
+                    const raw = localStorage.getItem('masterCategories');
+                    masterCategories = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                } catch(e) { masterCategories = []; }
             }
             const dropdowns = ['newProductCategory', 'editProductCategory'];
             dropdowns.forEach(id => {
@@ -22570,7 +22674,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function populateUnitDropdowns() {
             if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
-                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+                try {
+                    const raw = localStorage.getItem('masterUnits');
+                    masterUnits = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                } catch(e) { masterUnits = []; }
             }
             const dropdowns = ['newProductUnit', 'editProductUnit'];
             dropdowns.forEach(id => {
@@ -22699,13 +22806,22 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function renderMasterDataSettings() {
             if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
-                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+                try {
+                    const raw = localStorage.getItem('masterCategories');
+                    masterCategories = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                } catch(e) { masterCategories = []; }
             }
             if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
-                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+                try {
+                    const raw = localStorage.getItem('masterUnits');
+                    masterUnits = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                } catch(e) { masterUnits = []; }
             }
             if (typeof categoryDiscounts === 'undefined' || !Array.isArray(categoryDiscounts)) {
-                categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
+                try {
+                    const raw = localStorage.getItem('categoryDiscounts');
+                    categoryDiscounts = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                } catch(e) { categoryDiscounts = []; }
             }
             const catList = document.getElementById('settingsCategoriesList');
             if (catList) {
@@ -25280,9 +25396,22 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof updateUsbScannerBadge === 'function') updateUsbScannerBadge();
             
             // Save to settings
-            const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {});
+            let settings = {};
+            try {
+                const raw = localStorage.getItem('settings');
+                if (raw && !raw.startsWith('[object Object]')) {
+                    settings = JSON.parse(raw) || {};
+                }
+            } catch(e) { settings = {}; }
+            if (typeof getDefaultSettings === 'function') {
+                settings = { ...getDefaultSettings(), ...settings };
+            }
             settings.usbScannerEnabled = enabled;
-            localStorage.setItem('settings', JSON.stringify(settings));
+            try {
+                localStorage.setItem('settings', JSON.stringify(settings));
+            } catch(e) {
+                console.error('Failed to save USB scanner setting:', e);
+            }
         }
 
         function updateUsbScannerBadge() {
