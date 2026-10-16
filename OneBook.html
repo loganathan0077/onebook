@@ -20785,6 +20785,15 @@ input:focus, select:focus, textarea:focus, button:focus {
             const buyingToggle = document.getElementById('settingsBuyingPriceTracking');
             if(buyingToggle) currentSettings.buyingPriceTracking = buyingToggle.checked;
 
+            const salesDateToggle = document.getElementById('settingsEnableSalesDate');
+            if(salesDateToggle) currentSettings.enableSalesDate = salesDateToggle.checked;
+
+            const qsbToggle = document.getElementById('settingsQuickSaleBarcode');
+            if(qsbToggle) currentSettings.quickSaleBarcode = qsbToggle.checked;
+
+            const usbToggle = document.getElementById('globalUsbScannerToggle');
+            if(usbToggle) currentSettings.usbScannerEnabled = usbToggle.checked;
+
             localStorage.setItem('settings', JSON.stringify(currentSettings));
             showAlert('Settings saved successfully!', '✅');
             applySettingsToUI(currentSettings);
