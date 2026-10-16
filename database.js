@@ -106,6 +106,7 @@ function createSchema() {
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
+            is_active INTEGER NOT NULL DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
@@ -115,6 +116,7 @@ function createSchema() {
         CREATE TABLE IF NOT EXISTS units (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
+            is_active INTEGER NOT NULL DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
@@ -425,6 +427,17 @@ function createSchema() {
         CREATE INDEX IF NOT EXISTS idx_pc_voucher ON petty_cash_transactions(voucher_no);
         CREATE INDEX IF NOT EXISTS idx_pc_orig_id ON petty_cash_transactions(original_id);
     `);
+
+    // Runtime column migration for categories & units (Phase 4E.20.1)
+    const catCols = db.prepare('PRAGMA table_info(categories)').all().map(c => c.name);
+    if (!catCols.includes('is_active')) {
+        db.exec('ALTER TABLE categories ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1');
+    }
+
+    const unitCols = db.prepare('PRAGMA table_info(units)').all().map(c => c.name);
+    if (!unitCols.includes('is_active')) {
+        db.exec('ALTER TABLE units ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1');
+    }
 
     // Runtime column migration for day_closings (Phase 4E.13)
     const dcCols = db.prepare('PRAGMA table_info(day_closings)').all().map(c => c.name);

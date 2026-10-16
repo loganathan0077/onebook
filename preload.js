@@ -27,6 +27,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
             getStatus: () => ipcRenderer.invoke('sqlite:system:getStatus'),
             selectAndConnect: () => ipcRenderer.invoke('sqlite:system:selectAndConnect')
         },
+        categories: {
+            getAll: () => ipcRenderer.invoke('sqlite:categories:getAll'),
+            get: (id) => ipcRenderer.invoke('sqlite:categories:get', id),
+            create: (name) => ipcRenderer.invoke('sqlite:categories:create', name),
+            update: (id, newName) => ipcRenderer.invoke('sqlite:categories:update', id, newName),
+            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:categories:toggleStatus', id, active),
+            delete: (id) => ipcRenderer.invoke('sqlite:categories:delete', id),
+            migrate: (items) => ipcRenderer.invoke('sqlite:categories:migrate', items)
+        },
+        units: {
+            getAll: () => ipcRenderer.invoke('sqlite:units:getAll'),
+            get: (id) => ipcRenderer.invoke('sqlite:units:get', id),
+            create: (name) => ipcRenderer.invoke('sqlite:units:create', name),
+            update: (id, newName) => ipcRenderer.invoke('sqlite:units:update', id, newName),
+            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:units:toggleStatus', id, active),
+            delete: (id) => ipcRenderer.invoke('sqlite:units:delete', id),
+            migrate: (items) => ipcRenderer.invoke('sqlite:units:migrate', items)
+        },
         products: {
             getAll: () => ipcRenderer.invoke('sqlite:products:getAll'),
             get: (id) => ipcRenderer.invoke('sqlite:products:get', id),

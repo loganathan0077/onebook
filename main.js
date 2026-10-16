@@ -808,6 +808,8 @@ const reportService = require('./services/reportService');
 const dashboardService = require('./services/dashboardService');
 const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
+const categoryService = require('./services/categoryService');
+const unitService = require('./services/unitService');
 
 // Error wrapping helper
 async function handleSqlite(event, handlerFn) {
@@ -881,6 +883,24 @@ ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
         return { success: false, error: e.code || 'CONNECTION_FAILED', message: e.message };
     }
 });
+
+// Categories
+ipcMain.handle('sqlite:categories:getAll', (e) => handleSqlite(e, () => categoryService.getCategories()));
+ipcMain.handle('sqlite:categories:get', (e, id) => handleSqlite(e, () => categoryService.getCategory(id)));
+ipcMain.handle('sqlite:categories:create', (e, name) => handleSqlite(e, () => categoryService.createCategory(name)));
+ipcMain.handle('sqlite:categories:update', (e, id, newName) => handleSqlite(e, () => categoryService.updateCategory(id, newName)));
+ipcMain.handle('sqlite:categories:toggleStatus', (e, id, active) => handleSqlite(e, () => categoryService.toggleCategoryStatus(id, active)));
+ipcMain.handle('sqlite:categories:delete', (e, id) => handleSqlite(e, () => categoryService.deleteCategory(id)));
+ipcMain.handle('sqlite:categories:migrate', (e, items) => handleSqlite(e, () => categoryService.migrateCategories(items)));
+
+// Units
+ipcMain.handle('sqlite:units:getAll', (e) => handleSqlite(e, () => unitService.getUnits()));
+ipcMain.handle('sqlite:units:get', (e, id) => handleSqlite(e, () => unitService.getUnit(id)));
+ipcMain.handle('sqlite:units:create', (e, name) => handleSqlite(e, () => unitService.createUnit(name)));
+ipcMain.handle('sqlite:units:update', (e, id, newName) => handleSqlite(e, () => unitService.updateUnit(id, newName)));
+ipcMain.handle('sqlite:units:toggleStatus', (e, id, active) => handleSqlite(e, () => unitService.toggleUnitStatus(id, active)));
+ipcMain.handle('sqlite:units:delete', (e, id) => handleSqlite(e, () => unitService.deleteUnit(id)));
+ipcMain.handle('sqlite:units:migrate', (e, items) => handleSqlite(e, () => unitService.migrateUnits(items)));
 
 // Products
 ipcMain.handle('sqlite:products:getAll', (e) => handleSqlite(e, () => productService.getProducts()));

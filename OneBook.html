@@ -5015,7 +5015,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         <option value="">Select Category...</option>
                                     </select>
                                 </div>
-                                <div class="form-group" id="newProductExpiryContainer">
+                                <div class="form-group expiry-tracking-feature" id="newProductExpiryContainer">
                                     <label>Expiry Days</label>
                                     <input type="number" id="newProductExpiryDays" placeholder="e.g. 30" min="0">
                                 </div>
@@ -6861,7 +6861,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         let isDataLoaded = false;
         let stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
         let purchaseOrders = JSON.parse(localStorage.getItem('purchaseOrders')) || [];
-        let categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
+        var categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
         let draftSales = JSON.parse(localStorage.getItem('draftSales')) || []; // Initialize drafts
         let modalScanner = null;
         let currentScanMode = '';
@@ -6953,14 +6953,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
         }
 
-        let masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+        var masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
         if (masterCategories.length === 0) {
             const defaultCategories = ['Stationery', 'Office Supplies', 'Grocery', 'Food & Beverages', 'Electronics', 'Electrical', 'Hardware', 'Garments', 'Cosmetics', 'Household', 'Toys', 'Books', 'Furniture', 'General', 'Other'];
             masterCategories = defaultCategories.map(name => ({ id: 'cat_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
             localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
         }
 
-        let masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+        var masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
         if (masterUnits.length === 0) {
             const defaultUnits = ['Piece', 'Box', 'Pack', 'Set', 'Pair', 'Kg', 'Gram', 'Litre', 'ml', 'Meter', 'Feet', 'Dozen', 'Carton', 'Bundle', 'Roll', 'Bottle', 'Other'];
             masterUnits = defaultUnits.map(name => ({ id: 'unit_' + Math.random().toString(36).substr(2, 9), name: name, active: true }));
@@ -13479,8 +13479,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             // For historical sales: use the stored gstApplied flag
             // For new sales without flag: fall back to current settings
             const saleGstApplied = lastSaleData.gstApplied !== undefined ? lastSaleData.gstApplied : settings.gstEnabled;
-            // Show GST on receipt only if GST was applied
-            const showGstOnReceipt = saleGstApplied;
+            // Show GST on receipt only if GST was applied AND Receipt settings have showGST enabled
+            const showGstOnReceipt = saleGstApplied && (settings.showGST !== false);
 
             const businessNameStr = settings.businessName || 'Sales Receipt';
             const addressStr = settings.address ? `<p style="font-size:12px; margin:2px 0;">${settings.address.replace(/\n/g, '<br>')}</p>` : '';
@@ -13549,9 +13549,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <p><strong>Time:</strong> ${date.toLocaleTimeString()}</p>
                     <p><strong>Receipt #:</strong> ${lastSaleData.receiptNumber}</p>
                     <p><strong>Counter:</strong> ${lastSaleData.counterCode || '-'}</p>
+                    ${settings.showBarcode ? `
                     <div style="text-align: center; margin: 10px 0;">
                         <svg id="receiptBarcode"></svg>
                     </div>
+                    ` : ''}
                     ${customerStr}
                     <hr>
                     <table style="width: 100%; margin: 10px 0;">
@@ -13644,12 +13646,14 @@ input:focus, select:focus, textarea:focus, button:focus {
         `;
 
             try {
-                JsBarcode("#receiptBarcode", lastSaleData.receiptNumber, {
-                    format: "CODE128",
-                    width: 1.5,
-                    height: 40,
-                    displayValue: false
-                });
+                if (settings.showBarcode && document.getElementById("receiptBarcode")) {
+                    JsBarcode("#receiptBarcode", lastSaleData.receiptNumber, {
+                        format: "CODE128",
+                        width: 1.5,
+                        height: 40,
+                        displayValue: false
+                    });
+                }
             } catch(e) {}
 
             document.getElementById('saleReceipt').style.display = 'flex';
@@ -22250,6 +22254,10 @@ input:focus, select:focus, textarea:focus, button:focus {
         let usbScanTimeout;
 
         document.addEventListener('keydown', function(e) { if (e.defaultPrevented) return;
+            // Respect global USB scanner setting
+            if (!window.isGlobalUsbScannerActive) {
+                return;
+            }
             // Only process if we are on the sales tab
             const salesTab = document.getElementById('sales');
             if (!salesTab || !salesTab.classList.contains('active')) {
@@ -22479,7 +22487,61 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
         // ==========================================
         
+        // SQLite-aware Master Data Synchronization
+        async function loadMasterCategoriesAndUnits() {
+            if (window.electronAPI && window.electronAPI.sqlite) {
+                try {
+                    const status = await window.electronAPI.sqlite.system.getStatus();
+                    if (status && status.initialized) {
+                        const catRes = await window.electronAPI.sqlite.categories.getAll();
+                        if (catRes && catRes.success && catRes.data) {
+                            // If SQLite is empty, auto-migrate current masterCategories
+                            if (catRes.data.length === 0 && masterCategories.length > 0) {
+                                await window.electronAPI.sqlite.categories.migrate(masterCategories);
+                                const reloadCat = await window.electronAPI.sqlite.categories.getAll();
+                                if (reloadCat && reloadCat.success && reloadCat.data) {
+                                    masterCategories = reloadCat.data.map(c => ({ id: 'sqlite_' + c.id, sqlite_id: c.id, name: c.name, active: (c.active !== undefined ? Boolean(c.active) : (c.is_active !== undefined ? Boolean(c.is_active) : true)) }));
+                                }
+                            } else if (catRes.data.length > 0) {
+                                masterCategories = catRes.data.map(c => ({ id: 'sqlite_' + c.id, sqlite_id: c.id, name: c.name, active: (c.active !== undefined ? Boolean(c.active) : (c.is_active !== undefined ? Boolean(c.is_active) : true)) }));
+                            }
+                        }
+
+                        const unitRes = await window.electronAPI.sqlite.units.getAll();
+                        if (unitRes && unitRes.success && unitRes.data) {
+                            // If SQLite is empty, auto-migrate current masterUnits
+                            if (unitRes.data.length === 0 && masterUnits.length > 0) {
+                                await window.electronAPI.sqlite.units.migrate(masterUnits);
+                                const reloadUnit = await window.electronAPI.sqlite.units.getAll();
+                                if (reloadUnit && reloadUnit.success && reloadUnit.data) {
+                                    masterUnits = reloadUnit.data.map(u => ({ id: 'sqlite_' + u.id, sqlite_id: u.id, name: u.name, active: (u.active !== undefined ? Boolean(u.active) : (u.is_active !== undefined ? Boolean(u.is_active) : true)) }));
+                                }
+                            } else if (unitRes.data.length > 0) {
+                                masterUnits = unitRes.data.map(u => ({ id: 'sqlite_' + u.id, sqlite_id: u.id, name: u.name, active: (u.active !== undefined ? Boolean(u.active) : (u.is_active !== undefined ? Boolean(u.is_active) : true)) }));
+                            }
+                        }
+
+                        localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
+                        localStorage.setItem('masterUnits', JSON.stringify(masterUnits));
+                        populateCategoryDropdowns();
+                        populateUnitDropdowns();
+                        renderMasterDataSettings();
+                    }
+                } catch(e) {
+                    console.error('Error syncing SQLite categories/units:', e);
+                }
+            }
+        }
+
+        // Call loadMasterCategoriesAndUnits when document loads or tab switches to settings
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(loadMasterCategoriesAndUnits, 500);
+        });
+
         function populateCategoryDropdowns() {
+            if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
+                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+            }
             const dropdowns = ['newProductCategory', 'editProductCategory'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
@@ -22503,6 +22565,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function populateUnitDropdowns() {
+            if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
+                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+            }
             const dropdowns = ['newProductUnit', 'editProductUnit'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
@@ -22629,6 +22694,15 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function renderMasterDataSettings() {
+            if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
+                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+            }
+            if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
+                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+            }
+            if (typeof categoryDiscounts === 'undefined' || !Array.isArray(categoryDiscounts)) {
+                categoryDiscounts = JSON.parse(localStorage.getItem('categoryDiscounts')) || [];
+            }
             const catList = document.getElementById('settingsCategoriesList');
             if (catList) {
                 catList.innerHTML = masterCategories.map(cat => `
@@ -22692,7 +22766,26 @@ input:focus, select:focus, textarea:focus, button:focus {
                     showAlert("Category already exists!", "⚠️");
                     return;
                 }
-                masterCategories.push({ id: 'cat_' + Math.random().toString(36).substr(2, 9), name: name.trim(), active: true });
+                const trimmedName = name.trim();
+                let sqliteId = null;
+                if (window.electronAPI && window.electronAPI.sqlite) {
+                    try {
+                        const status = await window.electronAPI.sqlite.system.getStatus();
+                        if (status && status.initialized) {
+                            const res = await window.electronAPI.sqlite.categories.create(trimmedName);
+                            if (res && res.success && res.data) {
+                                sqliteId = res.data.id;
+                            } else if (res && !res.success) {
+                                showAlert("Error saving category: " + (res.error?.message || "Failed"), "⚠️");
+                                return;
+                            }
+                        }
+                    } catch(err) {
+                        console.error('SQLite create category error:', err);
+                    }
+                }
+
+                masterCategories.push({ id: sqliteId ? ('sqlite_' + sqliteId) : ('cat_' + Math.random().toString(36).substr(2, 9)), sqlite_id: sqliteId, name: trimmedName, active: true });
                 localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
                 renderMasterDataSettings();
                 populateCategoryDropdowns();
@@ -22708,7 +22801,26 @@ input:focus, select:focus, textarea:focus, button:focus {
                     showAlert("Unit already exists!", "⚠️");
                     return;
                 }
-                masterUnits.push({ id: 'unit_' + Math.random().toString(36).substr(2, 9), name: name.trim(), active: true });
+                const trimmedName = name.trim();
+                let sqliteId = null;
+                if (window.electronAPI && window.electronAPI.sqlite) {
+                    try {
+                        const status = await window.electronAPI.sqlite.system.getStatus();
+                        if (status && status.initialized) {
+                            const res = await window.electronAPI.sqlite.units.create(trimmedName);
+                            if (res && res.success && res.data) {
+                                sqliteId = res.data.id;
+                            } else if (res && !res.success) {
+                                showAlert("Error saving unit: " + (res.error?.message || "Failed"), "⚠️");
+                                return;
+                            }
+                        }
+                    } catch(err) {
+                        console.error('SQLite create unit error:', err);
+                    }
+                }
+
+                masterUnits.push({ id: sqliteId ? ('sqlite_' + sqliteId) : ('unit_' + Math.random().toString(36).substr(2, 9)), sqlite_id: sqliteId, name: trimmedName, active: true });
                 localStorage.setItem('masterUnits', JSON.stringify(masterUnits));
                 renderMasterDataSettings();
                 populateUnitDropdowns();
@@ -22717,12 +22829,35 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         async function promptEditCategory(id) {
-            const cat = masterCategories.find(c => c.id === id);
+            if (typeof masterCategories === 'undefined') {
+                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+            }
+            let cat = masterCategories.find(c => c.id === id);
+            if (!cat) {
+                // Try reloading from storage in case newly added
+                masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || [];
+                cat = masterCategories.find(c => c.id === id);
+            }
             if (!cat) return;
+            const oldName = cat.name;
             const newName = await openCustomPrompt("Edit Category Name", "Edit Category Name:", cat.name);
-            if (newName && newName.trim() && newName.trim() !== cat.name) {
-                const oldName = cat.name;
-                cat.name = newName.trim();
+            if (newName && newName.trim() && newName.trim() !== oldName) {
+                const trimmedName = newName.trim();
+                if (window.electronAPI && window.electronAPI.sqlite) {
+                    try {
+                        const status = await window.electronAPI.sqlite.system.getStatus();
+                        if (status && status.initialized && cat.sqlite_id) {
+                            const res = await window.electronAPI.sqlite.categories.update(cat.sqlite_id, trimmedName);
+                            if (res && !res.success) {
+                                showAlert("Error updating category: " + (res.error?.message || "Failed"), "⚠️");
+                                return;
+                            }
+                        }
+                    } catch(err) {
+                        console.error('SQLite update category error:', err);
+                    }
+                }
+                cat.name = trimmedName;
                 localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
                 
                 let productsUpdated = false;
@@ -22737,6 +22872,48 @@ input:focus, select:focus, textarea:focus, button:focus {
                     if (typeof renderProducts === 'function') renderProducts();
                 }
 
+                // Cascade category rename to category discounts
+                let currentDiscounts = [];
+                try {
+                    currentDiscounts = (typeof categoryDiscounts !== 'undefined' && Array.isArray(categoryDiscounts) && categoryDiscounts.length > 0)
+                        ? categoryDiscounts
+                        : (JSON.parse(localStorage.getItem('categoryDiscounts')) || []);
+                } catch(e) {
+                    currentDiscounts = [];
+                }
+
+                let discountsUpdated = false;
+                if (Array.isArray(currentDiscounts)) {
+                    currentDiscounts.forEach(cd => {
+                        if (cd.category === oldName) {
+                            cd.category = cat.name;
+                            discountsUpdated = true;
+                        }
+                    });
+                    if (discountsUpdated) {
+                        categoryDiscounts = currentDiscounts;
+                        localStorage.setItem('categoryDiscounts', JSON.stringify(currentDiscounts));
+                    }
+                }
+
+                // Ensure products in localStorage are also updated
+                let currentProds = JSON.parse(localStorage.getItem('products')) || [];
+                let prodsUpdated = false;
+                if (Array.isArray(currentProds)) {
+                    currentProds.forEach(p => {
+                        if (p.category === oldName) {
+                            p.category = cat.name;
+                            prodsUpdated = true;
+                        }
+                    });
+                    if (prodsUpdated) {
+                        if (typeof products !== 'undefined' && Array.isArray(products)) {
+                            products = currentProds;
+                        }
+                        localStorage.setItem('products', JSON.stringify(currentProds));
+                    }
+                }
+
                 renderMasterDataSettings();
                 populateCategoryDropdowns();
                 showAlert("Category updated successfully!", "✅");
@@ -22744,12 +22921,34 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         async function promptEditUnit(id) {
-            const unit = masterUnits.find(u => u.id === id);
+            if (typeof masterUnits === 'undefined') {
+                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+            }
+            let unit = masterUnits.find(u => u.id === id);
+            if (!unit) {
+                masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || [];
+                unit = masterUnits.find(u => u.id === id);
+            }
             if (!unit) return;
             const newName = await openCustomPrompt("Edit Unit Name", "Edit Unit Name:", unit.name);
             if (newName && newName.trim() && newName.trim() !== unit.name) {
                 const oldName = unit.name;
-                unit.name = newName.trim();
+                const trimmedName = newName.trim();
+                if (window.electronAPI && window.electronAPI.sqlite) {
+                    try {
+                        const status = await window.electronAPI.sqlite.system.getStatus();
+                        if (status && status.initialized && unit.sqlite_id) {
+                            const res = await window.electronAPI.sqlite.units.update(unit.sqlite_id, trimmedName);
+                            if (res && !res.success) {
+                                showAlert("Error updating unit: " + (res.error?.message || "Failed"), "⚠️");
+                                return;
+                            }
+                        }
+                    } catch(err) {
+                        console.error('SQLite update unit error:', err);
+                    }
+                }
+                unit.name = trimmedName;
                 localStorage.setItem('masterUnits', JSON.stringify(masterUnits));
                 
                 let productsUpdated = false;
@@ -22882,7 +23081,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
         }
 
-        function toggleCategoryStatus(id) {
+        async function toggleCategoryStatus(id) {
             const cat = masterCategories.find(c => c.id === id);
             if (!cat) return;
             
@@ -22894,13 +23093,31 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
             
-            cat.active = !cat.active;
+            const nextActive = !cat.active;
+            if (window.electronAPI && window.electronAPI.sqlite && cat.sqlite_id) {
+                try {
+                    const status = await window.electronAPI.sqlite.system.getStatus();
+                    if (status && status.initialized) {
+                        const res = await window.electronAPI.sqlite.categories.toggleStatus(cat.sqlite_id, nextActive);
+                        if (!res || !res.success) {
+                            showAlert("Error updating category status: " + (res?.error?.message || "Database write failed"), "⚠️");
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error("SQLite toggle category error:", err);
+                    showAlert("Failed to persist category status to database.", "⚠️");
+                    return;
+                }
+            }
+            
+            cat.active = nextActive;
             localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
             renderMasterDataSettings();
             populateCategoryDropdowns();
         }
 
-        function toggleUnitStatus(id) {
+        async function toggleUnitStatus(id) {
             const unit = masterUnits.find(u => u.id === id);
             if (!unit) return;
             
@@ -22912,7 +23129,25 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
             
-            unit.active = !unit.active;
+            const nextActive = !unit.active;
+            if (window.electronAPI && window.electronAPI.sqlite && unit.sqlite_id) {
+                try {
+                    const status = await window.electronAPI.sqlite.system.getStatus();
+                    if (status && status.initialized) {
+                        const res = await window.electronAPI.sqlite.units.toggleStatus(unit.sqlite_id, nextActive);
+                        if (!res || !res.success) {
+                            showAlert("Error updating unit status: " + (res?.error?.message || "Database write failed"), "⚠️");
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error("SQLite toggle unit error:", err);
+                    showAlert("Failed to persist unit status to database.", "⚠️");
+                    return;
+                }
+            }
+            
+            unit.active = nextActive;
             localStorage.setItem('masterUnits', JSON.stringify(masterUnits));
             renderMasterDataSettings();
             populateUnitDropdowns();
