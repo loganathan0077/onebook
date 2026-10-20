@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+let currentSessionToken = null;
+
 contextBridge.exposeInMainWorld('electronAPI', {
     selectDirectorySync: () => ipcRenderer.sendSync('select-directory-sync'),
     saveDataSync: (args) => ipcRenderer.sendSync('save-data-sync', args),
@@ -23,134 +25,151 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value)),
 
     sqlite: {
+        // Session token management
+        setSessionToken: (token) => { currentSessionToken = (typeof token === 'string') ? token.trim() : null; },
+        getSessionToken: () => currentSessionToken,
+        clearSessionToken: () => { currentSessionToken = null; },
+
         system: {
             getStatus: () => ipcRenderer.invoke('sqlite:system:getStatus'),
             selectAndConnect: () => ipcRenderer.invoke('sqlite:system:selectAndConnect')
         },
+        users: {
+            login: (username, password) => ipcRenderer.invoke('sqlite:users:login', { username, password }),
+            logout: (sessionToken) => ipcRenderer.invoke('sqlite:users:logout', { sessionToken: sessionToken || currentSessionToken }),
+            validateSession: (sessionToken) => ipcRenderer.invoke('sqlite:users:validateSession', { sessionToken: sessionToken || currentSessionToken }),
+            getAll: (sessionToken) => ipcRenderer.invoke('sqlite:users:getAll', { sessionToken: sessionToken || currentSessionToken }),
+            create: (sessionToken, userData) => ipcRenderer.invoke('sqlite:users:create', { sessionToken: sessionToken || currentSessionToken, userData }),
+            update: (sessionToken, userId, updateData) => ipcRenderer.invoke('sqlite:users:update', { sessionToken: sessionToken || currentSessionToken, userId, updateData }),
+            toggleStatus: (sessionToken, userId, targetStatus) => ipcRenderer.invoke('sqlite:users:toggleStatus', { sessionToken: sessionToken || currentSessionToken, userId, targetStatus }),
+            delete: (sessionToken, userId) => ipcRenderer.invoke('sqlite:users:delete', { sessionToken: sessionToken || currentSessionToken, userId }),
+            changePassword: (sessionToken, userId, newPassword) => ipcRenderer.invoke('sqlite:users:changePassword', { sessionToken: sessionToken || currentSessionToken, userId, newPassword })
+        },
         categories: {
-            getAll: () => ipcRenderer.invoke('sqlite:categories:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:categories:get', id),
-            create: (name) => ipcRenderer.invoke('sqlite:categories:create', name),
-            update: (id, newName) => ipcRenderer.invoke('sqlite:categories:update', id, newName),
-            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:categories:toggleStatus', id, active),
-            delete: (id) => ipcRenderer.invoke('sqlite:categories:delete', id),
-            migrate: (items) => ipcRenderer.invoke('sqlite:categories:migrate', items)
+            getAll: () => ipcRenderer.invoke('sqlite:categories:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:categories:get', { sessionToken: currentSessionToken, id }),
+            create: (name) => ipcRenderer.invoke('sqlite:categories:create', { sessionToken: currentSessionToken, name }),
+            update: (id, newName) => ipcRenderer.invoke('sqlite:categories:update', { sessionToken: currentSessionToken, id, newName }),
+            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:categories:toggleStatus', { sessionToken: currentSessionToken, id, active }),
+            delete: (id) => ipcRenderer.invoke('sqlite:categories:delete', { sessionToken: currentSessionToken, id }),
+            migrate: (items) => ipcRenderer.invoke('sqlite:categories:migrate', { sessionToken: currentSessionToken, items })
         },
         units: {
-            getAll: () => ipcRenderer.invoke('sqlite:units:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:units:get', id),
-            create: (name) => ipcRenderer.invoke('sqlite:units:create', name),
-            update: (id, newName) => ipcRenderer.invoke('sqlite:units:update', id, newName),
-            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:units:toggleStatus', id, active),
-            delete: (id) => ipcRenderer.invoke('sqlite:units:delete', id),
-            migrate: (items) => ipcRenderer.invoke('sqlite:units:migrate', items)
+            getAll: () => ipcRenderer.invoke('sqlite:units:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:units:get', { sessionToken: currentSessionToken, id }),
+            create: (name) => ipcRenderer.invoke('sqlite:units:create', { sessionToken: currentSessionToken, name }),
+            update: (id, newName) => ipcRenderer.invoke('sqlite:units:update', { sessionToken: currentSessionToken, id, newName }),
+            toggleStatus: (id, active) => ipcRenderer.invoke('sqlite:units:toggleStatus', { sessionToken: currentSessionToken, id, active }),
+            delete: (id) => ipcRenderer.invoke('sqlite:units:delete', { sessionToken: currentSessionToken, id }),
+            migrate: (items) => ipcRenderer.invoke('sqlite:units:migrate', { sessionToken: currentSessionToken, items })
         },
         products: {
-            getAll: () => ipcRenderer.invoke('sqlite:products:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:products:get', id),
-            create: (data) => ipcRenderer.invoke('sqlite:products:create', data),
-            update: (id, data) => ipcRenderer.invoke('sqlite:products:update', id, data),
-            search: (q) => ipcRenderer.invoke('sqlite:products:search', q),
-            lowStock: () => ipcRenderer.invoke('sqlite:products:lowStock')
+            getAll: () => ipcRenderer.invoke('sqlite:products:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:products:get', { sessionToken: currentSessionToken, id }),
+            create: (data) => ipcRenderer.invoke('sqlite:products:create', { sessionToken: currentSessionToken, data }),
+            update: (id, data) => ipcRenderer.invoke('sqlite:products:update', { sessionToken: currentSessionToken, id, data }),
+            search: (q) => ipcRenderer.invoke('sqlite:products:search', { sessionToken: currentSessionToken, q }),
+            lowStock: () => ipcRenderer.invoke('sqlite:products:lowStock', { sessionToken: currentSessionToken })
         },
         stock: {
-            get: (pId) => ipcRenderer.invoke('sqlite:stock:get', pId),
-            movements: (pId) => ipcRenderer.invoke('sqlite:stock:movements', pId),
-            adjust: (productId, variantId, qty, reason, refType, refId) => ipcRenderer.invoke('sqlite:stock:adjust', productId, variantId, qty, reason, refType, refId)
+            get: (pId) => ipcRenderer.invoke('sqlite:stock:get', { sessionToken: currentSessionToken, pId }),
+            movements: (pId) => ipcRenderer.invoke('sqlite:stock:movements', { sessionToken: currentSessionToken, pId }),
+            adjust: (productId, variantId, qty, reason, refType, refId) => 
+                ipcRenderer.invoke('sqlite:stock:adjust', { sessionToken: currentSessionToken, productId, variantId, qty, reason, refType, refId })
         },
         customers: {
-            getAll: () => ipcRenderer.invoke('sqlite:customers:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:customers:get', id),
-            create: (data) => ipcRenderer.invoke('sqlite:customers:create', data),
-            update: (id, data) => ipcRenderer.invoke('sqlite:customers:update', id, data),
-            delete: (id) => ipcRenderer.invoke('sqlite:customers:delete', id),
-            search: (query) => ipcRenderer.invoke('sqlite:customers:search', query)
+            getAll: () => ipcRenderer.invoke('sqlite:customers:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:customers:get', { sessionToken: currentSessionToken, id }),
+            create: (data) => ipcRenderer.invoke('sqlite:customers:create', { sessionToken: currentSessionToken, data }),
+            update: (id, data) => ipcRenderer.invoke('sqlite:customers:update', { sessionToken: currentSessionToken, id, data }),
+            delete: (id) => ipcRenderer.invoke('sqlite:customers:delete', { sessionToken: currentSessionToken, id }),
+            search: (query) => ipcRenderer.invoke('sqlite:customers:search', { sessionToken: currentSessionToken, query })
         },
         sales: {
-            create: (data) => ipcRenderer.invoke('sqlite:sales:create', data),
-            getAll: (dateStr) => ipcRenderer.invoke('sqlite:sales:getAll', dateStr),
-            search: (query) => ipcRenderer.invoke('sqlite:sales:search', query),
-            get: (id) => ipcRenderer.invoke('sqlite:sales:get', id),
-            cancel: (id) => ipcRenderer.invoke('sqlite:sales:cancel', id)
+            create: (data) => ipcRenderer.invoke('sqlite:sales:create', { sessionToken: currentSessionToken, data }),
+            getAll: (dateStr) => ipcRenderer.invoke('sqlite:sales:getAll', { sessionToken: currentSessionToken, dateStr }),
+            search: (query) => ipcRenderer.invoke('sqlite:sales:search', { sessionToken: currentSessionToken, query }),
+            get: (id) => ipcRenderer.invoke('sqlite:sales:get', { sessionToken: currentSessionToken, id }),
+            cancel: (id) => ipcRenderer.invoke('sqlite:sales:cancel', { sessionToken: currentSessionToken, id })
         },
         purchases: {
-            create: (data) => ipcRenderer.invoke('sqlite:purchases:create', data),
-            getAll: (dateStr) => ipcRenderer.invoke('sqlite:purchases:getAll', dateStr),
-            search: (query) => ipcRenderer.invoke('sqlite:purchases:search', query),
-            get: (id) => ipcRenderer.invoke('sqlite:purchases:get', id),
-            cancel: (id) => ipcRenderer.invoke('sqlite:purchases:cancel', id)
+            create: (data) => ipcRenderer.invoke('sqlite:purchases:create', { sessionToken: currentSessionToken, data }),
+            getAll: (dateStr) => ipcRenderer.invoke('sqlite:purchases:getAll', { sessionToken: currentSessionToken, dateStr }),
+            search: (query) => ipcRenderer.invoke('sqlite:purchases:search', { sessionToken: currentSessionToken, query }),
+            get: (id) => ipcRenderer.invoke('sqlite:purchases:get', { sessionToken: currentSessionToken, id }),
+            cancel: (id) => ipcRenderer.invoke('sqlite:purchases:cancel', { sessionToken: currentSessionToken, id })
         },
         suppliers: {
-            getAll: () => ipcRenderer.invoke('sqlite:suppliers:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:suppliers:get', id),
-            create: (data) => ipcRenderer.invoke('sqlite:suppliers:create', data),
-            update: (id, data) => ipcRenderer.invoke('sqlite:suppliers:update', id, data),
-            archive: (id) => ipcRenderer.invoke('sqlite:suppliers:archive', id),
-            search: (query) => ipcRenderer.invoke('sqlite:suppliers:search', query)
+            getAll: () => ipcRenderer.invoke('sqlite:suppliers:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:suppliers:get', { sessionToken: currentSessionToken, id }),
+            create: (data) => ipcRenderer.invoke('sqlite:suppliers:create', { sessionToken: currentSessionToken, data }),
+            update: (id, data) => ipcRenderer.invoke('sqlite:suppliers:update', { sessionToken: currentSessionToken, id, data }),
+            archive: (id) => ipcRenderer.invoke('sqlite:suppliers:archive', { sessionToken: currentSessionToken, id }),
+            search: (query) => ipcRenderer.invoke('sqlite:suppliers:search', { sessionToken: currentSessionToken, query })
         },
         purchaseOrders: {
-            create: (data) => ipcRenderer.invoke('sqlite:purchaseOrders:create', data),
-            update: (id, data) => ipcRenderer.invoke('sqlite:purchaseOrders:update', id, data),
-            getAll: () => ipcRenderer.invoke('sqlite:purchaseOrders:getAll'),
-            get: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:get', id),
-            search: (query) => ipcRenderer.invoke('sqlite:purchaseOrders:search', query),
-            cancel: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:cancel', id),
-            receive: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:receive', id)
+            create: (data) => ipcRenderer.invoke('sqlite:purchaseOrders:create', { sessionToken: currentSessionToken, data }),
+            update: (id, data) => ipcRenderer.invoke('sqlite:purchaseOrders:update', { sessionToken: currentSessionToken, id, data }),
+            getAll: () => ipcRenderer.invoke('sqlite:purchaseOrders:getAll', { sessionToken: currentSessionToken }),
+            get: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:get', { sessionToken: currentSessionToken, id }),
+            search: (query) => ipcRenderer.invoke('sqlite:purchaseOrders:search', { sessionToken: currentSessionToken, query }),
+            cancel: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:cancel', { sessionToken: currentSessionToken, id }),
+            receive: (id) => ipcRenderer.invoke('sqlite:purchaseOrders:receive', { sessionToken: currentSessionToken, id })
         },
         payments: {
-            getSalePayments: (saleId) => ipcRenderer.invoke('sqlite:payments:getSalePayments', saleId),
-            createSalePayment: (data) => ipcRenderer.invoke('sqlite:payments:createSalePayment', data),
-            cancelSalePayment: (id) => ipcRenderer.invoke('sqlite:payments:cancelSalePayment', id),
-            getPurchasePayments: (purchaseId) => ipcRenderer.invoke('sqlite:payments:getPurchasePayments', purchaseId),
-            createPurchasePayment: (data) => ipcRenderer.invoke('sqlite:payments:createPurchasePayment', data),
-            cancelPurchasePayment: (id) => ipcRenderer.invoke('sqlite:payments:cancelPurchasePayment', id),
-            getLedgerPayments: () => ipcRenderer.invoke('sqlite:payments:getLedgerPayments'),
-            createLedgerPayment: (data) => ipcRenderer.invoke('sqlite:payments:createLedgerPayment', data)
+            getSalePayments: (saleId) => ipcRenderer.invoke('sqlite:payments:getSalePayments', { sessionToken: currentSessionToken, saleId }),
+            createSalePayment: (data) => ipcRenderer.invoke('sqlite:payments:createSalePayment', { sessionToken: currentSessionToken, data }),
+            cancelSalePayment: (id) => ipcRenderer.invoke('sqlite:payments:cancelSalePayment', { sessionToken: currentSessionToken, id }),
+            getPurchasePayments: (purchaseId) => ipcRenderer.invoke('sqlite:payments:getPurchasePayments', { sessionToken: currentSessionToken, purchaseId }),
+            createPurchasePayment: (data) => ipcRenderer.invoke('sqlite:payments:createPurchasePayment', { sessionToken: currentSessionToken, data }),
+            cancelPurchasePayment: (id) => ipcRenderer.invoke('sqlite:payments:cancelPurchasePayment', { sessionToken: currentSessionToken, id }),
+            getLedgerPayments: () => ipcRenderer.invoke('sqlite:payments:getLedgerPayments', { sessionToken: currentSessionToken }),
+            createLedgerPayment: (data) => ipcRenderer.invoke('sqlite:payments:createLedgerPayment', { sessionToken: currentSessionToken, data })
         },
-                cashBank: {
-            getCashSummary: () => ipcRenderer.invoke('sqlite:cashBank:getCashSummary'),
-            getBankSummary: () => ipcRenderer.invoke('sqlite:cashBank:getBankSummary'),
-            getTransactions: (accountType, filters) => ipcRenderer.invoke('sqlite:cashBank:getTransactions', accountType, filters),
-            getTransaction: (id, accountType) => ipcRenderer.invoke('sqlite:cashBank:getTransaction', id, accountType),
-            createTransaction: (data) => ipcRenderer.invoke('sqlite:cashBank:createTransaction', data),
-            updateTransaction: (id, data) => ipcRenderer.invoke('sqlite:cashBank:updateTransaction', id, data),
-            cancelTransaction: (id, accountType) => ipcRenderer.invoke('sqlite:cashBank:cancelTransaction', id, accountType),
-            getOpeningBalance: (accountType) => ipcRenderer.invoke('sqlite:cashBank:getOpeningBalance', accountType),
-            setOpeningBalance: (accountType, amount) => ipcRenderer.invoke('sqlite:cashBank:setOpeningBalance', accountType, amount),
-            transfer: (data) => ipcRenderer.invoke('sqlite:cashBank:transfer', data)
+        cashBank: {
+            getCashSummary: () => ipcRenderer.invoke('sqlite:cashBank:getCashSummary', { sessionToken: currentSessionToken }),
+            getBankSummary: () => ipcRenderer.invoke('sqlite:cashBank:getBankSummary', { sessionToken: currentSessionToken }),
+            getTransactions: (accountType, filters) => ipcRenderer.invoke('sqlite:cashBank:getTransactions', { sessionToken: currentSessionToken, accountType, filters }),
+            getTransaction: (id, accountType) => ipcRenderer.invoke('sqlite:cashBank:getTransaction', { sessionToken: currentSessionToken, id, accountType }),
+            createTransaction: (data) => ipcRenderer.invoke('sqlite:cashBank:createTransaction', { sessionToken: currentSessionToken, data }),
+            updateTransaction: (id, data) => ipcRenderer.invoke('sqlite:cashBank:updateTransaction', { sessionToken: currentSessionToken, id, data }),
+            cancelTransaction: (id, accountType) => ipcRenderer.invoke('sqlite:cashBank:cancelTransaction', { sessionToken: currentSessionToken, id, accountType }),
+            getOpeningBalance: (accountType) => ipcRenderer.invoke('sqlite:cashBank:getOpeningBalance', { sessionToken: currentSessionToken, accountType }),
+            setOpeningBalance: (accountType, amount) => ipcRenderer.invoke('sqlite:cashBank:setOpeningBalance', { sessionToken: currentSessionToken, accountType, amount }),
+            transfer: (data) => ipcRenderer.invoke('sqlite:cashBank:transfer', { sessionToken: currentSessionToken, data })
         },
         pettyCash: {
-            getSummary: () => ipcRenderer.invoke('sqlite:pettyCash:getSummary'),
-            getOpeningBalances: () => ipcRenderer.invoke('sqlite:pettyCash:getOpeningBalances'),
-            setOpeningBalances: (cash, bank) => ipcRenderer.invoke('sqlite:pettyCash:setOpeningBalances', cash, bank),
-            getCategories: () => ipcRenderer.invoke('sqlite:pettyCash:getCategories'),
-            saveCategories: (cats) => ipcRenderer.invoke('sqlite:pettyCash:saveCategories', cats),
-            getTransactions: (filters) => ipcRenderer.invoke('sqlite:pettyCash:getTransactions', filters),
-            getTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:getTransaction', id),
-            createTransaction: (data) => ipcRenderer.invoke('sqlite:pettyCash:createTransaction', data),
-            updateTransaction: (id, data) => ipcRenderer.invoke('sqlite:pettyCash:updateTransaction', id, data),
-            deleteTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:deleteTransaction', id),
-            cancelTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:cancelTransaction', id)
+            getSummary: () => ipcRenderer.invoke('sqlite:pettyCash:getSummary', { sessionToken: currentSessionToken }),
+            getOpeningBalances: () => ipcRenderer.invoke('sqlite:pettyCash:getOpeningBalances', { sessionToken: currentSessionToken }),
+            setOpeningBalances: (cash, bank) => ipcRenderer.invoke('sqlite:pettyCash:setOpeningBalances', { sessionToken: currentSessionToken, cash, bank }),
+            getCategories: () => ipcRenderer.invoke('sqlite:pettyCash:getCategories', { sessionToken: currentSessionToken }),
+            saveCategories: (cats) => ipcRenderer.invoke('sqlite:pettyCash:saveCategories', { sessionToken: currentSessionToken, cats }),
+            getTransactions: (filters) => ipcRenderer.invoke('sqlite:pettyCash:getTransactions', { sessionToken: currentSessionToken, filters }),
+            getTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:getTransaction', { sessionToken: currentSessionToken, id }),
+            createTransaction: (data) => ipcRenderer.invoke('sqlite:pettyCash:createTransaction', { sessionToken: currentSessionToken, data }),
+            updateTransaction: (id, data) => ipcRenderer.invoke('sqlite:pettyCash:updateTransaction', { sessionToken: currentSessionToken, id, data }),
+            deleteTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:deleteTransaction', { sessionToken: currentSessionToken, id }),
+            cancelTransaction: (id) => ipcRenderer.invoke('sqlite:pettyCash:cancelTransaction', { sessionToken: currentSessionToken, id })
         },
         dayClosing: {
-            getAll: (filters) => ipcRenderer.invoke('sqlite:dayClosing:getAll', filters),
-            get: (id) => ipcRenderer.invoke('sqlite:dayClosing:get', id),
-            getByDate: (dateStr) => ipcRenderer.invoke('sqlite:dayClosing:getByDate', dateStr),
-            save: (data) => ipcRenderer.invoke('sqlite:dayClosing:save', data),
-            delete: (id) => ipcRenderer.invoke('sqlite:dayClosing:delete', id)
+            getAll: (filters) => ipcRenderer.invoke('sqlite:dayClosing:getAll', { sessionToken: currentSessionToken, filters }),
+            get: (id) => ipcRenderer.invoke('sqlite:dayClosing:get', { sessionToken: currentSessionToken, id }),
+            getByDate: (dateStr) => ipcRenderer.invoke('sqlite:dayClosing:getByDate', { sessionToken: currentSessionToken, dateStr }),
+            save: (data) => ipcRenderer.invoke('sqlite:dayClosing:save', { sessionToken: currentSessionToken, data }),
+            delete: (id) => ipcRenderer.invoke('sqlite:dayClosing:delete', { sessionToken: currentSessionToken, id })
         },
         calculator: {
-            getHistory: () => ipcRenderer.invoke('sqlite:calculator:getHistory'),
-            saveHistory: (expression, result) => ipcRenderer.invoke('sqlite:calculator:saveHistory', expression, result),
-            deleteHistory: (id) => ipcRenderer.invoke('sqlite:calculator:deleteHistory', id),
-            clearAllHistory: () => ipcRenderer.invoke('sqlite:calculator:clearAllHistory')
+            getHistory: () => ipcRenderer.invoke('sqlite:calculator:getHistory', { sessionToken: currentSessionToken }),
+            saveHistory: (expression, result) => ipcRenderer.invoke('sqlite:calculator:saveHistory', { sessionToken: currentSessionToken, expression, result }),
+            deleteHistory: (id) => ipcRenderer.invoke('sqlite:calculator:deleteHistory', { sessionToken: currentSessionToken, id }),
+            clearAllHistory: () => ipcRenderer.invoke('sqlite:calculator:clearAllHistory', { sessionToken: currentSessionToken })
         },
         reports: {
-            getReportSales: (filters) => ipcRenderer.invoke('sqlite:reports:getReportSales', filters),
-            getSummary: (filters) => ipcRenderer.invoke('sqlite:reports:getSummary', filters)
+            getReportSales: (filters) => ipcRenderer.invoke('sqlite:reports:getReportSales', { sessionToken: currentSessionToken, filters }),
+            getSummary: (filters) => ipcRenderer.invoke('sqlite:reports:getSummary', { sessionToken: currentSessionToken, filters })
         },
         dashboard: {
-            getMetrics: (options) => ipcRenderer.invoke('sqlite:dashboard:getMetrics', options)
+            getMetrics: (options) => ipcRenderer.invoke('sqlite:dashboard:getMetrics', { sessionToken: currentSessionToken, options })
         }
     }
 });

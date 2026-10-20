@@ -352,16 +352,150 @@ function createSchema() {
         );
     `);
 
-    // Users
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'USER',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
+    // Users and Sessions DDL (Non-destructive, preservation migration)
+    try {
+        const usersTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+        if (usersTableExists) {
+            const userCols = db.pragma("table_info(users)");
+            const colNames = userCols.map(c => c.name);
+            const idCol = userCols.find(c => c.name === "id");
+            
+            // If legacy INTEGER PRIMARY KEY schema is present, perform non-destructive table copy migration
+            if (idCol && idCol.type.toUpperCase() === "INTEGER") {
+                db.transaction(() => {
+                    db.exec(`
+                        CREATE TABLE IF NOT EXISTS users_new (
+                            id TEXT PRIMARY KEY,
+                            name TEXT NOT NULL DEFAULT "",
+                            username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                            user_code TEXT,
+                            password_hash TEXT NOT NULL,
+                            salt TEXT NOT NULL DEFAULT "",
+                            hash_algorithm TEXT NOT NULL DEFAULT 'scrypt',
+                            role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'manager', 'cashier', 'ADMIN', 'USER')),
+                            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+                            permissions_json TEXT NOT NULL DEFAULT "[]",
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        );
+                    `);
+
+                    // Copy all existing rows without dropping or losing data
+                    const hasName = colNames.includes("name");
+                    const hasUserCode = colNames.includes("user_code");
+                    const hasSalt = colNames.includes("salt");
+                    const hasHashAlg = colNames.includes("hash_algorithm");
+                    const hasRole = colNames.includes("role");
+                    const hasStatus = colNames.includes("status");
+                    const hasPerms = colNames.includes("permissions_json");
+                    const hasCreatedAt = colNames.includes("created_at");
+                    const hasUpdated = colNames.includes("updated_at");
+
+                    // Check for case-insensitive duplicate usernames before attempting copy
+                    const duplicateCheck = db.prepare(`
+                        SELECT LOWER(username) as lower_name, COUNT(*) as count 
+                        FROM users 
+                        GROUP BY LOWER(username) 
+                        HAVING count > 1
+                    `).all();
+
+                    if (duplicateCheck.length > 0) {
+                        const conflictingNames = duplicateCheck.map(d => d.lower_name).join(", ");
+                        const err = new Error(`Migration conflict: Found case-insensitive duplicate usernames in legacy users table (${conflictingNames}). Migration aborted to prevent data loss.`);
+                        err.code = "MIGRATION_DUPLICATE_USERNAMES";
+                        throw err;
+                    }
+
+                    const sourceCount = db.prepare("SELECT count(*) as c FROM users").get().c;
+
+                    // Strict INSERT (never IGNORE) so any constraint failure triggers a rollback
+                    db.exec(`
+                        INSERT INTO users_new (
+                            id, name, username, user_code, password_hash, salt, hash_algorithm, role, status, permissions_json, created_at, updated_at
+                        )
+                        SELECT 
+                            CAST(id AS TEXT),
+                            ${hasName ? "COALESCE(name, '')" : "''"},
+                            username,
+                            ${hasUserCode ? "user_code" : "NULL"},
+                            password_hash,
+                            ${hasSalt ? "COALESCE(salt, '')" : "''"},
+                            ${hasHashAlg ? "COALESCE(hash_algorithm, 'legacy_unknown')" : "'legacy_unknown'"},
+                            ${hasRole ? "COALESCE(role, 'user')" : "'user'"},
+                            ${hasStatus ? "COALESCE(status, 'active')" : "'active'"},
+                            ${hasPerms ? "COALESCE(permissions_json, '[]')" : "'[]'"},
+                            ${hasCreatedAt ? "COALESCE(created_at, CURRENT_TIMESTAMP)" : "CURRENT_TIMESTAMP"},
+                            ${hasUpdated ? "COALESCE(updated_at, CURRENT_TIMESTAMP)" : "CURRENT_TIMESTAMP"}
+                        FROM users;
+                    `);
+
+                    const destCount = db.prepare("SELECT count(*) as c FROM users_new").get().c;
+                    if (destCount !== sourceCount) {
+                        throw new Error(`Migration verification failed: source count (${sourceCount}) does not match destination count (${destCount}). Aborting migration.`);
+                    }
+
+                    // Collision-safe, deterministic backup table name that preserves all existing tables
+                    let backupTableName = "users_legacy_backup";
+                    let suffix = 1;
+                    while (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(backupTableName)) {
+                        backupTableName = `users_legacy_backup_${suffix}`;
+                        suffix++;
+                    }
+
+                    db.exec(`ALTER TABLE users RENAME TO ${backupTableName};`);
+                    db.exec(`ALTER TABLE users_new RENAME TO users;`);
+                })();
+            } else {
+                // Table already has TEXT id, ensure any missing columns are added idempotently
+                if (!colNames.includes("name")) try { db.exec(`ALTER TABLE users ADD COLUMN name TEXT NOT NULL DEFAULT ""`); } catch(e){}
+                if (!colNames.includes("user_code")) try { db.exec(`ALTER TABLE users ADD COLUMN user_code TEXT`); } catch(e){}
+                if (!colNames.includes("salt")) try { db.exec(`ALTER TABLE users ADD COLUMN salt TEXT NOT NULL DEFAULT ""`); } catch(e){}
+                if (!colNames.includes("hash_algorithm")) try { db.exec(`ALTER TABLE users ADD COLUMN hash_algorithm TEXT NOT NULL DEFAULT "scrypt"`); } catch(e){}
+                if (!colNames.includes("status")) try { db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active"`); } catch(e){}
+                if (!colNames.includes("permissions_json")) try { db.exec(`ALTER TABLE users ADD COLUMN permissions_json TEXT NOT NULL DEFAULT "[]"`); } catch(e){}
+                if (!colNames.includes("updated_at")) try { db.exec(`ALTER TABLE users ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`); } catch(e){}
+            }
+        } else {
+            // Fresh installation: create users table directly
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL DEFAULT "",
+                    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    user_code TEXT,
+                    password_hash TEXT NOT NULL,
+                    salt TEXT NOT NULL,
+                    hash_algorithm TEXT NOT NULL DEFAULT "scrypt",
+                    role TEXT NOT NULL DEFAULT "user" CHECK (role IN ("admin", "user", "manager", "cashier", "ADMIN", "USER")),
+                    status TEXT NOT NULL DEFAULT "active" CHECK (status IN ("active", "disabled")),
+                    permissions_json TEXT NOT NULL DEFAULT "[]",
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+        }
+
+        // Create user_sessions and indexes safely
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                token TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME NOT NULL,
+                revoked INTEGER NOT NULL DEFAULT 0,
+                last_activity DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+            CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+            CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+            CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+            CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);
+        `);
+    } catch (e) {
+        console.error("[Database] users schema initialization error:", e);
+        throw e;
+    }
 
     // Settings
     db.exec(`

@@ -210,10 +210,24 @@ window.searchProductsUnified = function(query, allProducts) {
             if (window.electronAPI) {
                 // Ensure a database folder is selected
                 let folder = localStorage.getItem('database_folder');
+                if (!folder && window.electronAPI && typeof window.electronAPI.getDbConfigSync === 'function') {
+                    try {
+                        const savedFolder = window.electronAPI.getDbConfigSync();
+                        if (savedFolder && typeof savedFolder === 'string' && savedFolder.trim()) {
+                            folder = savedFolder.trim();
+                            localStorage.setItem('database_folder', folder);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to retrieve persistent db config:', e);
+                    }
+                }
                 if (!folder) {
                     folder = window.electronAPI.selectDirectorySync();
                     if (folder) {
                         localStorage.setItem('database_folder', folder);
+                        if (typeof window.electronAPI.setDbConfigSync === 'function') {
+                            try { window.electronAPI.setDbConfigSync(folder); } catch(e){}
+                        }
                     } else {
                         alert('CRITICAL ERROR: You must select a folder to save your database! Please restart the application.');
                     }
@@ -21352,6 +21366,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         function proceedWithDatabaseSwitch() {
             if (pendingDatabaseFolder) {
                 localStorage.setItem('database_folder', pendingDatabaseFolder);
+                if (window.electronAPI && typeof window.electronAPI.setDbConfigSync === 'function') {
+                    try { window.electronAPI.setDbConfigSync(pendingDatabaseFolder); } catch(e){}
+                }
                 window.location.reload();
             }
         }

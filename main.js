@@ -810,6 +810,7 @@ const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
 const categoryService = require('./services/categoryService');
 const unitService = require('./services/unitService');
+const userService = require('./services/userService');
 
 // Error wrapping helper
 async function handleSqlite(event, handlerFn) {
@@ -828,6 +829,58 @@ async function handleSqlite(event, handlerFn) {
     }
 }
 
+/**
+ * Main-Process Authorized SQLite IPC Guard
+ * Validates session token from request args against trusted SQLite user_sessions.
+ * Never trusts renderer-provided roles, permissions, or user IDs.
+ */
+async function handleAuthorizedSqlite(event, sessionToken, requiredPermission, handlerFn) {
+    try {
+        if (!sqliteStatus.initialized || !dbManager.isDatabaseOpen()) {
+            return { success: false, error: { code: 'DATABASE_NOT_INITIALIZED', message: 'Database is not initialized.' } };
+        }
+
+        if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.trim().length === 0) {
+            return { success: false, error: { code: 'UNAUTHENTICATED', message: 'Authentication required: Missing session token.' } };
+        }
+
+        // Validate session token strictly from trusted SQLite table
+        const sessionUser = await userService.validateSession(sessionToken.trim());
+        if (!sessionUser) {
+            return { success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid, expired, or revoked session.' } };
+        }
+
+        if (sessionUser.status !== 'active') {
+            return { success: false, error: { code: 'USER_DISABLED', message: 'User account is disabled.' } };
+        }
+
+        // Administrator role bypasses specific feature permission checks
+        const isAdmin = sessionUser.role === 'admin' || sessionUser.role === 'ADMIN';
+
+        if (requiredPermission && requiredPermission !== 'authenticated') {
+            if (!isAdmin) {
+                if (requiredPermission === 'admin') {
+                    return { success: false, error: { code: 'FORBIDDEN', message: 'Administrator privilege required.' } };
+                }
+                const userPerms = Array.isArray(sessionUser.permissions) ? sessionUser.permissions : [];
+                if (!userPerms.includes(requiredPermission)) {
+                    return { success: false, error: { code: 'FORBIDDEN', message: `Permission denied: Missing '${requiredPermission}' permission.` } };
+                }
+            }
+        }
+
+        // Invoke business operation with validated sessionUser context
+        const result = await handlerFn(sessionUser);
+        return { success: true, data: result };
+    } catch (e) {
+        console.error('Authorized SQLite IPC Error:', e);
+        if (e.code) {
+            return { success: false, error: { code: e.code, message: e.message } };
+        }
+        return { success: false, error: { code: 'DATABASE_ERROR', message: e.message || 'The operation could not be completed.' } };
+    }
+}
+
 
 // System SQLite status and connection IPC
 ipcMain.handle('sqlite:system:getStatus', () => {
@@ -838,6 +891,25 @@ ipcMain.handle('sqlite:system:getStatus', () => {
         message: sqliteStatus.message || null
     };
 });
+
+// User Authentication & Management SQLite IPC
+ipcMain.handle('sqlite:users:login', (e, args) => handleSqlite(e, () => userService.authenticate(args?.username, args?.password)));
+ipcMain.handle('sqlite:users:logout', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'authenticated', () => userService.revokeSession(args?.sessionToken)));
+ipcMain.handle('sqlite:users:validateSession', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'authenticated', (user) => user));
+ipcMain.handle('sqlite:users:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => userService.getUsers()));
+ipcMain.handle('sqlite:users:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => userService.createUser(args?.userData)));
+ipcMain.handle('sqlite:users:update', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => userService.updateUser(args?.userId, args?.updateData)));
+ipcMain.handle('sqlite:users:toggleStatus', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => userService.toggleUserStatus(args?.userId, args?.targetStatus)));
+ipcMain.handle('sqlite:users:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => userService.deleteUser(args?.userId)));
+ipcMain.handle('sqlite:users:changePassword', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'authenticated', (user) => {
+    // Only admin can change other users passwords; non-admin can only change own password
+    if (user.role !== 'admin' && user.role !== 'ADMIN' && user.userId !== args?.userId) {
+        const err = new Error('Forbidden: Non-administrators can only change their own password.');
+        err.code = 'FORBIDDEN';
+        throw err;
+    }
+    return userService.changePassword(args?.userId, args?.newPassword);
+}));
 
 ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -885,126 +957,199 @@ ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
 });
 
 // Categories
-ipcMain.handle('sqlite:categories:getAll', (e) => handleSqlite(e, () => categoryService.getCategories()));
-ipcMain.handle('sqlite:categories:get', (e, id) => handleSqlite(e, () => categoryService.getCategory(id)));
-ipcMain.handle('sqlite:categories:create', (e, name) => handleSqlite(e, () => categoryService.createCategory(name)));
-ipcMain.handle('sqlite:categories:update', (e, id, newName) => handleSqlite(e, () => categoryService.updateCategory(id, newName)));
-ipcMain.handle('sqlite:categories:toggleStatus', (e, id, active) => handleSqlite(e, () => categoryService.toggleCategoryStatus(id, active)));
-ipcMain.handle('sqlite:categories:delete', (e, id) => handleSqlite(e, () => categoryService.deleteCategory(id)));
-ipcMain.handle('sqlite:categories:migrate', (e, items) => handleSqlite(e, () => categoryService.migrateCategories(items)));
+ipcMain.handle('sqlite:categories:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => categoryService.getCategories()));
+ipcMain.handle('sqlite:categories:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => categoryService.getCategory(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:categories:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => categoryService.createCategory(args?.name !== undefined ? args.name : args)));
+ipcMain.handle('sqlite:categories:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const newName = args?.newName !== undefined ? args.newName : arg2;
+    return categoryService.updateCategory(id, newName);
+}));
+ipcMain.handle('sqlite:categories:toggleStatus', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const active = args?.active !== undefined ? args.active : arg2;
+    return categoryService.toggleCategoryStatus(id, active);
+}));
+ipcMain.handle('sqlite:categories:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => categoryService.deleteCategory(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:categories:migrate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => categoryService.migrateCategories(args?.items !== undefined ? args.items : args)));
 
 // Units
-ipcMain.handle('sqlite:units:getAll', (e) => handleSqlite(e, () => unitService.getUnits()));
-ipcMain.handle('sqlite:units:get', (e, id) => handleSqlite(e, () => unitService.getUnit(id)));
-ipcMain.handle('sqlite:units:create', (e, name) => handleSqlite(e, () => unitService.createUnit(name)));
-ipcMain.handle('sqlite:units:update', (e, id, newName) => handleSqlite(e, () => unitService.updateUnit(id, newName)));
-ipcMain.handle('sqlite:units:toggleStatus', (e, id, active) => handleSqlite(e, () => unitService.toggleUnitStatus(id, active)));
-ipcMain.handle('sqlite:units:delete', (e, id) => handleSqlite(e, () => unitService.deleteUnit(id)));
-ipcMain.handle('sqlite:units:migrate', (e, items) => handleSqlite(e, () => unitService.migrateUnits(items)));
+ipcMain.handle('sqlite:units:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => unitService.getUnits()));
+ipcMain.handle('sqlite:units:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => unitService.getUnit(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:units:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => unitService.createUnit(args?.name !== undefined ? args.name : args)));
+ipcMain.handle('sqlite:units:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const newName = args?.newName !== undefined ? args.newName : arg2;
+    return unitService.updateUnit(id, newName);
+}));
+ipcMain.handle('sqlite:units:toggleStatus', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const active = args?.active !== undefined ? args.active : arg2;
+    return unitService.toggleUnitStatus(id, active);
+}));
+ipcMain.handle('sqlite:units:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => unitService.deleteUnit(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:units:migrate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => unitService.migrateUnits(args?.items !== undefined ? args.items : args)));
 
 // Products
-ipcMain.handle('sqlite:products:getAll', (e) => handleSqlite(e, () => productService.getProducts()));
-ipcMain.handle('sqlite:products:get', (e, id) => handleSqlite(e, () => productService.getProduct(id)));
-ipcMain.handle('sqlite:products:create', (e, data) => handleSqlite(e, () => productService.createProduct(data)));
-ipcMain.handle('sqlite:products:update', (e, id, data) => handleSqlite(e, () => productService.updateProduct(id, data)));
-ipcMain.handle('sqlite:products:search', (e, q) => handleSqlite(e, () => productService.searchProducts(q)));
-ipcMain.handle('sqlite:products:lowStock', (e) => handleSqlite(e, () => productService.getLowStockProducts()));
+ipcMain.handle('sqlite:products:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProducts()));
+ipcMain.handle('sqlite:products:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProduct(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:products:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => productService.createProduct(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:products:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return productService.updateProduct(id, data);
+}));
+ipcMain.handle('sqlite:products:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.searchProducts(args?.q !== undefined ? args.q : args)));
+ipcMain.handle('sqlite:products:lowStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getLowStockProducts()));
 
 // Stock
-ipcMain.handle('sqlite:stock:get', (e, pId) => handleSqlite(e, () => stockService.getCurrentStock(pId)));
-ipcMain.handle('sqlite:stock:movements', (e, pId) => handleSqlite(e, () => stockService.getStockMovements(pId)));
-ipcMain.handle('sqlite:stock:adjust', (e, productId, variantId, qty, reason, refType, refId) => handleSqlite(e, () => stockService.adjustStock(productId, variantId, qty, reason, refType, refId)));
+ipcMain.handle('sqlite:stock:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getCurrentStock(args?.pId !== undefined ? args.pId : args)));
+ipcMain.handle('sqlite:stock:movements', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getStockMovements(args?.pId !== undefined ? args.pId : args)));
+ipcMain.handle('sqlite:stock:adjust', (e, args, ...rest) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => {
+    if (args && typeof args === 'object' && args.productId !== undefined) {
+        return stockService.adjustStock(args.productId, args.variantId, args.qty, args.reason, args.refType, args.refId);
+    }
+    return stockService.adjustStock(args, rest[0], rest[1], rest[2], rest[3], rest[4]);
+}));
 
 // Customers
-ipcMain.handle('sqlite:customers:getAll', (e) => handleSqlite(e, () => customerService.getCustomers()));
-ipcMain.handle('sqlite:customers:get', (e, id) => handleSqlite(e, () => customerService.getCustomer(id)));
-ipcMain.handle('sqlite:customers:create', (e, data) => handleSqlite(e, () => customerService.createCustomer(data)));
-ipcMain.handle('sqlite:customers:update', (e, id, data) => handleSqlite(e, () => customerService.updateCustomer(id, data)));
-ipcMain.handle('sqlite:customers:delete', (e, id) => handleSqlite(e, () => customerService.deleteCustomer(id)));
-ipcMain.handle('sqlite:customers:search', (e, query) => handleSqlite(e, () => customerService.searchCustomers(query)));
+ipcMain.handle('sqlite:customers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomers()));
+ipcMain.handle('sqlite:customers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomer(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:customers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.createCustomer(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:customers:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return customerService.updateCustomer(id, data);
+}));
+ipcMain.handle('sqlite:customers:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => customerService.deleteCustomer(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:customers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.searchCustomers(args?.query !== undefined ? args.query : args)));
 
 // Sales
-ipcMain.handle('sqlite:sales:create', (e, data) => handleSqlite(e, () => salesService.createSale(data)));
-ipcMain.handle('sqlite:sales:getAll', (e, dateStr) => handleSqlite(e, () => salesService.getSales(dateStr)));
-ipcMain.handle('sqlite:sales:search', (e, query) => handleSqlite(e, () => salesService.searchSales(query)));
-ipcMain.handle('sqlite:sales:get', (e, id) => handleSqlite(e, () => salesService.getSaleById(id)));
-ipcMain.handle('sqlite:sales:cancel', (e, id) => handleSqlite(e, () => salesService.cancelSale(id)));
+ipcMain.handle('sqlite:sales:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.createSale(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:sales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSales(args?.dateStr !== undefined ? args.dateStr : args)));
+ipcMain.handle('sqlite:sales:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.searchSales(args?.query !== undefined ? args.query : args)));
+ipcMain.handle('sqlite:sales:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSaleById(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:sales:cancel', (e, args, arg2) => {
+    const sessionToken = args?.sessionToken || arg2;
+    const saleId = (args && typeof args === 'object' && args.id !== undefined) ? args.id : (args?.saleId || args);
+    return handleAuthorizedSqlite(e, sessionToken, 'delete', () => salesService.cancelSale(saleId));
+});
 
 // Purchases
-ipcMain.handle('sqlite:purchases:create', (e, data) => handleSqlite(e, () => purchaseService.createPurchase(data)));
-ipcMain.handle('sqlite:purchases:getAll', (e, dateStr) => handleSqlite(e, () => purchaseService.getPurchases(dateStr)));
-ipcMain.handle('sqlite:purchases:search', (e, query) => handleSqlite(e, () => purchaseService.searchPurchases(query)));
-ipcMain.handle('sqlite:purchases:get', (e, id) => handleSqlite(e, () => purchaseService.getPurchaseById(id)));
-ipcMain.handle('sqlite:purchases:cancel', (e, id) => handleSqlite(e, () => purchaseService.cancelPurchase(id)));
+ipcMain.handle('sqlite:purchases:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.createPurchase(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(args?.dateStr !== undefined ? args.dateStr : args)));
+ipcMain.handle('sqlite:purchases:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.searchPurchases(args?.query !== undefined ? args.query : args)));
+ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchaseById(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:purchases:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseService.cancelPurchase(args?.id !== undefined ? args.id : args)));
 
 // Suppliers
-ipcMain.handle('sqlite:suppliers:getAll', (e) => handleSqlite(e, () => supplierService.getSuppliers()));
-ipcMain.handle('sqlite:suppliers:get', (e, id) => handleSqlite(e, () => supplierService.getSupplier(id)));
-ipcMain.handle('sqlite:suppliers:create', (e, data) => handleSqlite(e, () => supplierService.createSupplier(data)));
-ipcMain.handle('sqlite:suppliers:update', (e, id, data) => handleSqlite(e, () => supplierService.updateSupplier(id, data)));
-ipcMain.handle('sqlite:suppliers:archive', (e, id) => handleSqlite(e, () => supplierService.archiveSupplier(id)));
-ipcMain.handle('sqlite:suppliers:search', (e, query) => handleSqlite(e, () => supplierService.searchSuppliers(query)));
+ipcMain.handle('sqlite:suppliers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSuppliers()));
+ipcMain.handle('sqlite:suppliers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSupplier(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:suppliers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.createSupplier(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:suppliers:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return supplierService.updateSupplier(id, data);
+}));
+ipcMain.handle('sqlite:suppliers:archive', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.archiveSupplier(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:suppliers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.searchSuppliers(args?.query !== undefined ? args.query : args)));
 
 // Purchase Orders
-ipcMain.handle('sqlite:purchaseOrders:create', (e, data) => handleSqlite(e, () => purchaseOrderService.createPO(data)));
-ipcMain.handle('sqlite:purchaseOrders:update', (e, id, data) => handleSqlite(e, () => purchaseOrderService.updatePO(id, data)));
-ipcMain.handle('sqlite:purchaseOrders:getAll', (e) => handleSqlite(e, () => purchaseOrderService.getPOs()));
-ipcMain.handle('sqlite:purchaseOrders:get', (e, id) => handleSqlite(e, () => purchaseOrderService.getPO(id)));
-ipcMain.handle('sqlite:purchaseOrders:search', (e, query) => handleSqlite(e, () => purchaseOrderService.searchPOs(query)));
-ipcMain.handle('sqlite:purchaseOrders:cancel', (e, id) => handleSqlite(e, () => purchaseOrderService.cancelPO(id)));
-ipcMain.handle('sqlite:purchaseOrders:receive', (e, id) => handleSqlite(e, () => purchaseOrderService.receivePO(id)));
+ipcMain.handle('sqlite:purchaseOrders:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.createPO(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:purchaseOrders:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return purchaseOrderService.updatePO(id, data);
+}));
+ipcMain.handle('sqlite:purchaseOrders:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.getPOs()));
+ipcMain.handle('sqlite:purchaseOrders:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.getPO(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:purchaseOrders:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.searchPOs(args?.query !== undefined ? args.query : args)));
+ipcMain.handle('sqlite:purchaseOrders:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseOrderService.cancelPO(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:purchaseOrders:receive', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.receivePO(args?.id !== undefined ? args.id : args)));
 
 // Payments
-ipcMain.handle('sqlite:payments:getSalePayments', (e, saleId) => handleSqlite(e, () => paymentService.getSalePayments(saleId)));
-ipcMain.handle('sqlite:payments:createSalePayment', (e, data) => handleSqlite(e, () => paymentService.createSalePayment(data)));
-ipcMain.handle('sqlite:payments:cancelSalePayment', (e, id) => handleSqlite(e, () => paymentService.cancelSalePayment(id)));
-ipcMain.handle('sqlite:payments:getPurchasePayments', (e, purchaseId) => handleSqlite(e, () => paymentService.getPurchasePayments(purchaseId)));
-ipcMain.handle('sqlite:payments:createPurchasePayment', (e, data) => handleSqlite(e, () => paymentService.createPurchasePayment(data)));
-ipcMain.handle('sqlite:payments:cancelPurchasePayment', (e, id) => handleSqlite(e, () => paymentService.cancelPurchasePayment(id)));
-ipcMain.handle('sqlite:payments:getLedgerPayments', (e) => handleSqlite(e, () => paymentService.getLedgerPayments()));
-ipcMain.handle('sqlite:payments:createLedgerPayment', (e, data) => handleSqlite(e, () => paymentService.createLedgerPayment(data)));
+ipcMain.handle('sqlite:payments:getSalePayments', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => paymentService.getSalePayments(args?.saleId !== undefined ? args.saleId : args)));
+ipcMain.handle('sqlite:payments:createSalePayment', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => paymentService.createSalePayment(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:payments:cancelSalePayment', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => paymentService.cancelSalePayment(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:payments:getPurchasePayments', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => paymentService.getPurchasePayments(args?.purchaseId !== undefined ? args.purchaseId : args)));
+ipcMain.handle('sqlite:payments:createPurchasePayment', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => paymentService.createPurchasePayment(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:payments:cancelPurchasePayment', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => paymentService.cancelPurchasePayment(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:payments:getLedgerPayments', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => paymentService.getLedgerPayments()));
+ipcMain.handle('sqlite:payments:createLedgerPayment', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => paymentService.createLedgerPayment(args?.data !== undefined ? args.data : args)));
 
-// Cash & Bank (Phase 4E.11)
-ipcMain.handle('sqlite:cashBank:getCashSummary', (e) => handleSqlite(e, () => cashBankService.getCashSummary()));
-ipcMain.handle('sqlite:cashBank:getBankSummary', (e) => handleSqlite(e, () => cashBankService.getBankSummary()));
-ipcMain.handle('sqlite:cashBank:getTransactions', (e, accountType, filters) => handleSqlite(e, () => cashBankService.getTransactions(accountType, filters)));
-ipcMain.handle('sqlite:cashBank:getTransaction', (e, id, accountType) => handleSqlite(e, () => cashBankService.getTransaction(id, accountType)));
-ipcMain.handle('sqlite:cashBank:createTransaction', (e, data) => handleSqlite(e, () => cashBankService.createTransaction(data)));
-ipcMain.handle('sqlite:cashBank:updateTransaction', (e, id, data) => handleSqlite(e, () => cashBankService.updateTransaction(id, data)));
-ipcMain.handle('sqlite:cashBank:cancelTransaction', (e, id, accountType) => handleSqlite(e, () => cashBankService.cancelTransaction(id, accountType)));
-ipcMain.handle('sqlite:cashBank:getOpeningBalance', (e, accountType) => handleSqlite(e, () => cashBankService.getOpeningBalance(accountType)));
-ipcMain.handle('sqlite:cashBank:setOpeningBalance', (e, accountType, amount) => handleSqlite(e, () => cashBankService.setOpeningBalance(accountType, amount)));
-ipcMain.handle('sqlite:cashBank:transfer', (e, data) => handleSqlite(e, () => cashBankService.transfer(data)));
+// Cash & Bank
+ipcMain.handle('sqlite:cashBank:getCashSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => cashBankService.getCashSummary()));
+ipcMain.handle('sqlite:cashBank:getBankSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => cashBankService.getBankSummary()));
+ipcMain.handle('sqlite:cashBank:getTransactions', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => {
+    const accountType = args?.accountType !== undefined ? args.accountType : args;
+    const filters = args?.filters !== undefined ? args.filters : arg2;
+    return cashBankService.getTransactions(accountType, filters);
+}));
+ipcMain.handle('sqlite:cashBank:getTransaction', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const accountType = args?.accountType !== undefined ? args.accountType : arg2;
+    return cashBankService.getTransaction(id, accountType);
+}));
+ipcMain.handle('sqlite:cashBank:createTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => cashBankService.createTransaction(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:cashBank:updateTransaction', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return cashBankService.updateTransaction(id, data);
+}));
+ipcMain.handle('sqlite:cashBank:cancelTransaction', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const accountType = args?.accountType !== undefined ? args.accountType : arg2;
+    return cashBankService.cancelTransaction(id, accountType);
+}));
+ipcMain.handle('sqlite:cashBank:getOpeningBalance', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => cashBankService.getOpeningBalance(args?.accountType !== undefined ? args.accountType : args)));
+ipcMain.handle('sqlite:cashBank:setOpeningBalance', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const accountType = args?.accountType !== undefined ? args.accountType : args;
+    const amount = args?.amount !== undefined ? args.amount : arg2;
+    return cashBankService.setOpeningBalance(accountType, amount);
+}));
+ipcMain.handle('sqlite:cashBank:transfer', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => cashBankService.transfer(args?.data !== undefined ? args.data : args)));
 
-// Petty Cash (Phase 4E.12)
-ipcMain.handle('sqlite:pettyCash:getSummary', (e) => handleSqlite(e, () => pettyCashService.getSummary()));
-ipcMain.handle('sqlite:pettyCash:getOpeningBalances', (e) => handleSqlite(e, () => pettyCashService.getOpeningBalances()));
-ipcMain.handle('sqlite:pettyCash:setOpeningBalances', (e, cash, bank) => handleSqlite(e, () => pettyCashService.setOpeningBalances(cash, bank)));
-ipcMain.handle('sqlite:pettyCash:getCategories', (e) => handleSqlite(e, () => pettyCashService.getCategories()));
-ipcMain.handle('sqlite:pettyCash:saveCategories', (e, cats) => handleSqlite(e, () => pettyCashService.saveCategories(cats)));
-ipcMain.handle('sqlite:pettyCash:getTransactions', (e, filters) => handleSqlite(e, () => pettyCashService.getTransactions(filters)));
-ipcMain.handle('sqlite:pettyCash:getTransaction', (e, id) => handleSqlite(e, () => pettyCashService.getTransaction(id)));
-ipcMain.handle('sqlite:pettyCash:createTransaction', (e, data) => handleSqlite(e, () => pettyCashService.createTransaction(data)));
-ipcMain.handle('sqlite:pettyCash:updateTransaction', (e, id, data) => handleSqlite(e, () => pettyCashService.updateTransaction(id, data)));
-ipcMain.handle('sqlite:pettyCash:deleteTransaction', (e, id) => handleSqlite(e, () => pettyCashService.deleteTransaction(id)));
-ipcMain.handle('sqlite:pettyCash:cancelTransaction', (e, id) => handleSqlite(e, () => pettyCashService.cancelTransaction(id)));
+// Petty Cash
+ipcMain.handle('sqlite:pettyCash:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getSummary()));
+ipcMain.handle('sqlite:pettyCash:getOpeningBalances', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getOpeningBalances()));
+ipcMain.handle('sqlite:pettyCash:setOpeningBalances', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
+    const cash = args?.cash !== undefined ? args.cash : args;
+    const bank = args?.bank !== undefined ? args.bank : arg2;
+    return pettyCashService.setOpeningBalances(cash, bank);
+}));
+ipcMain.handle('sqlite:pettyCash:getCategories', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getCategories()));
+ipcMain.handle('sqlite:pettyCash:saveCategories', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => pettyCashService.saveCategories(args?.cats !== undefined ? args.cats : args)));
+ipcMain.handle('sqlite:pettyCash:getTransactions', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransactions(args?.filters !== undefined ? args.filters : args)));
+ipcMain.handle('sqlite:pettyCash:getTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransaction(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:pettyCash:createTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.createTransaction(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:pettyCash:updateTransaction', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    const data = args?.data !== undefined ? args.data : arg2;
+    return pettyCashService.updateTransaction(id, data);
+}));
+ipcMain.handle('sqlite:pettyCash:deleteTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.deleteTransaction(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:pettyCash:cancelTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.cancelTransaction(args?.id !== undefined ? args.id : args)));
 
-// Day Closing (Phase 4E.13)
-ipcMain.handle('sqlite:dayClosing:getAll', (e, filters) => handleSqlite(e, () => dayClosingService.getAllClosings(filters)));
-ipcMain.handle('sqlite:dayClosing:get', (e, id) => handleSqlite(e, () => dayClosingService.getClosing(id)));
-ipcMain.handle('sqlite:dayClosing:getByDate', (e, dateStr) => handleSqlite(e, () => dayClosingService.getClosingByDate(dateStr)));
-ipcMain.handle('sqlite:dayClosing:save', (e, data) => handleSqlite(e, () => dayClosingService.saveClosing(data)));
-ipcMain.handle('sqlite:dayClosing:delete', (e, id) => handleSqlite(e, () => dayClosingService.deleteClosing(id)));
+// Day Closing
+ipcMain.handle('sqlite:dayClosing:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getAllClosings(args?.filters !== undefined ? args.filters : args)));
+ipcMain.handle('sqlite:dayClosing:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosing(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:dayClosing:getByDate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosingByDate(args?.dateStr !== undefined ? args.dateStr : args)));
+ipcMain.handle('sqlite:dayClosing:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.saveClosing(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:dayClosing:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => dayClosingService.deleteClosing(args?.id !== undefined ? args.id : args)));
 
-// Calculator (Phase 4E.14)
-ipcMain.handle('sqlite:calculator:getHistory', (e) => handleSqlite(e, () => calculatorService.getHistory()));
-ipcMain.handle('sqlite:calculator:saveHistory', (e, expression, result) => handleSqlite(e, () => calculatorService.saveHistory(expression, result)));
-ipcMain.handle('sqlite:calculator:deleteHistory', (e, id) => handleSqlite(e, () => calculatorService.deleteHistory(id)));
-ipcMain.handle('sqlite:calculator:clearAllHistory', (e) => handleSqlite(e, () => calculatorService.clearAllHistory()));
+// Calculator
+ipcMain.handle('sqlite:calculator:getHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.getHistory()));
+ipcMain.handle('sqlite:calculator:saveHistory', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => {
+    const expression = args?.expression !== undefined ? args.expression : args;
+    const result = args?.result !== undefined ? args.result : arg2;
+    return calculatorService.saveHistory(expression, result);
+}));
+ipcMain.handle('sqlite:calculator:deleteHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.deleteHistory(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:calculator:clearAllHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.clearAllHistory()));
 
-// Reports (Phase 4E.15)
-ipcMain.handle('sqlite:reports:getReportSales', (e, filters) => handleSqlite(e, () => reportService.getReportSales(filters)));
-ipcMain.handle('sqlite:reports:getSummary', (e, filters) => handleSqlite(e, () => reportService.getCustomReportSummary(filters)));
+// Reports
+ipcMain.handle('sqlite:reports:getReportSales', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getReportSales(args?.filters !== undefined ? args.filters : args)));
+ipcMain.handle('sqlite:reports:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getCustomReportSummary(args?.filters !== undefined ? args.filters : args)));
 
-// Dashboard (Phase 4E.17)
-ipcMain.handle('sqlite:dashboard:getMetrics', (e, options) => handleSqlite(e, () => dashboardService.getDashboardMetrics(options)));
+// Dashboard
+ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'dashboard', () => dashboardService.getDashboardMetrics(args?.options !== undefined ? args.options : args)));
