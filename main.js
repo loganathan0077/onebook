@@ -695,6 +695,10 @@ ipcMain.on('focus-window', (event) => {
 // --- SQLite Database Lifecycle Management ---
 const dbManager = require('./database');
 
+const backupService = require('./backupService');
+const gdriveService = require('./gdriveService');
+
+
 let sqliteStatus = {
     initialized: false,
     path: null,
@@ -763,6 +767,7 @@ function initSqliteAtStartup() {
 
 app.whenReady().then(() => {
     initSqliteAtStartup();
+    backupService.startAutoBackupScheduler();
 
     createWindow();
 
@@ -1153,3 +1158,37 @@ ipcMain.handle('sqlite:reports:getSummary', (e, args) => handleAuthorizedSqlite(
 
 // Dashboard
 ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'dashboard', () => dashboardService.getDashboardMetrics(args?.options !== undefined ? args.options : args)));
+
+
+// --- Backup & Google Drive IPC Handlers ---
+ipcMain.handle('sqlite:backup:createLocal', async (e, args) => {
+    return await backupService.createBackup(args?.reason || 'manual');
+});
+
+ipcMain.handle('sqlite:backup:listLocal', async () => {
+    return backupService.listBackups();
+});
+
+ipcMain.handle('sqlite:gdrive:getStatus', async () => {
+    return gdriveService.getStatus();
+});
+
+ipcMain.handle('sqlite:gdrive:connect', async (e, args) => {
+    return await gdriveService.startAuthFlow(args?.clientId, args?.clientSecret);
+});
+
+ipcMain.handle('sqlite:gdrive:disconnect', async () => {
+    return gdriveService.disconnect();
+});
+
+ipcMain.handle('sqlite:gdrive:backupNow', async () => {
+    const localRes = await backupService.createBackup('cloud_manual');
+    if (!localRes.success) return localRes;
+    const cloudRes = await gdriveService.uploadBackup(localRes.metadata);
+    return { success: cloudRes.success, local: localRes.metadata, cloud: cloudRes };
+});
+
+// Draft Sales SQLite Handlers
+ipcMain.handle('sqlite:draftSales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.getAll()));
+ipcMain.handle('sqlite:draftSales:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.save(args?.draft !== undefined ? args.draft : args)));
+ipcMain.handle('sqlite:draftSales:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.delete(args?.id !== undefined ? args.id : args)));

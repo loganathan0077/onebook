@@ -168,6 +168,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
             getReportSales: (filters) => ipcRenderer.invoke('sqlite:reports:getReportSales', { sessionToken: currentSessionToken, filters }),
             getSummary: (filters) => ipcRenderer.invoke('sqlite:reports:getSummary', { sessionToken: currentSessionToken, filters })
         },
+        
+        backup: {
+            createLocal: (args) => ipcRenderer.invoke('sqlite:backup:createLocal', args),
+            listLocal: () => ipcRenderer.invoke('sqlite:backup:listLocal')
+        },
+        gdrive: {
+            getStatus: () => ipcRenderer.invoke('sqlite:gdrive:getStatus'),
+            connect: (args) => ipcRenderer.invoke('sqlite:gdrive:connect', args),
+            disconnect: () => ipcRenderer.invoke('sqlite:gdrive:disconnect'),
+            backupNow: () => ipcRenderer.invoke('sqlite:gdrive:backupNow')
+        },
+        draftSales: {
+            getAll: (args) => ipcRenderer.invoke('sqlite:draftSales:getAll', args),
+            save: (args) => ipcRenderer.invoke('sqlite:draftSales:save', args),
+            delete: (args) => ipcRenderer.invoke('sqlite:draftSales:delete', args)
+        },
         dashboard: {
             getMetrics: (options) => ipcRenderer.invoke('sqlite:dashboard:getMetrics', { sessionToken: currentSessionToken, options })
         }

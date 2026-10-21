@@ -533,6 +533,31 @@ function createSchema() {
         db.exec('ALTER TABLE customers ADD COLUMN opening_balance REAL DEFAULT 0');
     }
 
+    // Runtime column migration for stock_movements
+    const smCols = db.prepare('PRAGMA table_info(stock_movements)').all().map(c => c.name);
+    if (!smCols.includes('variant_id')) db.exec('ALTER TABLE stock_movements ADD COLUMN variant_id INTEGER');
+    if (!smCols.includes('previous_stock')) db.exec('ALTER TABLE stock_movements ADD COLUMN previous_stock REAL');
+    if (!smCols.includes('new_stock')) db.exec('ALTER TABLE stock_movements ADD COLUMN new_stock REAL');
+    if (!smCols.includes('reference_type')) db.exec('ALTER TABLE stock_movements ADD COLUMN reference_type TEXT');
+    if (!smCols.includes('notes')) db.exec('ALTER TABLE stock_movements ADD COLUMN notes TEXT');
+
+    // Runtime column migration for suppliers & sales
+    const supplierCols = db.prepare('PRAGMA table_info(suppliers)').all().map(c => c.name);
+    if (!supplierCols.includes('status')) db.exec("ALTER TABLE suppliers ADD COLUMN status TEXT DEFAULT 'active'");
+
+    const salesCols = db.prepare('PRAGMA table_info(sales)').all().map(c => c.name);
+    if (!salesCols.includes('courier')) db.exec('ALTER TABLE sales ADD COLUMN courier REAL DEFAULT 0');
+    if (!salesCols.includes('cash_amount')) db.exec('ALTER TABLE sales ADD COLUMN cash_amount REAL DEFAULT 0');
+    if (!salesCols.includes('other_payment_amount')) db.exec('ALTER TABLE sales ADD COLUMN other_payment_amount REAL DEFAULT 0');
+    if (!salesCols.includes('customer_amount')) db.exec('ALTER TABLE sales ADD COLUMN customer_amount REAL DEFAULT 0');
+    if (!salesCols.includes('change_amount')) db.exec('ALTER TABLE sales ADD COLUMN change_amount REAL DEFAULT 0');
+    if (!salesCols.includes('gst_applied')) db.exec('ALTER TABLE sales ADD COLUMN gst_applied INTEGER DEFAULT 0');
+    if (!salesCols.includes('payment_status')) db.exec("ALTER TABLE sales ADD COLUMN payment_status TEXT DEFAULT 'fully_paid'");
+    if (!salesCols.includes('amount_paid')) db.exec('ALTER TABLE sales ADD COLUMN amount_paid REAL DEFAULT 0');
+    if (!salesCols.includes('outstanding_amount')) db.exec('ALTER TABLE sales ADD COLUMN outstanding_amount REAL DEFAULT 0');
+    if (!salesCols.includes('due_date')) db.exec('ALTER TABLE sales ADD COLUMN due_date DATETIME');
+    if (!salesCols.includes('customer_name')) db.exec("ALTER TABLE sales ADD COLUMN customer_name TEXT DEFAULT 'Walk-in Customer'");
+
     // Runtime column migration for cash_transactions & bank_transactions (Phase 4E.11)
     const cashCols = db.prepare('PRAGMA table_info(cash_transactions)').all().map(c => c.name);
     if (!cashCols.includes('payment_method')) db.exec('ALTER TABLE cash_transactions ADD COLUMN payment_method TEXT');
@@ -542,7 +567,25 @@ function createSchema() {
 
     const bankCols = db.prepare('PRAGMA table_info(bank_transactions)').all().map(c => c.name);
     if (!bankCols.includes('payment_method')) db.exec('ALTER TABLE bank_transactions ADD COLUMN payment_method TEXT');
+
     if (!bankCols.includes('reference_number')) db.exec('ALTER TABLE bank_transactions ADD COLUMN reference_number TEXT');
+
+    // Runtime table creation for draft_sales
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS draft_sales (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT,
+            customer_name TEXT,
+            customer_type TEXT DEFAULT 'walk-in',
+            items_json TEXT NOT NULL,
+            subtotal REAL DEFAULT 0,
+            discount REAL DEFAULT 0,
+            total REAL DEFAULT 0,
+            payment_method TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
     if (!bankCols.includes('category')) db.exec('ALTER TABLE bank_transactions ADD COLUMN category TEXT');
     if (!bankCols.includes('created_at')) db.exec('ALTER TABLE bank_transactions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
 
@@ -685,6 +728,63 @@ function isDatabaseOpen() {
     return db !== null && db.open;
 }
 
+
+const draftSalesService = {
+    getAll: () => {
+        const rows = db.prepare('SELECT * FROM draft_sales ORDER BY updated_at DESC').all();
+        return rows.map(r => {
+            let items = [];
+            try { items = JSON.parse(r.items_json); } catch(e){}
+            return {
+                id: r.id,
+                customerId: r.customer_id,
+                customerName: r.customer_name,
+                customerType: r.customer_type,
+                items: items,
+                subtotal: r.subtotal,
+                discount: r.discount,
+                total: r.total,
+                paymentMethod: r.payment_method,
+                date: r.created_at,
+                timestamp: new Date(r.created_at).getTime()
+            };
+        });
+    },
+    save: (draft) => {
+        const id = draft.id || ('draft_' + Date.now());
+        const itemsJson = JSON.stringify(draft.items || []);
+        db.prepare(`
+            INSERT INTO draft_sales (id, customer_id, customer_name, customer_type, items_json, subtotal, discount, total, payment_method, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+                customer_id=excluded.customer_id,
+                customer_name=excluded.customer_name,
+                customer_type=excluded.customer_type,
+                items_json=excluded.items_json,
+                subtotal=excluded.subtotal,
+                discount=excluded.discount,
+                total=excluded.total,
+                payment_method=excluded.payment_method,
+                updated_at=CURRENT_TIMESTAMP
+        `).run(
+            id,
+            draft.customerId || null,
+            draft.customerName || 'Walk-in Customer',
+            draft.customerType || 'walk-in',
+            itemsJson,
+            Number(draft.subtotal || 0),
+            Number(draft.discount || 0),
+            Number(draft.total || 0),
+            draft.paymentMethod || 'cash'
+        );
+        return { success: true, id };
+    },
+    delete: (id) => {
+        db.prepare('DELETE FROM draft_sales WHERE id = ?').run(id);
+        return { success: true };
+    }
+};
+
 module.exports = {
     initializeDatabase,
     getDatabase,
@@ -693,5 +793,6 @@ module.exports = {
     verifyDatabase,
     closeDatabase,
     isDatabaseOpen,
+    draftSalesService,
     getDatabasePath
 };

@@ -208,8 +208,22 @@ window.searchProductsUnified = function(query, allProducts) {
 
         (function initOfflineDatabase() {
             if (window.electronAPI) {
-                // Ensure a database folder is selected
-                let folder = localStorage.getItem('database_folder');
+                // Ensure a database folder is selected from persistent main process config
+                let folder = null;
+                if (window.electronAPI && typeof window.electronAPI.getDbConfigSync === 'function') {
+                    try {
+                        const savedFolder = window.electronAPI.getDbConfigSync();
+                        if (savedFolder && typeof savedFolder === 'string' && savedFolder.trim()) {
+                            folder = savedFolder.trim();
+                            localStorage.setItem('database_folder', folder);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to retrieve persistent db config:', e);
+                    }
+                }
+                if (!folder) {
+                    folder = localStorage.getItem('database_folder');
+                }
                 if (!folder && window.electronAPI && typeof window.electronAPI.getDbConfigSync === 'function') {
                     try {
                         const savedFolder = window.electronAPI.getDbConfigSync();
@@ -233,40 +247,9 @@ window.searchProductsUnified = function(query, allProducts) {
                     }
                 }
 
-                // Override localStorage
-                const originalSetItem = localStorage.setItem;
-                const originalGetItem = localStorage.getItem;
-                const trackedKeys = ['products', 'sales', 'stockHistory', 'purchaseOrders', 'purchases', 'calculatorHistory', 'dayClosings', 'negativeChangeCount', 'draftSales', 'settings', 'customers', 'suppliers', 'users', 'partyPayments', 'masterCategories', 'masterUnits', 'customCategories', 'categoryDiscounts', 'receiptCounters', 'pettyCashCategories', 'pettyCashOpening', 'pettyCashTransactions'];
-
-                localStorage.getItem = function(key) {
-                    let val = null;
-                    const f = originalGetItem.call(localStorage, 'database_folder');
-                    if (trackedKeys.includes(key) && f) {
-                        val = window.electronAPI.loadDataSync({ folder: f, key });
-                    }
-                    if (val === null || val === undefined) {
-                        val = originalGetItem.call(localStorage, key);
-                    }
-                    if (typeof val === 'string' && val.startsWith('[object Object]')) {
-                        console.warn(`[Storage Auto-Heal]: Detected corrupted [object Object] for key "${key}". Resetting to null.`);
-                        val = null;
-                        try { originalSetItem.call(localStorage, key, 'null'); } catch(e){}
-                    }
-                    return val;
-                };
-
-                localStorage.setItem = function(key, data) {
-                    let safeData = data;
-                    if (typeof safeData === 'object' && safeData !== null) {
-                        console.warn(`[Storage Warning]: Non-string object passed to localStorage.setItem("${key}"). Auto-stringifying.`);
-                        safeData = JSON.stringify(safeData);
-                    }
-                    originalSetItem.call(localStorage, key, safeData);
-                    const f = originalGetItem.call(localStorage, 'database_folder');
-                    if (trackedKeys.includes(key) && f) {
-                        window.electronAPI.saveDataSync({ folder: f, key, data: safeData });
-                    }
-                };
+                // Phase 4A: SQLite-Only Business Architecture
+                // Automatic JSON file sync disabled. All business operations route exclusively to onebook.db.
+                console.log("[OneBook Storage]: SQLite-Only architecture active. JSON file sync disabled.");
             }
         })();
     </script>
@@ -4305,6 +4288,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                             <button class="btn btn-primary" onclick="saveInvoiceSettings()" style="width: 100%;">💾 Save Numbering Settings</button>
                         </div>
+                        
                         <!-- Backup & Restore -->
                         <div id="settings-pane-backup" class="settings-pane">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -4315,25 +4299,40 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </div>
                             </div>
 
+                            <!-- Production SQLite Database Status -->
                             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px;">
-                                <h4 style="margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>🗄️ Database Location</span>
-                                </h4>
-                                <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Current Database:</strong> <span id="currentDatabaseName">Local Database</span></p>
-                                <p style="margin: 0 0 15px 0; font-size: 12px; color: #666; word-break: break-all;"><strong>Location:</strong> <span id="currentDatabasePath">Not specified</span></p>
+                                <h4 style="margin: 0 0 10px 0;">🗄️ Production SQLite Database</h4>
+                                <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Database File:</strong> <span style="color: #28a745;">onebook.db</span></p>
+                                <p style="margin: 0 0 15px 0; font-size: 12px; color: #666; word-break: break-all;"><strong>Path:</strong> /Users/log/Documents/OneBook/Database/onebook.db</p>
                                 <div style="display: flex; gap: 10px;">
-                                    <button class="btn btn-secondary" onclick="handleChangeDatabaseLocation()" style="flex: 1;">📁 Change Database Location</button>
-                                    <button class="btn btn-primary" onclick="createBackup()" style="flex: 1;">💾 Backup Current Database</button>
+                                    <button class="btn btn-primary" onclick="triggerLocalBackup()" style="flex: 1;">💾 Back Up Local SQLite Database Now</button>
                                 </div>
+                                <p id="localBackupStatusText" style="font-size: 12px; color: #666; margin-top: 10px;">Last local backup: Loading...</p>
                             </div>
                             
-                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                                <h4 style="margin: 0 0 10px 0;">📦 Manual Backup / Restore</h4>
-                                <button class="btn btn-primary" onclick="createBackup()" style="margin-bottom: 10px; width: 100%;">Create Backup File</button>
-                                <p style="font-size: 0.9em; color: #666;" id="lastBackupLabel">Last Backup: Never</p>
-                                <hr style="border: none; border-top: 1px solid #eee; margin: 15px 0;">
-                                <input type="file" id="restoreFileBtn" style="display: none;" accept=".json" onchange="handleRestoreBackup(event)">
-                                <button class="btn btn-danger" onclick="document.getElementById('restoreFileBtn').click()" style="width: 100%;">Restore from Backup File</button>
+                            <!-- Google Drive Cloud Backup (Phase 3B) -->
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between;">
+                                    <span>☁️ Google Drive Cloud Backup</span>
+                                    <span id="gdriveStatusBadge" style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e2e8f0; color: #475569;">Checking...</span>
+                                </h4>
+                                <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+                                    Automatically back up verified SQLite snapshots to your dedicated OneBook_Backups folder in Google Drive.
+                                </p>
+                                <div id="gdriveConfigSection" style="display: none; background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px dashed #cbd5e1;">
+                                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Google Cloud OAuth Client ID</label>
+                                    <input type="text" id="gdriveClientIdInput" placeholder="e.g. 123456789-abc.apps.googleusercontent.com" style="width: 100%; font-size: 12px; padding: 6px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Google Cloud OAuth Client Secret</label>
+                                    <input type="password" id="gdriveClientSecretInput" placeholder="Client Secret" style="width: 100%; font-size: 12px; padding: 6px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                    <button class="btn btn-sm btn-primary" onclick="handleConnectGDrive()">Authorize & Connect Account</button>
+                                </div>
+                                <div id="gdriveConnectedSection" style="display: none;">
+                                    <p id="gdriveLastBackupText" style="font-size: 12px; color: #16a34a; margin-bottom: 10px;">Last cloud upload: None</p>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn btn-success" onclick="handleGDriveBackupNow()" style="flex: 1;">☁️ Upload Cloud Backup Now</button>
+                                        <button class="btn btn-outline-danger" onclick="handleDisconnectGDrive()" style="flex: 1;">Disconnect Account</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -6331,7 +6330,117 @@ input:focus, select:focus, textarea:focus, button:focus {
     <!-- Toast Notification -->
     <div id="toast"></div>
 
-    <!-- Add this just before </body>
+    <!-- Add this just before <script>
+        // --- Phase 3A & 3B: SQLite & Google Drive Backup UI Handlers ---
+        async function updateBackupStatusUI() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
+                    const backups = await window.electronAPI.sqlite.backup.listLocal();
+                    const localLabel = document.getElementById('localBackupStatusText');
+                    if (localLabel) {
+                        if (backups && backups.length > 0) {
+                            localLabel.textContent = 'Last local backup: ' + new Date(backups[0].timestamp).toLocaleString() + ' (' + backups[0].fileName + ')';
+                        } else {
+                            localLabel.textContent = 'Last local backup: None recorded yet';
+                        }
+                    }
+                }
+
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.gdrive) {
+                    const status = await window.electronAPI.sqlite.gdrive.getStatus();
+                    const badge = document.getElementById('gdriveStatusBadge');
+                    const configSec = document.getElementById('gdriveConfigSection');
+                    const connSec = document.getElementById('gdriveConnectedSection');
+                    const lastText = document.getElementById('gdriveLastBackupText');
+
+                    if (badge) {
+                        if (status.connected) {
+                            badge.textContent = 'Connected';
+                            badge.style.background = '#dcfce7';
+                            badge.style.color = '#15803d';
+                            if (configSec) configSec.style.display = 'none';
+                            if (connSec) connSec.style.display = 'block';
+                            if (lastText && status.lastBackup) {
+                                lastText.textContent = 'Last cloud upload: ' + new Date(status.lastBackup.timestamp).toLocaleString() + ' (' + status.lastBackup.fileName + ')';
+                            }
+                        } else {
+                            badge.textContent = status.configured ? 'Not Connected (Configured)' : 'Setup Required';
+                            badge.style.background = '#fef3c7';
+                            badge.style.color = '#b45309';
+                            if (configSec) configSec.style.display = 'block';
+                            if (connSec) connSec.style.display = 'none';
+                        }
+                    }
+                }
+            } catch(e) {
+                console.warn('Error updating backup UI status:', e);
+            }
+        }
+
+        async function triggerLocalBackup() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
+                    const res = await window.electronAPI.sqlite.backup.createLocal({ reason: 'manual_ui' });
+                    if (res.success) {
+                        alert('✅ Local SQLite backup created and verified successfully!\nFile: ' + res.metadata.fileName);
+                        updateBackupStatusUI();
+                    } else {
+                        alert('❌ Backup failed: ' + (res.error || res.message));
+                    }
+                }
+            } catch(e) {
+                alert('Backup error: ' + e.message);
+            }
+        }
+
+        async function handleConnectGDrive() {
+            const clientId = document.getElementById('gdriveClientIdInput').value.trim();
+            const clientSecret = document.getElementById('gdriveClientSecretInput').value.trim();
+            if (!clientId || !clientSecret) {
+                alert('Please enter both Google Cloud OAuth Client ID and Client Secret.');
+                return;
+            }
+            try {
+                alert('Opening web browser for Google Authorization. Please grant access and return.');
+                const res = await window.electronAPI.sqlite.gdrive.connect({ clientId, clientSecret });
+                if (res.success) {
+                    alert('✅ Google Drive connected successfully!');
+                    updateBackupStatusUI();
+                } else {
+                    alert('Connection failed: ' + (res.message || res.error));
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function handleDisconnectGDrive() {
+            if (!confirm('Are you sure you want to disconnect Google Drive?')) return;
+            try {
+                await window.electronAPI.sqlite.gdrive.disconnect();
+                alert('Disconnected Google Drive.');
+                updateBackupStatusUI();
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function handleGDriveBackupNow() {
+            try {
+                alert('Starting local verification and cloud upload...');
+                const res = await window.electronAPI.sqlite.gdrive.backupNow();
+                if (res.success) {
+                    alert('✅ Verified backup uploaded to Google Drive successfully!');
+                    updateBackupStatusUI();
+                } else {
+                    alert('Cloud upload failed: ' + (res.cloud?.error || res.error || 'Unknown error'));
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+</script>
+</body>
  for modal popup implementation -->
     <!-- Select PO Modal -->
     <div id="selectPOModal" class="modal">
@@ -6486,10 +6595,80 @@ input:focus, select:focus, textarea:focus, button:focus {
         // Real-time sync - Instant updates across all devices
         let realtimeSyncUnsubscribe = null;
 
-        function refreshUI() {
-            // Reload data from localStorage (which was updated by real-time listener)
-            products = JSON.parse(localStorage.getItem('products')) || [];
-            sales = JSON.parse(localStorage.getItem('sales')) || [];
+        async function refreshUI() {
+            // MIGRATION / SQLITE HYDRATION: If SQLite is active, load records directly from SQLite
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite) {
+                try {
+                    if (window.electronAPI.sqlite.products) {
+                        const pRes = await window.electronAPI.sqlite.products.getAll();
+                        const pList = (pRes && pRes.success && Array.isArray(pRes.data)) ? pRes.data : (Array.isArray(pRes) ? pRes : []);
+                        if (pList.length > 0) {
+                            products = pList.map(p => {
+                                const defVar = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+                                return {
+                                    ...p,
+                                    id: p.id,
+                                    name: p.name,
+                                    category: p.category,
+                                    barcode: defVar ? defVar.barcode : p.barcode,
+                                    price: Number(defVar ? defVar.selling_price : (p.price || 0)),
+                                    costPrice: Number(defVar ? defVar.buying_price : (p.cost_price || p.costPrice || 0)),
+                                    stock: Number(defVar ? defVar.stock : (p.stock || 0)),
+                                    minStock: Number(p.min_stock || p.minStock || 0),
+                                    unit: p.unit || 'Piece',
+                                    variants: (p.variants || []).map(v => ({
+                                        id: v.id,
+                                        productId: v.product_id || p.id,
+                                        variantName: v.variant_name || v.variantName,
+                                        barcode: v.barcode,
+                                        buyingPrice: Number(v.buying_price !== undefined ? v.buying_price : v.buyingPrice || 0),
+                                        sellingPrice: Number(v.selling_price !== undefined ? v.selling_price : v.sellingPrice || 0),
+                                        stock: Number(v.stock || 0),
+                                        minimumStock: Number(p.min_stock || p.minStock || 0)
+                                    }))
+                                };
+                            });
+                        }
+                    }
+
+                    if (window.electronAPI.sqlite.reports) {
+                        const sList = await window.electronAPI.sqlite.reports.getReportSales({});
+                        if (Array.isArray(sList) && sList.length > 0) {
+                            sales = sList;
+                        }
+                    }
+
+                    if (window.electronAPI.sqlite.customers) {
+                        const cRes = await window.electronAPI.sqlite.customers.getAll();
+                        const cList = (cRes && cRes.success && Array.isArray(cRes.data)) ? cRes.data : (Array.isArray(cRes) ? cRes : []);
+                        if (cList.length > 0) {
+                            customers = cList;
+                        }
+                    }
+
+                    if (window.electronAPI.sqlite.dayClosing) {
+                        const dcList = await window.electronAPI.sqlite.dayClosing.getAll({});
+                        if (Array.isArray(dcList) && dcList.length > 0) {
+                            dayClosings = dcList;
+                        }
+                    }
+
+                    if (window.electronAPI.sqlite.pettyCash) {
+                        const pcList = await window.electronAPI.sqlite.pettyCash.getTransactions({});
+                        if (Array.isArray(pcList) && pcList.length > 0) {
+                            pcTransactions = pcList;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[SQLite Hydration Error]:', e);
+                }
+            } else {
+                // Reload data from localStorage (legacy JSON mode fallback)
+                products = JSON.parse(localStorage.getItem('products')) || [];
+                sales = JSON.parse(localStorage.getItem('sales')) || [];
+                customers = JSON.parse(localStorage.getItem('customers')) || [];
+            }
+
             stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
             draftSales = JSON.parse(localStorage.getItem('draftSales')) || [];
             negativeChangeCount = parseInt(localStorage.getItem('negativeChangeCount')) || 0;
@@ -10003,7 +10182,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }, 50);
                 }
                 if (tabName === 'reports' && typeof generateSalesChart === 'function') generateSalesChart();
-                if (tabName === 'products' && typeof renderProductTable === 'function') renderProductTable();
+                if (tabName === 'products' && typeof updateProductsTable === 'function') updateProductsTable();
                 if (tabName === 'receivables' && typeof renderReceivablesTable === 'function') renderReceivablesTable();
                 if (tabName === 'payables' && typeof renderPayablesTable === 'function') renderPayablesTable();
                 if (tabName === 'pettycash' && typeof initPettyCash === 'function') initPettyCash();
