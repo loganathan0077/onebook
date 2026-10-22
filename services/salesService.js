@@ -84,17 +84,19 @@ class SalesService {
             const insertItem = db.prepare(`
                 INSERT INTO sale_items (
                     sale_id, product_id, product_name, variant_id, quantity, price, discount, total,
-                    taxable_value, cgst, sgst, igst
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    taxable_value, cgst, sgst, igst, location_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
             for (let item of saleData.items) {
+                const locId = item.location_id || item.locationId || null;
                 insertItem.run(
                     saleId, item.product_id, item.product_name, item.variant_id, 
                     item.quantity, item.price, item.discount || 0, item.total,
-                    item.taxableValue || 0, item.cgst || 0, item.sgst || 0, item.igst || 0
+                    item.taxableValue || 0, item.cgst || 0, item.sgst || 0, item.igst || 0,
+                    locId
                 );
-                stockService.adjustStock(item.product_id, item.variant_id, -item.quantity, 'SALE', 'SALE', saleId, saleData.date);
+                stockService.adjustStock(item.product_id, item.variant_id, -item.quantity, 'SALE', 'SALE', saleId, saleData.date, locId);
             }
             
             // Record Cash / Bank movement for immediate payment
@@ -195,7 +197,7 @@ class SalesService {
                         err.code = 'VARIANT_PRODUCT_MISMATCH';
                         throw err;
                     }
-                    stockService.adjustStock(item.product_id, item.variant_id, item.quantity, 'SALE_CANCELLED', 'SALE', saleId);
+                    stockService.adjustStock(item.product_id, item.variant_id, item.quantity, 'SALE_CANCELLED', 'SALE', saleId, null, item.location_id || null);
                 }
             }
 

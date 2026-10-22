@@ -2,6 +2,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 let currentSessionToken = null;
 
+// Read cached session token from localStorage/sessionStorage if present
+try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+        currentSessionToken = window.sessionStorage.getItem('onebook_session_token') || null;
+    }
+} catch(e) {}
+
 contextBridge.exposeInMainWorld('electronAPI', {
     selectDirectorySync: () => ipcRenderer.sendSync('select-directory-sync'),
     saveDataSync: (args) => ipcRenderer.sendSync('save-data-sync', args),
@@ -74,8 +81,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         stock: {
             get: (pId) => ipcRenderer.invoke('sqlite:stock:get', { sessionToken: currentSessionToken, pId }),
             movements: (pId) => ipcRenderer.invoke('sqlite:stock:movements', { sessionToken: currentSessionToken, pId }),
-            adjust: (productId, variantId, qty, reason, refType, refId) => 
-                ipcRenderer.invoke('sqlite:stock:adjust', { sessionToken: currentSessionToken, productId, variantId, qty, reason, refType, refId })
+            adjust: (productId, variantId, qty, reason, refType, refId, date, locationId) => 
+                ipcRenderer.invoke('sqlite:stock:adjust', { sessionToken: currentSessionToken, productId, variantId, qty, reason, refType, refId, date, locationId })
         },
         customers: {
             getAll: () => ipcRenderer.invoke('sqlite:customers:getAll', { sessionToken: currentSessionToken }),
@@ -186,6 +193,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
         },
         dashboard: {
             getMetrics: (options) => ipcRenderer.invoke('sqlite:dashboard:getMetrics', { sessionToken: currentSessionToken, options })
+        },
+        locations: {
+            getSettings: () => ipcRenderer.invoke('sqlite:locations:getSettings', { sessionToken: currentSessionToken }),
+            saveSettings: (settings) => ipcRenderer.invoke('sqlite:locations:saveSettings', { sessionToken: currentSessionToken, settings }),
+            getAll: (filters) => ipcRenderer.invoke('sqlite:locations:getAll', { sessionToken: currentSessionToken, filters }),
+            get: (id) => ipcRenderer.invoke('sqlite:locations:get', { sessionToken: currentSessionToken, id }),
+            create: (data) => ipcRenderer.invoke('sqlite:locations:create', { sessionToken: currentSessionToken, data }),
+            update: (id, data) => ipcRenderer.invoke('sqlite:locations:update', { sessionToken: currentSessionToken, id, data }),
+            toggleActive: (id, isActive) => ipcRenderer.invoke('sqlite:locations:toggleActive', { sessionToken: currentSessionToken, id, isActive }),
+            delete: (id) => ipcRenderer.invoke('sqlite:locations:delete', { sessionToken: currentSessionToken, id }),
+            getHierarchy: () => ipcRenderer.invoke('sqlite:locations:getHierarchy', { sessionToken: currentSessionToken }),
+            getStock: (productId, variantId, locationId) => ipcRenderer.invoke('sqlite:locations:getStock', { sessionToken: currentSessionToken, productId, variantId, locationId }),
+            getBreakdown: (productId, variantId) => ipcRenderer.invoke('sqlite:locations:getBreakdown', { sessionToken: currentSessionToken, productId, variantId }),
+            transferStock: (productId, variantId, fromLocationId, toLocationId, quantity, notes) => 
+                ipcRenderer.invoke('sqlite:locations:transferStock', { sessionToken: currentSessionToken, productId, variantId, fromLocationId, toLocationId, quantity, notes }),
+            getTransfers: (filters) => ipcRenderer.invoke('sqlite:locations:getTransfers', { sessionToken: currentSessionToken, filters })
         }
     }
 });

@@ -570,6 +570,64 @@ function createSchema() {
 
     if (!bankCols.includes('reference_number')) db.exec('ALTER TABLE bank_transactions ADD COLUMN reference_number TEXT');
 
+    
+    // --- Stock Location Management Schema (Phase 1 & Phase 2) ---
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS stock_locations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            code TEXT UNIQUE,
+            parent_id TEXT,
+            is_active INTEGER DEFAULT 1,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (parent_id) REFERENCES stock_locations(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS location_inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            location_id TEXT NOT NULL,
+            product_id INTEGER NOT NULL,
+            variant_id INTEGER,
+            quantity REAL NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(location_id, product_id, variant_id),
+            FOREIGN KEY (location_id) REFERENCES stock_locations(id) ON DELETE RESTRICT,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS stock_transfers (
+            id TEXT PRIMARY KEY,
+            transfer_number TEXT UNIQUE,
+            product_id INTEGER NOT NULL,
+            variant_id INTEGER,
+            from_location_id TEXT NOT NULL,
+            to_location_id TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (from_location_id) REFERENCES stock_locations(id),
+            FOREIGN KEY (to_location_id) REFERENCES stock_locations(id)
+        );
+    `);
+
+    // Add location_id to stock_movements if not exists
+    const smLocCols = db.prepare('PRAGMA table_info(stock_movements)').all().map(c => c.name);
+    if (!smLocCols.includes('location_id')) {
+        db.exec('ALTER TABLE stock_movements ADD COLUMN location_id TEXT');
+    }
+
+    // Add location_id to sale_items if not exists
+    const siCols = db.prepare('PRAGMA table_info(sale_items)').all().map(c => c.name);
+    if (!siCols.includes('location_id')) {
+        db.exec('ALTER TABLE sale_items ADD COLUMN location_id TEXT');
+    }
+
     // Runtime table creation for draft_sales
     db.exec(`
         CREATE TABLE IF NOT EXISTS draft_sales (
@@ -684,8 +742,9 @@ function createSchema() {
 }
 
 function transaction(callback) {
-    if (!db) throw new Error('Database not initialized');
-    const executeTx = db.transaction(callback);
+    const database = getDatabase();
+    if (!database) throw new Error('Database not initialized');
+    const executeTx = database.transaction(callback);
     return executeTx();
 }
 

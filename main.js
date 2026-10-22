@@ -693,6 +693,7 @@ ipcMain.on('focus-window', (event) => {
 
 
 // --- SQLite Database Lifecycle Management ---
+const locationService = require('./services/locationService');
 const dbManager = require('./database');
 
 const backupService = require('./backupService');
@@ -1012,9 +1013,9 @@ ipcMain.handle('sqlite:stock:get', (e, args) => handleAuthorizedSqlite(e, args?.
 ipcMain.handle('sqlite:stock:movements', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getStockMovements(args?.pId !== undefined ? args.pId : args)));
 ipcMain.handle('sqlite:stock:adjust', (e, args, ...rest) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => {
     if (args && typeof args === 'object' && args.productId !== undefined) {
-        return stockService.adjustStock(args.productId, args.variantId, args.qty, args.reason, args.refType, args.refId);
+        return stockService.adjustStock(args.productId, args.variantId, args.qty, args.reason, args.refType, args.refId, args.date, args.locationId);
     }
-    return stockService.adjustStock(args, rest[0], rest[1], rest[2], rest[3], rest[4]);
+    return stockService.adjustStock(args, rest[0], rest[1], rest[2], rest[3], rest[4], rest[5], rest[6]);
 }));
 
 // Customers
@@ -1192,3 +1193,19 @@ ipcMain.handle('sqlite:gdrive:backupNow', async () => {
 ipcMain.handle('sqlite:draftSales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.getAll()));
 ipcMain.handle('sqlite:draftSales:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.save(args?.draft !== undefined ? args.draft : args)));
 ipcMain.handle('sqlite:draftSales:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.delete(args?.id !== undefined ? args.id : args)));
+
+
+// --- Stock Location Management IPC Handlers (Phase 1) ---
+ipcMain.handle('sqlite:locations:getSettings', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'settings', () => locationService.getLocationSettings()));
+ipcMain.handle('sqlite:locations:saveSettings', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => locationService.saveLocationSettings(args?.settings !== undefined ? args.settings : args)));
+ipcMain.handle('sqlite:locations:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getLocations(args?.filters !== undefined ? args.filters : args)));
+ipcMain.handle('sqlite:locations:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getLocation(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:locations:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.createLocation(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:locations:update', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.updateLocation(args?.id, args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:locations:toggleActive', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.toggleLocationActive(args?.id, args?.isActive)));
+ipcMain.handle('sqlite:locations:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => locationService.deleteLocation(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:locations:getHierarchy', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getLocationHierarchy()));
+ipcMain.handle('sqlite:locations:getStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getLocationStock(args?.productId, args?.variantId, args?.locationId)));
+ipcMain.handle('sqlite:locations:getBreakdown', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getProductStockBreakdown(args?.productId, args?.variantId)));
+ipcMain.handle('sqlite:locations:transferStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.transferStock(args?.productId, args?.variantId, args?.fromLocationId, args?.toLocationId, args?.quantity, args?.notes)));
+ipcMain.handle('sqlite:locations:getTransfers', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getTransfers(args?.filters)));

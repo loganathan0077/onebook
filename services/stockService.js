@@ -16,7 +16,7 @@ class StockService {
         }
     }
 
-    adjustStock(productId, variantId, quantity, reason, referenceType, referenceId, date = null) {
+    adjustStock(productId, variantId, quantity, reason, referenceType, referenceId, date = null, locationId = null) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
             const v = db.prepare('SELECT id, product_id, stock FROM product_variants WHERE id = ?').get(variantId);
@@ -42,8 +42,13 @@ class StockService {
             
             db.prepare('UPDATE product_variants SET stock = ? WHERE id = ?').run(newStock, variantId);
             
-            db.prepare('INSERT INTO stock_movements (product_id, variant_id, type, quantity, previous_stock, new_stock, reference_type, reference_id, notes, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))')
-              .run(v.product_id, variantId, reason, quantity, prevStock, newStock, referenceType, referenceId, reason, date);
+            db.prepare('INSERT INTO stock_movements (product_id, variant_id, type, quantity, previous_stock, new_stock, reference_type, reference_id, notes, date, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)')
+              .run(v.product_id, variantId, reason, quantity, prevStock, newStock, referenceType, referenceId, reason, date, locationId || null);
+
+            if (locationId) {
+                const locationService = require('./locationService');
+                locationService.adjustLocationStock(locationId, productId, variantId, quantity);
+            }
         });
     }
 

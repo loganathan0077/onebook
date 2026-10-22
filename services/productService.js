@@ -69,7 +69,7 @@ class ProductService {
             
             if (product.variants && product.variants.length > 0) {
                 for (const v of product.variants) {
-                    insertVar.run(productId, v.variantName, v.sku || null, v.barcode || null, v.buyingPrice || 0, v.sellingPrice || 0, v.stock || 0);
+                    insertVar.run(productId, v.variantName || v.variant_name || v.name || 'Default', v.sku || null, v.barcode || null, v.buyingPrice !== undefined ? v.buyingPrice : (v.cost_price || 0), v.sellingPrice !== undefined ? v.sellingPrice : (v.price || 0), v.stock || 0);
                 }
             } else {
                 insertVar.run(productId, 'Default', null, product.barcode || null, product.cost_price || 0, product.price || 0, 0);
@@ -98,6 +98,11 @@ class ProductService {
             );
 
             if (product.variants && product.variants.length > 0) {
+                const incomingIds = product.variants.filter(v => v.id).map(v => v.id);
+                if (incomingIds.length > 0) {
+                    db.prepare('DELETE FROM product_variants WHERE product_id = ? AND id NOT IN (' + incomingIds.join(',') + ') AND stock = 0').run(id);
+                }
+
                 const updateVar = db.prepare('UPDATE product_variants SET variant_name = ?, sku = ?, barcode = ?, buying_price = ?, selling_price = ? WHERE id = ?');
                 const insertVar = db.prepare('INSERT INTO product_variants (product_id, variant_name, sku, barcode, buying_price, selling_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?)');
                 for (const v of product.variants) {
@@ -114,7 +119,7 @@ class ProductService {
     searchProducts(query) {
         const db = dbManager.getDatabase();
         const searchTerm = '%' + query + '%';
-        const products = db.prepare('SELECT p.* FROM products p LEFT JOIN product_variants pv ON p.id = pv.product_id WHERE p.name LIKE ? OR p.barcode LIKE ? OR pv.barcode LIKE ? OR pv.sku LIKE ? GROUP BY p.id').all(searchTerm, searchTerm, searchTerm, searchTerm);
+        const products = db.prepare('SELECT p.* FROM products p LEFT JOIN product_variants pv ON p.id = pv.product_id WHERE p.name LIKE ? OR p.barcode LIKE ? OR p.category LIKE ? OR pv.variant_name LIKE ? OR pv.barcode LIKE ? OR pv.sku LIKE ? GROUP BY p.id ORDER BY p.name ASC').all(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
         if (products.length > 0) {
             const productIds = products.map(p => p.id);
             const variants = db.prepare(`SELECT * FROM product_variants WHERE product_id IN (${productIds.join(',')})`).all();

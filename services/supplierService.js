@@ -38,8 +38,8 @@ class SupplierService {
 
             const insert = db.prepare(`
                 INSERT INTO suppliers (
-                    id, name, phone, email, gstin, address, state, country, notes, opening_balance, balance
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, name, phone, email, gstin, address, state, balance
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
             // Since the frontend sometimes provides 'sup_...' ids, we can use it or generate one
@@ -53,10 +53,7 @@ class SupplierService {
                 data.gstin || '',
                 data.address || '',
                 data.state || '',
-                data.country || 'INDIA',
-                data.notes || '',
-                data.openingBalance || 0,
-                data.openingBalance || 0 // Initialize balance with openingBalance
+                data.openingBalance || data.balance || 0
             );
 
             if (testFailure) {

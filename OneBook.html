@@ -29,7 +29,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script src="data/sqliteDataStore.js"></script>
-    <script src="data/jsonDataStore.js"></script>
     <script src="data/dataStore.js"></script>
 
 
@@ -325,7 +324,7 @@ window.searchProductsUnified = function(query, allProducts) {
                 }
 
                 if(typeof refreshUI === 'function') {
-                    refreshUI();
+                    await refreshUI();
                 }
 
                 if (!document.querySelector('.tab-content.active')) {
@@ -2223,6 +2222,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                             </div>
                             <input type="hidden" id="updateStockProductId">
                         </div>
+                        <div class="form-group" id="quickAddLocationGroup" style="flex: 1; min-width: 160px; margin-bottom: 0; display: none;">
+                            <label>Stock Location</label>
+                            <select id="addStockLocationSelect" class="form-control" style="height: 42px;">
+                                <option value="">Unassigned (Legacy)</option>
+                            </select>
+                        </div>
                         <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0; position: relative;">
                             <label>Quantity</label>
                             <input type="number" id="addStockQuantity" min="0" step="any" placeholder="Enter quantity" onkeypress="if(event.key === 'Enter') document.getElementById('updateStockPrice').focus();" style="margin-bottom: 0; height: 42px; padding-right: 40px;">
@@ -2239,6 +2244,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <button class="btn btn-primary" onclick="updateStockAndPrice()" style="height: 42px; white-space: nowrap;">Update Stock & Price</button>
                         </div>
                     </div>
+                </div>
+                <div style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
+                    <button class="btn btn-primary" id="btnOpenStockTransfer" onclick="openStockTransferModal()" style="display: none;">🔄 Transfer Stock Between Locations</button>
                 </div>
                 <div style="margin-bottom: 15px; display: flex; gap: 10px;">
                     <input type="text" id="inventorySearch"
@@ -4013,6 +4021,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-general', this)">⚙️ <span class="shortcut-letter">G</span>eneral Settings</button>
                         <button class="settings-nav-item" onclick="document.getElementById('shortcutsModal').style.display='block'">⌨️ <span class="shortcut-letter">K</span>eyboard Shortcuts</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-account', this)">🔐 <span class="shortcut-letter">A</span>ccount / Security</button>
+                        <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-locations', this)">📍 Stock <span class="shortcut-letter">L</span>ocations</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-product', this)">🛠️ Product <span class="shortcut-letter">C</span>onfiguration</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-backup', this)">💾 Back<span class="shortcut-letter">U</span>p & Restore</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-theme', this)">🎨 Th<span class="shortcut-letter">E</span>me</button>
@@ -4426,6 +4435,101 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                         </div>
 
+                        <!-- Stock Location Management Pane -->
+                        <div id="settings-pane-locations" class="settings-pane">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #1e293b;">📍 Stock Location Management</h3>
+                                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Configure multi-level godowns, floors, racks, and shelves for precise inventory tracking.</p>
+                                </div>
+                                <button class="btn btn-primary" id="btnAddLocationTop" onclick="openAddLocationModal()" style="display: none;">➕ Add Location</button>
+                            </div>
+
+                            <!-- Master Toggle Card -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 15px; color: #0f172a;">Enable Stock Locations</div>
+                                        <div style="font-size: 12.5px; color: #64748b; margin-top: 2px;">Activate multi-location stock tracking across receiving, transfers, and sales.</div>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="locSettingEnabled" onchange="handleLocationMasterToggle()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- Hierarchy Configuration Sub-card -->
+                                <div id="locHierarchyConfig" style="margin-top: 16px; border-top: 1px dashed #cbd5e1; display: none; padding-top: 14px;">
+                                    <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 10px;">Active Location Levels & Identifiers:</div>
+                                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackGodown" onchange="saveCurrentLocationSettings()">
+                                            <span>🏢 Godown / Warehouse</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackFloor" onchange="saveCurrentLocationSettings()">
+                                            <span>📶 Floor</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackRack" onchange="saveCurrentLocationSettings()">
+                                            <span>🗄️ Rack</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackShelf" onchange="saveCurrentLocationSettings()">
+                                            <span>📦 Shelf / Bin</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackCode" onchange="saveCurrentLocationSettings()">
+                                            <span>🏷️ Unique Location Code</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Locations Master List Section -->
+                            <div id="locMasterSection" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 10px; align-items: center; flex: 1; max-width: 450px;">
+                                        <input type="text" id="locSearchInput" class="form-control" placeholder="🔍 Search locations by name or code..." oninput="renderLocationsTable()" style="font-size: 13px;">
+                                        <select id="locTypeFilter" class="form-control" onchange="renderLocationsTable()" style="width: 140px; font-size: 13px;">
+                                            <option value="">All Levels</option>
+                                            <option value="godown">Godown</option>
+                                            <option value="floor">Floor</option>
+                                            <option value="rack">Rack</option>
+                                            <option value="shelf">Shelf/Bin</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="loadLocationMasterData()" title="Refresh locations">🔄 Refresh</button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; max-height: 480px; overflow-y: auto;">
+                                    <table class="table" style="margin: 0; font-size: 13px;">
+                                        <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1;">
+                                            <tr>
+                                                <th style="width: 140px;">Code</th>
+                                                <th>Location Name</th>
+                                                <th style="width: 120px;">Level / Type</th>
+                                                <th>Parent Location</th>
+                                                <th style="width: 90px; text-align: center;">Status</th>
+                                                <th style="width: 140px; text-align: right;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="locationsTableBody">
+                                            <tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 24px;">Loading locations...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div id="locDisabledMessage" style="display: block; text-align: center; padding: 40px 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; color: #64748b;">
+                                <div style="font-size: 32px; margin-bottom: 8px;">📍</div>
+                                <h4 style="margin: 0 0 6px 0; color: #334155;">Stock Locations Disabled</h4>
+                                <p style="margin: 0; font-size: 13px;">Turn on "Enable Stock Locations" above to organize and track your inventory across godowns, floors, racks, and shelves.</p>
+                            </div>
+                        </div>
+
                         <!-- Product Configuration (Master Data) -->
                         <div id="settings-pane-product" class="settings-pane">
                             <h3 style="margin-top: 0;">🛠️ Product Configuration (Master Data)</h3>
@@ -4507,6 +4611,113 @@ input:focus, select:focus, textarea:focus, button:focus {
     </div>
 
     <!-- Scanner Modal -->
+    <!-- Location Create/Edit Modal -->
+    <div id="locationModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 id="locationModalTitle" style="margin: 0;">📍 Add New Location</h3>
+                <button class="modal-close" onclick="closeLocationModal()">&times;</button>
+            </div>
+            <div style="padding: 15px 0;">
+                <input type="hidden" id="locModalId">
+                
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 13px; font-weight: 600;">Location Type / Level <span style="color: red;">*</span></label>
+                    <select id="locModalType" class="form-control" onchange="handleLocationTypeChange()">
+                        <option value="godown">🏢 Godown / Warehouse</option>
+                        <option value="floor">📶 Floor</option>
+                        <option value="rack">🗄️ Rack</option>
+                        <option value="shelf">📦 Shelf / Bin</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="locModalParentGroup" style="margin-bottom: 12px; display: none;">
+                    <label style="font-size: 13px; font-weight: 600;">Parent Location <span style="color: red;">*</span></label>
+                    <select id="locModalParent" class="form-control">
+                        <option value="">Select Parent...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 13px; font-weight: 600;">Location Name <span style="color: red;">*</span></label>
+                    <input type="text" id="locModalName" class="form-control" placeholder="e.g., Main Godown, Section A, Rack 01">
+                </div>
+
+                <div class="form-group" id="locModalCodeGroup" style="margin-bottom: 12px;">
+                    <label style="font-size: 13px; font-weight: 600;">Location Code (Auto or Custom)</label>
+                    <input type="text" id="locModalCode" class="form-control" placeholder="Leave blank for auto-generated code (e.g. GOD-001)">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 13px; font-weight: 600;">Notes / Description (Optional)</label>
+                    <textarea id="locModalNotes" class="form-control" rows="2" placeholder="Optional details or directions"></textarea>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                <button class="btn btn-secondary" onclick="closeLocationModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveLocationForm()">Save Location</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Transfer Modal (Phase 3) -->
+    <div id="stockTransferModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 520px; border-radius: 10px; padding: 20px;">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px; color: #0f172a;">🔄 Transfer Stock Between Locations</h3>
+                <button class="modal-close" onclick="closeStockTransferModal()">&times;</button>
+            </div>
+            <div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600;">Select Product <span style="color: red;">*</span></label>
+                    <select id="transferProductSelect" class="form-control" onchange="handleTransferProductChange()">
+                        <option value="">Select product to transfer...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="transferVariantGroup" style="margin-bottom: 14px; display: none;">
+                    <label style="font-size: 13px; font-weight: 600;">Variant</label>
+                    <select id="transferVariantSelect" class="form-control" onchange="handleTransferVariantChange()">
+                    </select>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px;">
+                    <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">Available Stock Across Locations:</div>
+                    <div id="transferStockSummary" style="font-size: 13px; font-weight: 600; color: #1e293b;">Select a product to view stock.</div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label style="font-size: 13px; font-weight: 600;">From Location <span style="color: red;">*</span></label>
+                        <select id="transferFromLocation" class="form-control" onchange="handleTransferFromLocationChange()">
+                            <option value="">Select Source...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label style="font-size: 13px; font-weight: 600;">To Location <span style="color: red;">*</span></label>
+                        <select id="transferToLocation" class="form-control">
+                            <option value="">Select Destination...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600;">Quantity to Transfer <span style="color: red;">*</span></label>
+                    <input type="number" id="transferQuantity" class="form-control" min="0.01" step="any" placeholder="Enter quantity to move">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 13px; font-weight: 600;">Notes / Reason (Optional)</label>
+                    <input type="text" id="transferNotes" class="form-control" placeholder="e.g. Replenishment, Staging, Reorganization">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                <button class="btn btn-secondary" onclick="closeStockTransferModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="executeStockTransfer()">Confirm Transfer</button>
+            </div>
+        </div>
+    </div>
+
     <div id="categoryDiscountModal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
@@ -4568,6 +4779,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 <div style="margin-bottom: 20px; font-size: 14px; background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left; border: 1px solid #e9ecef;">
                     <div style="margin-bottom: 5px;"><strong style="color: #495057;">Product:</strong> <span id="addStockProductName" style="font-weight: 500; color: #212529;"></span></div>
                     <div><strong style="color: #495057;">Current Stock:</strong> <span id="addStockCurrentQty" style="color: #dc3545; font-weight: bold;"></span></div>
+                </div>
+                <div class="form-group" id="modalStockLocationGroup" style="margin: 0 auto 15px auto; max-width: 260px; text-align: left; display: none;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #495057; font-size: 14px;">Stock Location</label>
+                    <select id="modalStockLocationSelect" class="form-control" style="height: 40px;">
+                        <option value="">Unassigned (Legacy)</option>
+                    </select>
                 </div>
                 <div class="form-group" style="margin: 0 auto 25px auto; max-width: 260px; text-align: center;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #495057; font-size: 15px;">Add Quantity</label>
@@ -6440,6 +6657,325 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 </script>
+
+    <!-- Stock Location Management Client Script (Phase 1) -->
+    <script>
+        let cachedLocations = [];
+        let locationSettings = {
+            enabled: false,
+            trackGodown: true,
+            trackFloor: true,
+            trackRack: true,
+            trackShelf: true,
+            trackCode: true
+        };
+
+        async function initLocationsSettingsUI() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    const res = await window.electronAPI.sqlite.locations.getSettings();
+                    if (res && res.success) {
+                        locationSettings = res.data;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load location settings:', err);
+            }
+
+            // Sync UI checkboxes
+            const enabledEl = document.getElementById('locSettingEnabled');
+            const trackGodownEl = document.getElementById('locTrackGodown');
+            const trackFloorEl = document.getElementById('locTrackFloor');
+            const trackRackEl = document.getElementById('locTrackRack');
+            const trackShelfEl = document.getElementById('locTrackShelf');
+            const trackCodeEl = document.getElementById('locTrackCode');
+
+            if (enabledEl) enabledEl.checked = !!locationSettings.enabled;
+            if (trackGodownEl) trackGodownEl.checked = !!locationSettings.trackGodown;
+            if (trackFloorEl) trackFloorEl.checked = !!locationSettings.trackFloor;
+            if (trackRackEl) trackRackEl.checked = !!locationSettings.trackRack;
+            if (trackShelfEl) trackShelfEl.checked = !!locationSettings.trackShelf;
+            if (trackCodeEl) trackCodeEl.checked = !!locationSettings.trackCode;
+
+            updateLocationsVisibility();
+            if (locationSettings.enabled) {
+                await loadLocationMasterData();
+            }
+        }
+
+        function updateLocationsVisibility() {
+            const isEnabled = !!locationSettings.enabled;
+            const configEl = document.getElementById('locHierarchyConfig');
+            const masterSection = document.getElementById('locMasterSection');
+            const disabledMsg = document.getElementById('locDisabledMessage');
+            const btnAddTop = document.getElementById('btnAddLocationTop');
+
+            if (configEl) configEl.style.display = isEnabled ? 'block' : 'none';
+            if (masterSection) masterSection.style.display = isEnabled ? 'block' : 'none';
+            if (disabledMsg) disabledMsg.style.display = isEnabled ? 'none' : 'block';
+            if (btnAddTop) btnAddTop.style.display = isEnabled ? 'inline-block' : 'none';
+        }
+
+        async function handleLocationMasterToggle() {
+            const enabledEl = document.getElementById('locSettingEnabled');
+            locationSettings.enabled = enabledEl ? enabledEl.checked : false;
+            updateLocationsVisibility();
+            await saveCurrentLocationSettings();
+            if (locationSettings.enabled) {
+                await loadLocationMasterData();
+            }
+        }
+
+        async function saveCurrentLocationSettings() {
+            locationSettings.enabled = document.getElementById('locSettingEnabled')?.checked ?? false;
+            locationSettings.trackGodown = document.getElementById('locTrackGodown')?.checked ?? true;
+            locationSettings.trackFloor = document.getElementById('locTrackFloor')?.checked ?? true;
+            locationSettings.trackRack = document.getElementById('locTrackRack')?.checked ?? true;
+            locationSettings.trackShelf = document.getElementById('locTrackShelf')?.checked ?? true;
+            locationSettings.trackCode = document.getElementById('locTrackCode')?.checked ?? true;
+
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    const res = await window.electronAPI.sqlite.locations.saveSettings(locationSettings);
+                    if (res && res.success) {
+                        showToast('Stock location settings saved successfully.', 'success');
+                    } else {
+                        showToast('Failed to save location settings: ' + (res?.error || 'Unknown error'), 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Error saving location settings:', err);
+                showToast('Error saving location settings.', 'error');
+            }
+        }
+
+        async function loadLocationMasterData() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    const res = await window.electronAPI.sqlite.locations.getAll();
+                    if (res && res.success) {
+                        cachedLocations = res.data || [];
+                        renderLocationsTable();
+                    } else {
+                        console.error('Failed to fetch locations:', res?.error);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching locations:', err);
+            }
+        }
+
+        function renderLocationsTable() {
+            const tbody = document.getElementById('locationsTableBody');
+            if (!tbody) return;
+
+            const searchQuery = (document.getElementById('locSearchInput')?.value || '').toLowerCase().trim();
+            const typeFilter = document.getElementById('locTypeFilter')?.value || '';
+
+            const filtered = cachedLocations.filter(loc => {
+                const matchesSearch = !searchQuery || 
+                    (loc.name && loc.name.toLowerCase().includes(searchQuery)) ||
+                    (loc.code && loc.code.toLowerCase().includes(searchQuery));
+                const matchesType = !typeFilter || loc.type === typeFilter;
+                return matchesSearch && matchesType;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 24px;">No locations found. Click "+ Add Location" to create one.</td></tr>';
+                return;
+            }
+
+            const typeIcons = {
+                godown: '🏢 Godown',
+                floor: '📶 Floor',
+                rack: '🗄️ Rack',
+                shelf: '📦 Shelf/Bin'
+            };
+
+            const html = filtered.map(loc => {
+                const statusBadge = loc.is_active 
+                    ? '<span class="badge" style="background: #e6f4ea; color: #137333; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Active</span>'
+                    : '<span class="badge" style="background: #fce8e6; color: #c5221f; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Inactive</span>';
+                
+                const parentName = loc.parent_name 
+                    ? \`\${escapeHtml(loc.parent_name)} <span style="color:#94a3b8; font-size:11px;">(\${escapeHtml(loc.parent_code || '')})</span>\` 
+                    : '<span style="color: #cbd5e1;">—</span>';
+
+                return \`
+                    <tr style="border-bottom: 1px solid #f1f5f9; \${loc.is_active ? '' : 'opacity: 0.6;'}">
+                        <td><strong style="color: #1e293b; font-family: monospace;">\${escapeHtml(loc.code || '—')}</strong></td>
+                        <td>
+                            <div style="font-weight: 600; color: #0f172a;">\${escapeHtml(loc.name)}</div>
+                            \${loc.notes ? \`<div style="font-size: 11.5px; color: #64748b;">\${escapeHtml(loc.notes)}</div>\` : ''}
+                        </td>
+                        <td><span style="font-size: 12px; font-weight: 500;">\${typeIcons[loc.type] || loc.type}</span></td>
+                        <td>\${parentName}</td>
+                        <td style="text-align: center;">\${statusBadge}</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <button class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="editLocation('\${loc.id}')">✏️ Edit</button>
+                            <button class="btn btn-sm btn-outline-secondary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="toggleLocationActive('\${loc.id}', \${!loc.is_active})">
+                                \${loc.is_active ? '⏸️ Deactivate' : '▶️ Activate'}
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" style="padding: 2px 6px; font-size: 11.5px;" onclick="deleteLocation('\${loc.id}')">🗑️</button>
+                        </td>
+                    </tr>
+                \`;
+            }).join('');
+
+            tbody.innerHTML = html;
+        }
+
+        function openAddLocationModal(parentId = null, suggestedType = null) {
+            document.getElementById('locationModalTitle').textContent = '📍 Add New Location';
+            document.getElementById('locModalId').value = '';
+            document.getElementById('locModalName').value = '';
+            document.getElementById('locModalCode').value = '';
+            document.getElementById('locModalNotes').value = '';
+
+            const typeSelect = document.getElementById('locModalType');
+            if (typeSelect) {
+                typeSelect.value = suggestedType || 'godown';
+            }
+
+            handleLocationTypeChange(parentId);
+            const modal = document.getElementById('locationModal');
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeLocationModal() {
+            const modal = document.getElementById('locationModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function handleLocationTypeChange(preselectedParentId = null) {
+            const type = document.getElementById('locModalType')?.value || 'godown';
+            const parentGroup = document.getElementById('locModalParentGroup');
+            const parentSelect = document.getElementById('locModalParent');
+
+            if (type === 'godown') {
+                if (parentGroup) parentGroup.style.display = 'none';
+                if (parentSelect) parentSelect.innerHTML = '<option value="">None (Top Level Godown)</option>';
+            } else {
+                if (parentGroup) parentGroup.style.display = 'block';
+                // Populate valid parents:
+                // Floor parent must be Godown
+                // Rack parent must be Floor (or Godown if floors not used)
+                // Shelf parent must be Rack (or Floor/Godown)
+                let validParents = [];
+                if (type === 'floor') {
+                    validParents = cachedLocations.filter(l => l.type === 'godown' && l.is_active);
+                } else if (type === 'rack') {
+                    validParents = cachedLocations.filter(l => (l.type === 'floor' || l.type === 'godown') && l.is_active);
+                } else if (type === 'shelf') {
+                    validParents = cachedLocations.filter(l => (l.type === 'rack' || l.type === 'floor' || l.type === 'godown') && l.is_active);
+                }
+
+                if (parentSelect) {
+                    parentSelect.innerHTML = '<option value="">Select Parent Location...</option>' +
+                        validParents.map(p => \`<option value="\${p.id}" \${p.id === preselectedParentId ? 'selected' : ''}>\${p.name} (\${p.code || p.type})</option>\`).join('');
+                }
+            }
+        }
+
+        function editLocation(id) {
+            const loc = cachedLocations.find(l => l.id === id);
+            if (!loc) return;
+
+            document.getElementById('locationModalTitle').textContent = '✏️ Edit Location';
+            document.getElementById('locModalId').value = loc.id;
+            document.getElementById('locModalName').value = loc.name;
+            document.getElementById('locModalCode').value = loc.code || '';
+            document.getElementById('locModalNotes').value = loc.notes || '';
+
+            const typeSelect = document.getElementById('locModalType');
+            if (typeSelect) typeSelect.value = loc.type;
+
+            handleLocationTypeChange(loc.parent_id);
+
+            const modal = document.getElementById('locationModal');
+            if (modal) modal.style.display = 'block';
+        }
+
+        async function saveLocationForm() {
+            const id = document.getElementById('locModalId')?.value;
+            const type = document.getElementById('locModalType')?.value;
+            const name = document.getElementById('locModalName')?.value?.trim();
+            const code = document.getElementById('locModalCode')?.value?.trim();
+            const notes = document.getElementById('locModalNotes')?.value?.trim();
+            const parentId = document.getElementById('locModalParent')?.value || null;
+
+            if (!name) {
+                showToast('Location name is required.', 'error');
+                return;
+            }
+
+            if (type !== 'godown' && !parentId) {
+                showToast('Please select a parent location for ' + type + '.', 'error');
+                return;
+            }
+
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    let res;
+                    if (id) {
+                        res = await window.electronAPI.sqlite.locations.update(id, { name, code, type, parent_id: parentId, notes });
+                    } else {
+                        res = await window.electronAPI.sqlite.locations.create({ name, code, type, parent_id: parentId, notes });
+                    }
+
+                    if (res && res.success) {
+                        showToast(id ? 'Location updated successfully.' : 'Location created successfully.', 'success');
+                        closeLocationModal();
+                        await loadLocationMasterData();
+                    } else {
+                        showToast('Failed to save location: ' + (res?.error || 'Unknown error'), 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Error saving location:', err);
+                showToast('Error saving location.', 'error');
+            }
+        }
+
+        async function toggleLocationActive(id, newStatus) {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    const res = await window.electronAPI.sqlite.locations.toggleActive(id, newStatus);
+                    if (res && res.success) {
+                        showToast(newStatus ? 'Location activated.' : 'Location deactivated.', 'success');
+                        await loadLocationMasterData();
+                    } else {
+                        showToast('Failed to update status: ' + (res?.error || 'Unknown error'), 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Error toggling location active status:', err);
+                showToast('Error updating status.', 'error');
+            }
+        }
+
+        async function deleteLocation(id) {
+            if (!confirm('Are you sure you want to delete this location? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
+                    const res = await window.electronAPI.sqlite.locations.delete(id);
+                    if (res && res.success) {
+                        showToast('Location deleted successfully.', 'success');
+                        await loadLocationMasterData();
+                    } else {
+                        showToast(res?.error || 'Failed to delete location.', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Error deleting location:', err);
+                showToast('Error deleting location.', 'error');
+            }
+        }
+    </script>
+
 </body>
  for modal popup implementation -->
     <!-- Select PO Modal -->
@@ -6599,36 +7135,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             // MIGRATION / SQLITE HYDRATION: If SQLite is active, load records directly from SQLite
             if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite) {
                 try {
-                    if (window.electronAPI.sqlite.products) {
-                        const pRes = await window.electronAPI.sqlite.products.getAll();
-                        const pList = (pRes && pRes.success && Array.isArray(pRes.data)) ? pRes.data : (Array.isArray(pRes) ? pRes : []);
-                        if (pList.length > 0) {
-                            products = pList.map(p => {
-                                const defVar = p.variants && p.variants.length > 0 ? p.variants[0] : null;
-                                return {
-                                    ...p,
-                                    id: p.id,
-                                    name: p.name,
-                                    category: p.category,
-                                    barcode: defVar ? defVar.barcode : p.barcode,
-                                    price: Number(defVar ? defVar.selling_price : (p.price || 0)),
-                                    costPrice: Number(defVar ? defVar.buying_price : (p.cost_price || p.costPrice || 0)),
-                                    stock: Number(defVar ? defVar.stock : (p.stock || 0)),
-                                    minStock: Number(p.min_stock || p.minStock || 0),
-                                    unit: p.unit || 'Piece',
-                                    variants: (p.variants || []).map(v => ({
-                                        id: v.id,
-                                        productId: v.product_id || p.id,
-                                        variantName: v.variant_name || v.variantName,
-                                        barcode: v.barcode,
-                                        buyingPrice: Number(v.buying_price !== undefined ? v.buying_price : v.buyingPrice || 0),
-                                        sellingPrice: Number(v.selling_price !== undefined ? v.selling_price : v.sellingPrice || 0),
-                                        stock: Number(v.stock || 0),
-                                        minimumStock: Number(p.min_stock || p.minStock || 0)
-                                    }))
-                                };
-                            });
-                        }
+                    if (typeof window.loadProductsFromDatabase === 'function') {
+                        await window.loadProductsFromDatabase();
                     }
 
                     if (window.electronAPI.sqlite.reports) {
@@ -6663,16 +7171,35 @@ input:focus, select:focus, textarea:focus, button:focus {
                     console.warn('[SQLite Hydration Error]:', e);
                 }
             } else {
-                // Reload data from localStorage (legacy JSON mode fallback)
-                products = JSON.parse(localStorage.getItem('products')) || [];
-                sales = JSON.parse(localStorage.getItem('sales')) || [];
-                customers = JSON.parse(localStorage.getItem('customers')) || [];
+                console.error('SQLite Backend is offline or uninitialized. Halting operations.');
+                showAlert('Database Offline: SQLite is required. Please check database connection in Settings.', 'error');
             }
 
-            stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
-            draftSales = JSON.parse(localStorage.getItem('draftSales')) || [];
+            stockHistory = []; // SQLite stock_movements is authoritative
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.draftSales) {
+                try {
+                    const dsRes = await window.electronAPI.sqlite.draftSales.getAll();
+                    if (dsRes && dsRes.success === false) {
+                        throw new Error(dsRes.error ? (dsRes.error.message || dsRes.error) : 'Failed to retrieve drafts');
+                    }
+                    const dsList = (dsRes && dsRes.success && Array.isArray(dsRes.data)) ? dsRes.data : (Array.isArray(dsRes) ? dsRes : []);
+                    draftSales = dsList.map(d => ({ ...d, cart: d.items || [] }));
+                } catch(e) {
+                    console.error('Error loading draft sales from SQLite:', e);
+                    showAlert('Warning: Could not load held draft sales from database: ' + (e.message || e), 'warning');
+                    draftSales = [];
+                }
+            } else {
+                draftSales = [];
+            }
+            if (typeof updateDraftsDisplay === 'function') updateDraftsDisplay();
             negativeChangeCount = parseInt(localStorage.getItem('negativeChangeCount')) || 0;
-            purchases = JSON.parse(localStorage.getItem('purchases')) || [];
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchases) {
+                try {
+                    const pRes = await window.electronAPI.sqlite.purchases.getAll();
+                    purchases = (pRes && pRes.success && Array.isArray(pRes.data)) ? pRes.data : (Array.isArray(pRes) ? pRes : []);
+                } catch(e) { purchases = []; }
+            } else { purchases = []; }
             if (purchases.length > 0) {
                 console.log('📦 Purchase history loaded:', purchases.length);
             }
@@ -6689,8 +7216,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             isDataLoaded = true;
             // Refresh UI components
-            updateDashboard();
-            updateInventoryTable();
+            await updateDashboard();
+            await updateInventoryTable();
             if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
             if (typeof renderPayablesTable === 'function') renderPayablesTable();
 
@@ -6995,17 +7522,58 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return Array.isArray(p) ? p : [];
             } catch(e) { return []; }
         })();
-        // MIGRATION: Async load products from SQLite if active
-        window.addEventListener('DOMContentLoaded', async () => {
-            if (window.DATA_BACKEND === 'sqlite') {
+
+        // Global master loadProductsFromDatabase function
+        window.loadProductsFromDatabase = async function() {
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
                 try {
-                    products = await window.dataStore.getProducts();
-                    if (typeof updateProductsTable === 'function') updateProductsTable();
-                } catch (e) {
-                    console.error('Failed to load products from DB', e);
-                    if (typeof showAlert === 'function') showAlert('Failed to load products from database', '❌');
+                    const res = await window.electronAPI.sqlite.products.getAll();
+                    const pList = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                    if (pList.length > 0) {
+                        products = pList.map(p => {
+                            const defVar = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+                            const vPrice = defVar ? (defVar.sellingPrice !== undefined ? defVar.sellingPrice : defVar.selling_price) : (p.price || 0);
+                            const vCost = defVar ? (defVar.buyingPrice !== undefined ? defVar.buyingPrice : defVar.buying_price) : (p.cost_price || p.costPrice || 0);
+                            const vBarcode = defVar ? defVar.barcode : p.barcode;
+                            const vStock = defVar ? defVar.stock : (p.stock || 0);
+
+                            return {
+                                ...p,
+                                id: p.id,
+                                name: p.name,
+                                category: p.category,
+                                barcode: vBarcode,
+                                price: Number(vPrice),
+                                sellingPrice: Number(vPrice),
+                                costPrice: Number(vCost),
+                                buyingPrice: Number(vCost),
+                                stock: Number(vStock),
+                                minStock: Number(p.min_stock || p.minStock || 0),
+                                unit: p.unit || 'Piece',
+                                variants: (p.variants || []).map(v => ({
+                                    id: v.id,
+                                    productId: v.productId || v.product_id || p.id,
+                                    variantName: v.variantName || v.variant_name || 'Default',
+                                    sku: v.sku,
+                                    barcode: v.barcode,
+                                    buyingPrice: Number(v.buyingPrice !== undefined ? v.buyingPrice : (v.buying_price || 0)),
+                                    sellingPrice: Number(v.sellingPrice !== undefined ? v.sellingPrice : (v.selling_price || 0)),
+                                    stock: Number(v.stock || 0),
+                                    minimumStock: Number(p.min_stock || p.minStock || 0)
+                                }))
+                            };
+                        });
+                        console.log('✅ [SQLite Hydration] Synced ' + products.length + ' products to global memory.');
+                    }
+                } catch(e) {
+                    console.error('Failed to load products from SQLite:', e);
                 }
             }
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await window.loadProductsFromDatabase();
+            if (typeof updateProductsTable === 'function') updateProductsTable();
         });
         
 
@@ -7032,7 +7600,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         });
         if (needsSaveMigration) {
-            localStorage.setItem('products', JSON.stringify(products));
+            // SQLite is source of truth
         }
 
         // --- Product Variant Helper Functions ---
@@ -7097,83 +7665,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         let purchaseCart = [];
         let suppliers = _safeParseStorageArray('suppliers');
         
-        // One-time migration for legacy purchases without supplierId
-        if (suppliers.length === 0 && purchases.length > 0) {
-            const uniqueSupplierNames = new Set();
-            purchases.forEach(p => {
-                if (p.supplier && p.supplier.trim() !== '') uniqueSupplierNames.add(p.supplier.trim());
-            });
-            uniqueSupplierNames.forEach(name => {
-                const legacyPurchase = purchases.find(p => p.supplier === name);
-                const newId = 'sup_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                suppliers.push({
-                    id: newId,
-                    name: name.toUpperCase(),
-                    phone: legacyPurchase ? legacyPurchase.supplierPhone || '' : '',
-                    address: legacyPurchase ? legacyPurchase.supplierAddress || '' : '',
-                    state: '',
-                    country: 'INDIA',
-                    notes: ''
-                });
-                
-                // Update purchases to point to new ID
-                purchases.forEach(p => {
-                    if (p.supplier === name) {
-                        p.supplierId = newId;
-                        p.supplier = name.toUpperCase();
-                    }
-                });
-            });
-            localStorage.setItem('suppliers', JSON.stringify(suppliers));
-            localStorage.setItem('purchases', JSON.stringify(purchases));
-        }
-        // Master Data for Categories and Units
-        let customers = JSON.parse(localStorage.getItem('customers')) || [];
-        
-        // One-time migration for legacy sales without customerId
-        if (customers.length === 0 && sales.length > 0) {
-            const uniqueCustomerNames = new Set();
-            sales.forEach(s => {
-                if (s.customerName && s.customerName.trim() !== '' && s.customerName.toUpperCase() !== 'WALK-IN CUSTOMER') {
-                    uniqueCustomerNames.add(s.customerName.trim());
-                }
-            });
-            uniqueCustomerNames.forEach(name => {
-                const legacySale = sales.find(s => s.customerName === name);
-                const newId = 'cus_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                customers.push({
-                    id: newId,
-                    name: name.toUpperCase(),
-                    phone: legacySale ? legacySale.customerPhone || '' : '',
-                    gstin: '',
-                    address: legacySale ? legacySale.customerAddress || '' : '',
-                    state: '',
-                    country: 'INDIA',
-                    notes: ''
-                });
-                
-                // Update sales to point to new ID
-                sales.forEach(s => {
-                    if (s.customerName === name) {
-                        s.customerId = newId;
-                        s.customerName = name.toUpperCase();
-                        s.customerType = 'existing';
-                    }
-                });
-            });
-            
-            // Mark others as walk-in explicitly if not already
-            sales.forEach(s => {
-                if (!s.customerId) {
-                    s.customerType = 'walk-in';
-                    s.customerName = s.customerName || 'WALK-IN CUSTOMER';
-                }
-            });
-            
-            localStorage.setItem('customers', JSON.stringify(customers));
-            localStorage.setItem('sales', JSON.stringify(sales));
-                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
-        }
+        // Legacy local migration blocks removed in Stage 2. SQLite tables are fully authoritative.
 
         var masterCategories = _safeParseStorageArray('masterCategories');
         if (masterCategories.length === 0) {
@@ -7190,21 +7682,13 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // Global function to reload data from LocalStorage (invoked by Realtime Sync)
-        window.reloadAppData = function () {
-            console.log('🔄 Reloading App Data from Storage...');
-            products = JSON.parse(localStorage.getItem('products')) || [];
-            sales = JSON.parse(localStorage.getItem('sales')) || [];
-            stockHistory = JSON.parse(localStorage.getItem('stockHistory')) || [];
-            purchaseOrders = JSON.parse(localStorage.getItem('purchaseOrders')) || [];
-            draftSales = JSON.parse(localStorage.getItem('draftSales')) || [];
-            purchases = JSON.parse(localStorage.getItem('purchases')) || [];
-            negativeChangeCount = parseInt(localStorage.getItem('negativeChangeCount')) || 0;
-            calculatorHistory = JSON.parse(localStorage.getItem('calculatorHistory')) || [];
-            dayClosings = JSON.parse(localStorage.getItem('dayClosings')) || [];
-            suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
-            customers = JSON.parse(localStorage.getItem('customers')) || [];
-            masterCategories = JSON.parse(localStorage.getItem('masterCategories')) || masterCategories;
-            masterUnits = JSON.parse(localStorage.getItem('masterUnits')) || masterUnits;
+        window.reloadAppData = async function () {
+            console.log('🔄 Reloading App Data from SQLite Database...');
+            if (typeof refreshUI === 'function') {
+                await refreshUI();
+            } else if (typeof window.loadProductsFromDatabase === "function") {
+                await window.loadProductsFromDatabase();
+            }
 
             // Refresh dependent UI
             if (typeof updateDashboard === 'function') updateDashboard();
@@ -7274,9 +7758,14 @@ input:focus, select:focus, textarea:focus, button:focus {
         // ... (existing helper functions) ...
 
         // Draft Sales Functions
-        function holdSale() {
+        async function holdSale() {
             if (cart.length === 0) {
                 showAlert('Cart is empty. Nothing to hold.', '⚠️');
+                return;
+            }
+
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.draftSales) {
+                showAlert('Database Offline: Cannot hold sale without active SQLite database connection.', 'error');
                 return;
             }
 
@@ -7288,20 +7777,35 @@ input:focus, select:focus, textarea:focus, button:focus {
                 customerName = document.getElementById('saleCustomerSearch').value || 'Walk-in Customer';
             }
 
+            const draftId = 'draft_' + Date.now();
             const draft = {
-                id: Date.now(),
+                id: draftId,
                 date: new Date().toISOString(),
-                cart: [...cart],
+                customerId: customerId || null,
                 customerName: customerName,
+                customerType: customerId ? 'existing' : 'walk-in',
+                items: [...cart],
+                cart: [...cart],
+                subtotal: cart.reduce((sum, i) => sum + (i.total || 0), 0),
                 discount: parseFloat(document.getElementById('discountAmount').value) || 0,
-                paymentMethod: document.getElementById('paymentMethod') ? document.getElementById('paymentMethod').value : 'Cash Only'
+                total: cart.reduce((sum, i) => sum + (i.total || 0), 0) - (parseFloat(document.getElementById('discountAmount').value) || 0),
+                paymentMethod: document.getElementById('paymentMethod') ? document.getElementById('paymentMethod').value : 'cash'
             };
 
-            draftSales.push(draft);
-            localStorage.setItem('draftSales', JSON.stringify(draftSales));
-            
+            try {
+                const res = await window.electronAPI.sqlite.draftSales.save(draft);
+                if (res && res.success === false) {
+                    throw new Error(res.error ? (res.error.message || res.error) : 'Failed to save draft to SQLite');
+                }
+            } catch(e) {
+                console.error('Failed to save draft sale to SQLite:', e);
+                showAlert('Failed to hold sale in SQLite database: ' + (e.message || e), 'error');
+                return; // Do not clear cart or fake success!
+            }
 
-            // Clear current cart
+            draftSales.push(draft);
+
+            // Clear current cart only on verified SQLite save
             cart = [];
             document.getElementById('addItemForm').reset();
             
@@ -7315,7 +7819,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             updateCartDisplay();
             updateDraftsDisplay();
 
-            showAlert('Sale put on hold!', '✅');
+            showAlert('Sale successfully put on hold in SQLite database!', '✅');
         }
 
         function clearCart() {
@@ -7381,43 +7885,69 @@ input:focus, select:focus, textarea:focus, button:focus {
             }).join('');
         }
 
-        function resumeDraft(index) {
-            const proceed = () => {
+        async function resumeDraft(index) {
+            const proceed = async () => {
                 const draft = draftSales[index];
+                if (!draft) return;
+
+                // Remove from SQLite first; if deletion fails, abort resume to avoid data inconsistency
+                if (draft.id && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.draftSales) {
+                    try {
+                        const delRes = await window.electronAPI.sqlite.draftSales.delete(draft.id);
+                        if (delRes && delRes.success === false) {
+                            throw new Error(delRes.error ? (delRes.error.message || delRes.error) : 'Failed to delete draft from SQLite');
+                        }
+                    } catch(e) {
+                        console.error('Failed to remove draft from SQLite on resume:', e);
+                        showAlert('Error resuming draft from database: ' + (e.message || e), 'error');
+                        return; // Keep draft intact!
+                    }
+                }
 
                 // Restore cart and form
-                cart = [...draft.cart];
+                cart = [...(draft.cart || draft.items || [])];
                 const searchInput = document.getElementById('saleCustomerSearch');
                 if (searchInput) {
                     searchInput.value = draft.customerName === 'Walk-in Customer' ? '' : draft.customerName;
                 }
-                document.getElementById('discountAmount').value = draft.discount;
-                document.getElementById('paymentMethod').value = draft.paymentMethod;
+                document.getElementById('discountAmount').value = draft.discount || 0;
+                document.getElementById('paymentMethod').value = draft.paymentMethod || 'cash';
 
-                // Remove from drafts
                 draftSales.splice(index, 1);
-                localStorage.setItem('draftSales', JSON.stringify(draftSales));
-                
-
                 updateCartDisplay();
                 updateDraftsDisplay();
-                togglePaymentFields(); // Restore payment fields visibility
+                togglePaymentFields();
+                showAlert('Draft sale resumed successfully!', '✅');
             };
 
             if (cart.length > 0) {
                 showConfirm('Current cart is not empty. Overwrite with draft?', proceed);
             } else {
-                proceed();
+                await proceed();
             }
         }
 
-        function deleteDraft(index) {
+        async function deleteDraft(index) {
             if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can delete data.', 'error');
-            showConfirm('Delete this draft sale?', () => {
+            showConfirm('Delete this draft sale?', async () => {
+                const draft = draftSales[index];
+                if (!draft) return;
+
+                if (draft.id && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.draftSales) {
+                    try {
+                        const res = await window.electronAPI.sqlite.draftSales.delete(draft.id);
+                        if (res && res.success === false) {
+                            throw new Error(res.error ? (res.error.message || res.error) : 'Failed to delete draft from SQLite');
+                        }
+                    } catch(e) {
+                        console.error('Failed to delete draft from SQLite:', e);
+                        showAlert('Error deleting draft from database: ' + (e.message || e), 'error');
+                        return; // Do not remove from UI list if SQLite delete failed!
+                    }
+                }
                 draftSales.splice(index, 1);
-                localStorage.setItem('draftSales', JSON.stringify(draftSales));
-                
                 updateDraftsDisplay();
+                showAlert('Draft sale deleted from database.', '🗑️');
             });
         }
 
@@ -7518,27 +8048,15 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function saveData() {
-            if (window.DATA_BACKEND !== 'sqlite') {
-                localStorage.setItem('products', JSON.stringify(products));
-            }
-            localStorage.setItem('sales', JSON.stringify(sales));
-                if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
-            localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
-            // localStorage purchaseOrders write removed in Phase 4E.19 (SQLite cutover)
-            localStorage.setItem('purchases', JSON.stringify(purchases));
-            localStorage.setItem('suppliers', JSON.stringify(suppliers));
-            localStorage.setItem('customers', JSON.stringify(customers));
-            
-            localStorage.setItem('dayClosings', JSON.stringify(dayClosings));
+            // Stage 2: SQLite is the ONLY source of truth.
+            // Obsolete LocalStorage business-data serialization (products, sales, purchases, stockHistory, customers, suppliers) removed.
+            if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
 
-            // Refresh UI immediately
-            updateDashboard();
-            updateInventoryTable();
+            // Refresh UI components
+            if (typeof updateDashboard === 'function') updateDashboard();
+            if (typeof updateInventoryTable === 'function') updateInventoryTable();
 
-            // UI Feedback: Immediately show "Saved Locally"
-            if (window.updateSyncStatus) window.updateSyncStatus('offline', 'Saved to Device');
-
-            
+            if (window.updateSyncStatus) window.updateSyncStatus('online', 'Saved to Database');
         }
 
         // Backup and Restore Functions
@@ -7639,7 +8157,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             let masterUnits = backupData.masterUnits || [];
 
                             // Restore to localStorage
-                            localStorage.setItem('products', JSON.stringify(products));
+                            // SQLite is source of truth
                             localStorage.setItem('sales', JSON.stringify(sales));
                 if (typeof resetSaleDateToToday === 'function') resetSaleDateToToday();
                             localStorage.setItem('stockHistory', JSON.stringify(stockHistory));
@@ -7647,7 +8165,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             localStorage.setItem('purchases', JSON.stringify(purchases));
                             localStorage.setItem('purchaseOrders', JSON.stringify(purchaseOrders));
                             localStorage.setItem('suppliers', JSON.stringify(suppliers));
-                            localStorage.setItem('customers', JSON.stringify(customers));
+                            // SQLite is source of truth
                             localStorage.setItem('users', JSON.stringify(users));
                             localStorage.setItem('partyPayments', JSON.stringify(partyPayments));
                             localStorage.setItem('masterCategories', JSON.stringify(masterCategories));
@@ -7656,12 +8174,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                             calculatorHistory = backupData.calculatorHistory || [];
                             dayClosings = backupData.dayClosings || [];
                             
-                            localStorage.setItem('dayClosings', JSON.stringify(dayClosings));
+                            // SQLite is source of truth
                             
                             localStorage.setItem('customCategories', JSON.stringify(backupData.customCategories || []));
                             localStorage.setItem('categoryDiscounts', JSON.stringify(backupData.categoryDiscounts || []));
                             localStorage.setItem('receiptCounters', JSON.stringify(backupData.receiptCounters || {}));
-                            localStorage.setItem('negativeChangeCount', negativeChangeCount.toString());
+                            // Stored in memory
 
                             if (backupData.settings) {
                                 localStorage.setItem('settings', JSON.stringify(backupData.settings));
@@ -8808,7 +9326,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     const idx = customers.findIndex(c => c.id === editId);
                     if (idx !== -1) {
                         customers[idx] = Object.assign({}, customers[idx], customerData);
-                        localStorage.setItem('customers', JSON.stringify(customers));
+                        // SQLite is source of truth
                     }
                 } else {
                     const result = await window.electronAPI.sqlite.customers.create(customerData);
@@ -8816,7 +9334,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     newCustomerId = typeof result === 'string' ? result : (result.id || result.data);
                     // Push to legacy 'customers' array so Sales/POS can find it immediately
                     customers.push(Object.assign({ id: newCustomerId }, customerData));
-                    localStorage.setItem('customers', JSON.stringify(customers));
+                    // SQLite is source of truth
                 }
             } catch (err) {
                 showAlert('Failed to save customer: ' + (err.message || String(err)), '❌');
@@ -8847,7 +9365,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                     // Also remove from legacy array for Sales/POS consistency
                     customers = customers.filter(c => c.id !== id);
-                    localStorage.setItem('customers', JSON.stringify(customers));
+                    // SQLite is source of truth
                     _sqliteCustomerCache = null;
                     renderCustomerTable();
                     showAlert('Customer deleted successfully', '✅');
@@ -11015,7 +11533,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             }
                         }
                         
-                        await window.electronAPI.sqlite.stock.adjust(productId, variantId, quantity, 'addition', null, null);
+                        const selectedLocationId = (locationSettings && locationSettings.enabled) ? (document.getElementById('addStockLocationSelect')?.value || null) : null;
+                        await window.electronAPI.sqlite.stock.adjust(productId, variantId, quantity, 'addition', null, null, null, selectedLocationId);
                     }
 
                     if (hasPrice) {
@@ -11995,11 +12514,26 @@ input:focus, select:focus, textarea:focus, button:focus {
             setTimeout(() => { document.getElementById('addStockQty').focus(); }, 100);
         }
 
-        window.submitAddStock = function(e) {
+        window.submitAddStock = async function(e) {
             e.preventDefault();
             const productId = document.getElementById('addStockProductId').value;
             const variantId = document.getElementById('addStockVariantId') ? document.getElementById('addStockVariantId').value : '';
             const qtyToAdd = parseFloat(document.getElementById('addStockQty').value);
+            const locId = (locationSettings && locationSettings.enabled) ? (document.getElementById('modalStockLocationSelect')?.value || null) : null;
+
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.stock) {
+                try {
+                    await window.electronAPI.sqlite.stock.adjust(productId, variantId, qtyToAdd, 'addition', 'QUICK_ADD', null, null, locId);
+                    document.getElementById('addStockModal').style.display = 'none';
+                    if (typeof updateInventoryTable === 'function') updateInventoryTable();
+                    if (typeof updateDashboard === 'function') updateDashboard();
+                    showAlert('Stock added successfully!', '✅');
+                    return;
+                } catch(err) {
+                    showAlert('Failed to add stock: ' + err.message, '❌');
+                    return;
+                }
+            }
             
             if (!productId || isNaN(qtyToAdd) || qtyToAdd <= 0) return;
             
@@ -12888,7 +13422,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 ${cart.map((item, index) => `
                                     <tr class="cart-row" id="cart-row-${index}">
                                         <td>${index + 1}</td>
-                                        <td>${item.productName}</td>
+                                        <td>
+                                            <div style="font-weight: 600; color: #1e293b;">${item.productName}</div>
+                                            ${(typeof locationSettings !== 'undefined' && locationSettings.enabled) ? `
+                                                <div style="margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                                                    <span style="font-size: 11px; color: #64748b;">📍</span>
+                                                    <select class="form-control" style="font-size: 11px; height: 24px; padding: 0 4px; width: auto; max-width: 140px;" onchange="updateCartItemLocation(${index}, this.value)">
+                                                        <option value="">Unassigned</option>
+                                                        ${(cachedLocations || []).filter(l => l.is_active).map(l => `<option value="${l.id}" ${item.locationId === l.id ? 'selected' : ''}>${l.name} (${l.code || l.type})</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            ` : ''}
+                                        </td>
                                         ${gstEnabled ? `<td>${item.hsn || ''}</td>` : ''}
                                         ${gstEnabled ? `<td>${item.gstRate || 0}%</td>` : ''}
                                         <td style="text-align: left; vertical-align: middle;">
@@ -13333,7 +13878,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Check if Cash Received is negative
                 if (customerAmount < 0) {
                     negativeChangeCount++;
-                    localStorage.setItem('negativeChangeCount', negativeChangeCount.toString());
+                    // Stored in memory
                     document.getElementById('negativeChangeCount').textContent = negativeChangeCount;
                     showAlert('❌ Sale cannot be completed!\n\nCash Received cannot be negative.\n\nPlease enter a valid positive amount.', '⚠️');
                     return;
@@ -13373,7 +13918,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (paymentMethod !== 'credit' && totalReceived < total) {
                 const shortBy = total - totalReceived;
                 negativeChangeCount++;
-                localStorage.setItem('negativeChangeCount', negativeChangeCount.toString());
+                // Stored in memory
                 document.getElementById('negativeChangeCount').textContent = negativeChangeCount;
                 showAlert(`❌ Sale cannot be completed!\n\nTotal: ₹${total.toFixed(2)}\nReceived: ₹${totalReceived.toFixed(2)}\nShort by: ₹${shortBy.toFixed(2)}\n\nPlease collect the full amount before completing the sale.`, '⚠️');
                 return;
@@ -13383,7 +13928,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (paymentMethod === 'cash' && customerAmount < total) {
                 const shortBy = total - customerAmount;
                 negativeChangeCount++;
-                localStorage.setItem('negativeChangeCount', negativeChangeCount.toString());
+                // Stored in memory
                 document.getElementById('negativeChangeCount').textContent = negativeChangeCount;
                 showAlert(`❌ Sale cannot be completed!\n\nTotal: ₹${total.toFixed(2)}\nCash Received: ₹${customerAmount.toFixed(2)}\nShort by: ₹${shortBy.toFixed(2)}\n\nPlease collect the full amount before completing the sale.`, '⚠️');
                 return;
@@ -13485,7 +14030,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                         taxableValue: item.taxableValue || 0,
                         cgst: item.cgst || 0,
                         sgst: item.sgst || 0,
-                        igst: item.igst || 0
+                        igst: item.igst || 0,
+                        location_id: item.locationId || item.location_id || null
                     }))
                 };
 
@@ -14428,7 +14974,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const tbody = document.getElementById('todaySalesBody');
             
             try {
-                const todaySales = await window.electronAPI.sqlite.sales.getAll(selectedDateString);
+                const rawSales = await window.electronAPI.sqlite.sales.getAll(selectedDateString);
+                const todaySales = (rawSales && rawSales.success && Array.isArray(rawSales.data)) ? rawSales.data : (Array.isArray(rawSales) ? rawSales : []);
 
                 if (!todaySales || todaySales.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
@@ -17229,10 +17776,24 @@ input:focus, select:focus, textarea:focus, button:focus {
                 variant.packSizes = getPackSizesFromForm('evPackSizesContainer');
             }
 
-            saveData();
-            updateInventoryTable();
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                (async () => {
+                    try {
+                        await window.electronAPI.sqlite.products.update(product.id, product);
+                        if (typeof refreshUI === 'function') await refreshUI();
+                        else if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                        showAlert(`Variant "${name}" updated successfully!`, '✅');
+                    } catch(err) {
+                        console.error('Failed to save edited variant to SQLite:', err);
+                        showAlert('Error updating variant: ' + err.message, '❌');
+                    }
+                })();
+            } else {
+                saveData();
+                updateInventoryTable();
+                showAlert(`Variant "${name}" updated successfully!`, '✅');
+            }
             closeEditVariantModal();
-            showAlert(`Variant "${name}" updated successfully!`, '✅');
         }
 
         // Compatibility alias
@@ -17245,11 +17806,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (!variant) return;
 
             const displayName = window.getVariantDisplayName(product, variant);
-            showConfirm(`Are you sure you want to delete variant "${displayName}"?`, () => {
-                product.variants = product.variants.filter(v => String(v.id) !== String(variantId));
-                saveData();
-                updateInventoryTable();
-                showAlert(`Variant "${displayName}" deleted successfully!`, '✅');
+            showConfirm(`Are you sure you want to delete variant "${displayName}"?`, async () => {
+                if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                    try {
+                        // Check if variant has stock > 0
+                        if (variant.stock > 0) {
+                            showAlert(`Cannot delete variant with existing stock (${variant.stock} units). Adjust stock to 0 first.`, '⚠️');
+                            return;
+                        }
+                        product.variants = product.variants.filter(v => String(v.id) !== String(variantId));
+                        await window.electronAPI.sqlite.products.update(product.id, product);
+                        if (typeof refreshUI === 'function') await refreshUI();
+                        else if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                        showAlert(`Variant "${displayName}" deleted successfully!`, '✅');
+                    } catch (err) {
+                        console.error('Failed to delete variant:', err);
+                        showAlert('Error deleting variant: ' + err.message, '❌');
+                    }
+                } else {
+                    product.variants = product.variants.filter(v => String(v.id) !== String(variantId));
+                    saveData();
+                    updateInventoryTable();
+                    showAlert(`Variant "${displayName}" deleted successfully!`, '✅');
+                }
             });
         }
 
@@ -19199,7 +19778,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         // SQLITE COMPATIBILITY — REMOVE AFTER ALL DEPENDENT MODULES ARE MIGRATED
         function syncDayClosingCompatibility() {
             try {
-                localStorage.setItem('dayClosings', JSON.stringify(dayClosings));
+                // SQLite is source of truth
             } catch (e) {
                 console.warn('dayClosings compatibility sync error:', e);
             }
@@ -20801,6 +21380,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
+            if(paneId === 'settings-pane-locations') {
+                if(typeof initLocationsSettingsUI === 'function') {
+                    initLocationsSettingsUI();
+                }
+            }
+
             if(paneId === 'settings-pane-theme') {
                 if(typeof renderThemeGrid === 'function') {
                     renderThemeGrid();
@@ -21594,28 +22179,53 @@ input:focus, select:focus, textarea:focus, button:focus {
             event.target.value = ''; // Reset input
         }
 
-        function exportSalesExcelXLSX() {
+        async function exportSalesExcelXLSX() {
             if (typeof XLSX === 'undefined') {
                 showAlert('Excel library not loaded.', '⚠️');
                 return;
             }
-            const sales = JSON.parse(localStorage.getItem('sales') || '[]');
-            if (sales.length === 0) {
+            let salesToExport = [];
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales) {
+                try {
+                    const res = await window.electronAPI.sqlite.sales.getAll();
+                    salesToExport = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                } catch (e) {
+                    console.error('Error fetching SQLite sales for export:', e);
+                }
+            }
+            if (!salesToExport || salesToExport.length === 0) {
+                salesToExport = (Array.isArray(sales) && sales.length > 0) ? sales : (JSON.parse(localStorage.getItem('sales') || '[]'));
+            }
+            if (salesToExport.length === 0) {
                 showAlert('No sales data to export', '⚠️');
                 return;
             }
 
-            const exportData = sales.flatMap(sale => {
-                return sale.items.map(item => ({
+            const exportData = salesToExport.flatMap(sale => {
+                const items = Array.isArray(sale.items) ? sale.items : [];
+                if (items.length === 0) {
+                    return [{
+                        'Date': new Date(sale.date).toLocaleString(),
+                        'Invoice/Sale Number': sale.receipt_number || sale.receiptNumber || 'N/A',
+                        'Product': 'N/A',
+                        'Quantity': 0,
+                        'Unit Price': 0,
+                        'Discount': Number(sale.discount || 0),
+                        'Total': Number(sale.total || 0),
+                        'Customer': sale.customer_name || sale.customerName || 'Walk-in',
+                        'Payment Method': sale.payment_method || sale.paymentMethod || '-'
+                    }];
+                }
+                return items.map(item => ({
                     'Date': new Date(sale.date).toLocaleString(),
-                    'Invoice/Sale Number': sale.receiptNumber,
-                    'Product': item.productName,
+                    'Invoice/Sale Number': sale.receipt_number || sale.receiptNumber,
+                    'Product': item.product_name || item.productName,
                     'Quantity': item.quantity,
                     'Unit Price': item.price,
-                    'Discount': (sale.discount || 0) / sale.items.length, // Distribute roughly
+                    'Discount': (Number(sale.discount || 0)) / items.length,
                     'Total': item.total,
-                    'Customer': sale.customerName || 'Walk-in',
-                    'Payment Method': sale.paymentMethod
+                    'Customer': sale.customer_name || sale.customerName || 'Walk-in',
+                    'Payment Method': sale.payment_method || sale.paymentMethod
                 }));
             });
 
@@ -21625,26 +22235,37 @@ input:focus, select:focus, textarea:focus, button:focus {
             XLSX.writeFile(wb, "Sales_Export.xlsx");
         }
 
-        function exportInventoryExcelXLSX() {
+        async function exportInventoryExcelXLSX() {
             if (typeof XLSX === 'undefined') {
                 showAlert('Excel library not loaded.', '⚠️');
                 return;
             }
-            const products = JSON.parse(localStorage.getItem('products') || '[]');
-            if (products.length === 0) {
+            let prodsToExport = (Array.isArray(products) && products.length > 0) ? products : [];
+            if (prodsToExport.length === 0 && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                try {
+                    const res = await window.electronAPI.sqlite.products.getAll();
+                    prodsToExport = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                } catch(e) {
+                    console.error('Error fetching SQLite products for export:', e);
+                }
+            }
+            if (prodsToExport.length === 0) {
+                prodsToExport = JSON.parse(localStorage.getItem('products') || '[]');
+            }
+            if (prodsToExport.length === 0) {
                 showAlert('No inventory data to export', '⚠️');
                 return;
             }
 
-            const exportData = products.map(p => ({
+            const exportData = prodsToExport.map(p => ({
                 'Product Name': p.name,
-                'Barcode': p.barcode,
-                'Category': p.category,
-                'Unit/Pack': p.unit,
-                'Purchase Price': p.costPrice || p.price,
-                'Selling Price': p.price,
-                'Current Stock': p.stock,
-                'Minimum Stock': p.minStock || 0
+                'Barcode': p.barcode || '',
+                'Category': p.category || '',
+                'Unit/Pack': p.unit || 'pcs',
+                'Purchase Price': (p.costPrice !== undefined && p.costPrice !== null) ? p.costPrice : ((p.buying_price !== undefined) ? p.buying_price : (p.price || 0)),
+                'Selling Price': (p.sellingPrice !== undefined && p.sellingPrice !== null) ? p.sellingPrice : ((p.selling_price !== undefined) ? p.selling_price : (p.price || 0)),
+                'Current Stock': (p.stock !== undefined && p.stock !== null) ? p.stock : 0,
+                'Minimum Stock': (p.minStock !== undefined && p.minStock !== null) ? p.minStock : ((p.min_stock !== undefined) ? p.min_stock : 0)
             }));
 
             const ws = XLSX.utils.json_to_sheet(exportData);
@@ -21667,9 +22288,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         // SQLITE COMPATIBILITY — REMOVE AFTER ALL DEPENDENT MODULES ARE MIGRATED
         function syncPettyCashCompatibility() {
             try {
-                localStorage.setItem('pettyCashTransactions', JSON.stringify(pcTransactions));
-                localStorage.setItem('pettyCashOpening', JSON.stringify(pcOpening));
-                if (pcCategories) localStorage.setItem('pettyCashCategories', JSON.stringify(pcCategories));
+                // SQLite is source of truth
+                // SQLite is source of truth
+                // SQLite is source of truth
             } catch (e) {
                 console.warn('pettyCash compatibility sync error:', e);
             }
@@ -21736,7 +22357,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         if (!pcCategories) {
             pcCategories = JSON.parse(JSON.stringify(DEFAULT_PC_CATEGORIES));
-            localStorage.setItem('pettyCashCategories', JSON.stringify(pcCategories));
+            // SQLite is source of truth
         }
 
         let currentPCType = 'expense';
@@ -23193,7 +23814,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 });
                 if (productsUpdated) {
-                    localStorage.setItem('products', JSON.stringify(products));
+                    // SQLite is source of truth
                     if (typeof renderProducts === 'function') renderProducts();
                 }
 
@@ -23235,7 +23856,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         if (typeof products !== 'undefined' && Array.isArray(products)) {
                             products = currentProds;
                         }
-                        localStorage.setItem('products', JSON.stringify(currentProds));
+                        // SQLite is source of truth
                     }
                 }
 
@@ -23284,7 +23905,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 });
                 if (productsUpdated) {
-                    localStorage.setItem('products', JSON.stringify(products));
+                    // SQLite is source of truth
                     if (typeof renderProducts === 'function') renderProducts();
                 }
 
@@ -24357,12 +24978,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                     // Let's just reload sales from SQLite!
                     const allSales = await window.electronAPI.sqlite.sales.getAll();
                     sales = allSales;
-                    localStorage.setItem('sales', JSON.stringify(allSales));
+                    // SQLite is source of truth
                     renderReceivablesTable();
                 } else {
                     const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
                     purchases = allPurchases;
-                    localStorage.setItem('purchases', JSON.stringify(allPurchases));
+                    // SQLite is source of truth
                     renderPayablesTable();
                 }
                 // END SYNC
@@ -24405,7 +25026,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     // Sync
                     const allSales = await window.electronAPI.sqlite.sales.getAll();
                     sales = allSales;
-                    localStorage.setItem('sales', JSON.stringify(allSales));
+                    // SQLite is source of truth
                     renderReceivablesTable();
                 } else if (type === 'purchase') {
                     const existingPurchase = await window.electronAPI.sqlite.purchases.search(invoice);
@@ -24423,7 +25044,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     // Sync
                     const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
                     purchases = allPurchases;
-                    localStorage.setItem('purchases', JSON.stringify(allPurchases));
+                    // SQLite is source of truth
                     renderPayablesTable();
                 }
                 
@@ -24931,7 +25552,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // SQLITE COMPATIBILITY - SYNC FOR REPORTS
                 const allLedgerPayments = await window.electronAPI.sqlite.payments.getLedgerPayments();
                 partyPayments = allLedgerPayments;
-                localStorage.setItem('partyPayments', JSON.stringify(allLedgerPayments));
+                // SQLite is source of truth
                 // END SYNC
 
                 closeLedgerPaymentModal();
@@ -27685,10 +28306,24 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 });
             }
             
-            saveData();
-            updateInventoryTable();
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                (async () => {
+                    try {
+                        await window.electronAPI.sqlite.products.update(parent.id, parent);
+                        if (typeof refreshUI === 'function') await refreshUI();
+                        else if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                        showAlert(`Variant ${name} added successfully to ${parent.name}.`, '✅');
+                    } catch(err) {
+                        console.error('Failed to save variant to SQLite:', err);
+                        showAlert('Error saving variant to database: ' + err.message, '❌');
+                    }
+                })();
+            } else {
+                saveData();
+                updateInventoryTable();
+                showAlert(`Variant ${name} added successfully to ${parent.name}.`, '✅');
+            }
             closeAddVariantModal();
-            showAlert(`Variant ${name} added successfully to ${parent.name}.`, '✅');
         }
         
         document.addEventListener('keydown', function(event) {
