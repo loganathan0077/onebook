@@ -7140,8 +7140,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
 
                     if (window.electronAPI.sqlite.reports) {
-                        const sList = await window.electronAPI.sqlite.reports.getReportSales({});
-                        if (Array.isArray(sList) && sList.length > 0) {
+                        const sRes = await window.electronAPI.sqlite.reports.getReportSales({});
+                        const sList = (sRes && sRes.success && Array.isArray(sRes.data)) ? sRes.data : (Array.isArray(sRes) ? sRes : []);
+                        if (sList.length > 0) {
                             sales = sList;
                         }
                     }
@@ -14038,7 +14039,11 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 let newSaleId;
                 try {
-                    newSaleId = await window.electronAPI.sqlite.sales.create(saleData);
+                    const createRes = await window.electronAPI.sqlite.sales.create(saleData);
+                    if (createRes && createRes.success === false) {
+                        throw new Error(createRes.error ? (createRes.error.message || createRes.error) : "Failed to record sale in SQLite");
+                    }
+                    newSaleId = (createRes && createRes.success && createRes.data !== undefined) ? createRes.data : createRes;
                 } catch (e) {
                     console.error("Sale creation failed:", e);
                     showAlert('❌ Sale creation failed: ' + (e.message || e), 'error');
@@ -15623,8 +15628,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         async function loadReportSalesFromSQLite() {
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.reports) {
                 try {
-                    const sqliteSales = await window.electronAPI.sqlite.reports.getReportSales({});
-                    if (Array.isArray(sqliteSales)) {
+                    const sRes = await window.electronAPI.sqlite.reports.getReportSales({});
+                    const sqliteSales = (sRes && sRes.success && Array.isArray(sRes.data)) ? sRes.data : (Array.isArray(sRes) ? sRes : []);
+                    if (sqliteSales.length > 0 || Array.isArray(sqliteSales)) {
                         sales = sqliteSales;
                     }
                 } catch (err) {
@@ -15877,7 +15883,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             showConfirm('⚠️ Are you sure you want to CANCEL this sale?<br><br>Stock will be restored. This action cannot be undone!',
                 async function () {
                     try {
-                        await window.electronAPI.sqlite.sales.cancel(saleId);
+                        const cancelRes = await window.electronAPI.sqlite.sales.cancel(saleId);
+                        if (cancelRes && cancelRes.success === false) {
+                            throw new Error(cancelRes.error ? (cancelRes.error.message || cancelRes.error) : "Failed to cancel sale in SQLite");
+                        }
                         
                         // Mark as cancelled in local legacy array
                         // Wait, in legacy, sales were flat. We'll just filter them out for reports/dashboard
