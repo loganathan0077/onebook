@@ -7,19 +7,23 @@ class LocationService {
         const rows = db.prepare("SELECT key, value FROM settings WHERE key LIKE 'location_%'").all();
         const settings = {
             enabled: false,
+            trackLocation: true,
             trackGodown: true,
             trackFloor: true,
             trackRack: true,
+            trackSection: true,
             trackShelf: true,
-            trackCode: true
+            trackBin: true
         };
         for (const row of rows) {
             if (row.key === 'location_enabled') settings.enabled = row.value === 'true' || row.value === '1';
+            if (row.key === 'location_trackLocation') settings.trackLocation = row.value === 'true' || row.value === '1';
             if (row.key === 'location_trackGodown') settings.trackGodown = row.value === 'true' || row.value === '1';
             if (row.key === 'location_trackFloor') settings.trackFloor = row.value === 'true' || row.value === '1';
             if (row.key === 'location_trackRack') settings.trackRack = row.value === 'true' || row.value === '1';
+            if (row.key === 'location_trackSection') settings.trackSection = row.value === 'true' || row.value === '1';
             if (row.key === 'location_trackShelf') settings.trackShelf = row.value === 'true' || row.value === '1';
-            if (row.key === 'location_trackCode') settings.trackCode = row.value === 'true' || row.value === '1';
+            if (row.key === 'location_trackBin') settings.trackBin = row.value === 'true' || row.value === '1';
         }
         return settings;
     }
@@ -32,11 +36,13 @@ class LocationService {
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value
             `);
             if (settings.enabled !== undefined) upsert.run('location_enabled', String(!!settings.enabled));
+            if (settings.trackLocation !== undefined) upsert.run('location_trackLocation', String(!!settings.trackLocation));
             if (settings.trackGodown !== undefined) upsert.run('location_trackGodown', String(!!settings.trackGodown));
             if (settings.trackFloor !== undefined) upsert.run('location_trackFloor', String(!!settings.trackFloor));
             if (settings.trackRack !== undefined) upsert.run('location_trackRack', String(!!settings.trackRack));
+            if (settings.trackSection !== undefined) upsert.run('location_trackSection', String(!!settings.trackSection));
             if (settings.trackShelf !== undefined) upsert.run('location_trackShelf', String(!!settings.trackShelf));
-            if (settings.trackCode !== undefined) upsert.run('location_trackCode', String(!!settings.trackCode));
+            if (settings.trackBin !== undefined) upsert.run('location_trackBin', String(!!settings.trackBin));
             return this.getLocationSettings();
         });
     }

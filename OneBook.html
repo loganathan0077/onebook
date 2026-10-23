@@ -2272,6 +2272,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <th class="gst-field" style="display:none; width: 6%;">HSN</th>
                                     <th class="gst-field" style="display:none; width: 6%;">GST%</th>
                                     <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
+                                    <th id="thInventoryLocation" style="width: 10%; display: none;">Location</th>
                                     <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 10%;" class="expiry-tracking-feature">Expiry Date <span id="sort-expiryDate"></span></th>
                                     <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
                                     <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
@@ -4463,8 +4464,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 10px;">Active Location Levels & Identifiers:</div>
                                     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackLocation" onchange="saveCurrentLocationSettings()">
+                                            <span>📍 Location</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
                                             <input type="checkbox" id="locTrackGodown" onchange="saveCurrentLocationSettings()">
-                                            <span>🏢 Godown / Warehouse</span>
+                                            <span>🏢 Godown</span>
                                         </label>
                                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
                                             <input type="checkbox" id="locTrackFloor" onchange="saveCurrentLocationSettings()">
@@ -4475,12 +4480,16 @@ input:focus, select:focus, textarea:focus, button:focus {
                                             <span>🗄️ Rack</span>
                                         </label>
                                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="locTrackShelf" onchange="saveCurrentLocationSettings()">
-                                            <span>📦 Shelf / Bin</span>
+                                            <input type="checkbox" id="locTrackSection" onchange="saveCurrentLocationSettings()">
+                                            <span>📑 Section</span>
                                         </label>
                                         <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
-                                            <input type="checkbox" id="locTrackCode" onchange="saveCurrentLocationSettings()">
-                                            <span>🏷️ Unique Location Code</span>
+                                            <input type="checkbox" id="locTrackShelf" onchange="saveCurrentLocationSettings()">
+                                            <span>📦 Shelf</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="locTrackBin" onchange="saveCurrentLocationSettings()">
+                                            <span>🗑️ Bin</span>
                                         </label>
                                     </div>
                                 </div>
@@ -4955,6 +4964,41 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
                     </div>
 
+                    <!-- Configurable Stock Location Fields (Edit) -->
+                    <div id="editProductLocationSection" style="display: none; background: #f1f5f9; padding: 12px 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 12px; margin-bottom: 12px;">
+                        <label style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 8px; display: block;">📍 Stock Location</label>
+                        <div class="compact-grid" id="editProductLocationGrid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                            <div class="form-group" id="editLocField_location" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Location</label>
+                                <input type="text" id="editProductLoc_location" placeholder="e.g. Main WH" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_godown" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Godown</label>
+                                <input type="text" id="editProductLoc_godown" placeholder="e.g. Godown 1" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_floor" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Floor</label>
+                                <input type="text" id="editProductLoc_floor" placeholder="e.g. 1st Floor" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_rack" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Rack</label>
+                                <input type="text" id="editProductLoc_rack" placeholder="e.g. Rack B" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_section" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Section</label>
+                                <input type="text" id="editProductLoc_section" placeholder="e.g. Sec 4" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_shelf" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Shelf</label>
+                                <input type="text" id="editProductLoc_shelf" placeholder="e.g. Shelf 2" style="height: 38px; font-size: 15px;">
+                            </div>
+                            <div class="form-group" id="editLocField_bin" style="display: none; margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 4px;">Bin</label>
+                                <input type="text" id="editProductLoc_bin" placeholder="e.g. Bin 12" style="height: 38px; font-size: 15px;">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Variant Section -->
                     <div style="margin-top: 15px;">
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
@@ -5101,6 +5145,41 @@ input:focus, select:focus, textarea:focus, button:focus {
                 <div class="form-group" style="margin:0;">
                     <label style="font-weight:600;">Minimum Stock Level</label>
                     <input type="number" id="evMinStock" value="0" style="width:100%; padding:8px; font-size:15px; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <!-- Configurable Stock Location Fields (Edit Variant Modal) -->
+            <div id="editVariantLocationSection" style="display: none; background: #f8fafc; padding: 12px 14px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 12px;">
+                <label style="font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block; font-size: 14px;">📍 Variant Stock Location</label>
+                <div class="compact-grid" id="editVariantLocationGrid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+                    <div class="form-group" id="evLocField_location" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Location</label>
+                        <input type="text" id="evLoc_location" placeholder="e.g. Main WH" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_godown" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Godown</label>
+                        <input type="text" id="evLoc_godown" placeholder="e.g. Godown 1" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_floor" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Floor</label>
+                        <input type="text" id="evLoc_floor" placeholder="e.g. 1st Floor" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_rack" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Rack</label>
+                        <input type="text" id="evLoc_rack" placeholder="e.g. Rack B" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_section" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Section</label>
+                        <input type="text" id="evLoc_section" placeholder="e.g. Sec 4" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_shelf" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Shelf</label>
+                        <input type="text" id="evLoc_shelf" placeholder="e.g. Shelf 2" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="evLocField_bin" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Bin</label>
+                        <input type="text" id="evLoc_bin" placeholder="e.g. Bin 12" style="height: 36px; font-size: 14px;">
+                    </div>
                 </div>
             </div>
             <!-- Pack Sizes -->
@@ -5334,6 +5413,41 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </div>
                             </div>
 
+                            <!-- Configurable Stock Location Fields (New Product) -->
+                            <div id="newProductLocationSection" style="display: none; background: #f1f5f9; padding: 12px 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 12px; margin-bottom: 12px;">
+                                <label style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 8px; display: block;">📍 Stock Location</label>
+                                <div class="compact-grid" id="newProductLocationGrid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                                    <div class="form-group" id="newLocField_location" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Location</label>
+                                        <input type="text" id="newProductLoc_location" placeholder="e.g. Main WH" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_godown" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Godown</label>
+                                        <input type="text" id="newProductLoc_godown" placeholder="e.g. Godown 1" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_floor" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Floor</label>
+                                        <input type="text" id="newProductLoc_floor" placeholder="e.g. 1st Floor" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_rack" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Rack</label>
+                                        <input type="text" id="newProductLoc_rack" placeholder="e.g. Rack B" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_section" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Section</label>
+                                        <input type="text" id="newProductLoc_section" placeholder="e.g. Sec 4" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_shelf" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Shelf</label>
+                                        <input type="text" id="newProductLoc_shelf" placeholder="e.g. Shelf 2" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                    <div class="form-group" id="newLocField_bin" style="display: none; margin-bottom: 0;">
+                                        <label style="font-size: 14px; margin-bottom: 4px;">Bin</label>
+                                        <input type="text" id="newProductLoc_bin" placeholder="e.g. Bin 12" style="height: 38px; font-size: 15px;">
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Variant Section -->
                             <div style="margin-top: 15px;">
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
@@ -5437,6 +5551,41 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         <div class="form-group" style="margin-bottom:0;">
                                             <label>Min Stock</label>
                                             <input type="number" id="varMinStock" placeholder="0" value="0" min="0" onkeydown="handleVariantKeydown(event, 'btnAddVar')">
+                                        </div>
+                                    </div>
+
+                                    <!-- Configurable Stock Location Fields (New Product Variant) -->
+                                    <div id="newVarLocationSection" style="display: none; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+                                        <label style="font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 6px; display: block;">📍 Variant Stock Location</label>
+                                        <div class="compact-grid" id="newVarLocationGrid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+                                            <div class="form-group" id="newVarLocField_location" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Location</label>
+                                                <input type="text" id="newVarLoc_location" placeholder="e.g. Main WH" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_godown" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Godown</label>
+                                                <input type="text" id="newVarLoc_godown" placeholder="e.g. Godown 1" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_floor" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Floor</label>
+                                                <input type="text" id="newVarLoc_floor" placeholder="e.g. 1st Floor" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_rack" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Rack</label>
+                                                <input type="text" id="newVarLoc_rack" placeholder="e.g. Rack B" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_section" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Section</label>
+                                                <input type="text" id="newVarLoc_section" placeholder="e.g. Sec 4" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_shelf" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Shelf</label>
+                                                <input type="text" id="newVarLoc_shelf" placeholder="e.g. Shelf 2" style="height: 36px; font-size: 14px;">
+                                            </div>
+                                            <div class="form-group" id="newVarLocField_bin" style="display: none; margin-bottom: 0;">
+                                                <label style="font-size: 13px; margin-bottom: 2px;">Bin</label>
+                                                <input type="text" id="newVarLoc_bin" placeholder="e.g. Bin 12" style="height: 36px; font-size: 14px;">
+                                            </div>
                                         </div>
                                     </div>
                                     <!-- Pack Sizes for variant -->
@@ -6663,19 +6812,22 @@ input:focus, select:focus, textarea:focus, button:focus {
         let cachedLocations = [];
         let locationSettings = {
             enabled: false,
+            trackLocation: true,
             trackGodown: true,
             trackFloor: true,
             trackRack: true,
+            trackSection: true,
             trackShelf: true,
-            trackCode: true
+            trackBin: true
         };
 
         async function initLocationsSettingsUI() {
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
                     const res = await window.electronAPI.sqlite.locations.getSettings();
-                    if (res && res.success) {
-                        locationSettings = res.data;
+                    const data = (res && res.success && res.data) ? res.data : (res && res.enabled !== undefined ? res : null);
+                    if (data) {
+                        locationSettings = { ...locationSettings, ...data };
                     }
                 }
             } catch (err) {
@@ -6684,21 +6836,26 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // Sync UI checkboxes
             const enabledEl = document.getElementById('locSettingEnabled');
+            const trackLocationEl = document.getElementById('locTrackLocation');
             const trackGodownEl = document.getElementById('locTrackGodown');
             const trackFloorEl = document.getElementById('locTrackFloor');
             const trackRackEl = document.getElementById('locTrackRack');
+            const trackSectionEl = document.getElementById('locTrackSection');
             const trackShelfEl = document.getElementById('locTrackShelf');
-            const trackCodeEl = document.getElementById('locTrackCode');
+            const trackBinEl = document.getElementById('locTrackBin');
 
             if (enabledEl) enabledEl.checked = !!locationSettings.enabled;
-            if (trackGodownEl) trackGodownEl.checked = !!locationSettings.trackGodown;
-            if (trackFloorEl) trackFloorEl.checked = !!locationSettings.trackFloor;
-            if (trackRackEl) trackRackEl.checked = !!locationSettings.trackRack;
-            if (trackShelfEl) trackShelfEl.checked = !!locationSettings.trackShelf;
-            if (trackCodeEl) trackCodeEl.checked = !!locationSettings.trackCode;
+            if (trackLocationEl) trackLocationEl.checked = locationSettings.trackLocation !== false;
+            if (trackGodownEl) trackGodownEl.checked = locationSettings.trackGodown !== false;
+            if (trackFloorEl) trackFloorEl.checked = locationSettings.trackFloor !== false;
+            if (trackRackEl) trackRackEl.checked = locationSettings.trackRack !== false;
+            if (trackSectionEl) trackSectionEl.checked = locationSettings.trackSection !== false;
+            if (trackShelfEl) trackShelfEl.checked = locationSettings.trackShelf !== false;
+            if (trackBinEl) trackBinEl.checked = locationSettings.trackBin !== false;
 
             updateLocationsVisibility();
-            if (locationSettings.enabled) {
+            syncFormLocationFieldsVisibility();
+            if (locationSettings.enabled && typeof loadLocationMasterData === 'function') {
                 await loadLocationMasterData();
             }
         }
@@ -6716,28 +6873,97 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (btnAddTop) btnAddTop.style.display = isEnabled ? 'inline-block' : 'none';
         }
 
+        function syncFormLocationFieldsVisibility() {
+            const isEnabled = !!locationSettings.enabled;
+            const fields = [
+                { key: 'location', enabled: isEnabled && locationSettings.trackLocation !== false },
+                { key: 'godown', enabled: isEnabled && locationSettings.trackGodown !== false },
+                { key: 'floor', enabled: isEnabled && locationSettings.trackFloor !== false },
+                { key: 'rack', enabled: isEnabled && locationSettings.trackRack !== false },
+                { key: 'section', enabled: isEnabled && locationSettings.trackSection !== false },
+                { key: 'shelf', enabled: isEnabled && locationSettings.trackShelf !== false },
+                { key: 'bin', enabled: isEnabled && locationSettings.trackBin !== false }
+            ];
+
+            const anyFieldActive = fields.some(f => f.enabled);
+
+            // Toggle sections
+            const editSection = document.getElementById('editProductLocationSection');
+            if (editSection) editSection.style.display = anyFieldActive ? 'block' : 'none';
+
+            const newSection = document.getElementById('newProductLocationSection');
+            if (newSection) newSection.style.display = anyFieldActive ? 'block' : 'none';
+
+            const newVarSection = document.getElementById('newVarLocationSection');
+            if (newVarSection) newVarSection.style.display = anyFieldActive ? 'block' : 'none';
+
+            const addVarSection = document.getElementById('addVariantLocationSection');
+            if (addVarSection) addVarSection.style.display = anyFieldActive ? 'block' : 'none';
+
+            const evSection = document.getElementById('editVariantLocationSection');
+            if (evSection) evSection.style.display = anyFieldActive ? 'block' : 'none';
+
+            // Toggle individual inputs
+            fields.forEach(f => {
+                const editFieldEl = document.getElementById('editLocField_' + f.key);
+                if (editFieldEl) editFieldEl.style.display = f.enabled ? 'block' : 'none';
+
+                const newFieldEl = document.getElementById('newLocField_' + f.key);
+                if (newFieldEl) newFieldEl.style.display = f.enabled ? 'block' : 'none';
+
+                const newVarFieldEl = document.getElementById('newVarLocField_' + f.key);
+                if (newVarFieldEl) newVarFieldEl.style.display = f.enabled ? 'block' : 'none';
+
+                const addVarFieldEl = document.getElementById('addVarLocField_' + f.key);
+                if (addVarFieldEl) addVarFieldEl.style.display = f.enabled ? 'block' : 'none';
+
+                const evFieldEl = document.getElementById('evLocField_' + f.key);
+                if (evFieldEl) evFieldEl.style.display = f.enabled ? 'block' : 'none';
+            });
+        }
+
+        function formatProductLocationSummary(product) {
+            if (!product) return '';
+            const levels = [];
+            if (product.loc_location || product.location) levels.push(product.loc_location || product.location);
+            if (product.loc_godown || product.godown) levels.push(product.loc_godown || product.godown);
+            if (product.loc_floor || product.floor) levels.push(product.loc_floor || product.floor);
+            if (product.loc_rack || product.rack) levels.push(product.loc_rack || product.rack);
+            if (product.loc_section || product.section) levels.push(product.loc_section || product.section);
+            if (product.loc_shelf || product.shelf) levels.push(product.loc_shelf || product.shelf);
+            if (product.loc_bin || product.bin) levels.push(product.loc_bin || product.bin);
+            return levels.filter(Boolean).join(' > ');
+        }
+
         async function handleLocationMasterToggle() {
             const enabledEl = document.getElementById('locSettingEnabled');
             locationSettings.enabled = enabledEl ? enabledEl.checked : false;
             updateLocationsVisibility();
+            syncFormLocationFieldsVisibility();
             await saveCurrentLocationSettings();
-            if (locationSettings.enabled) {
+            if (locationSettings.enabled && typeof loadLocationMasterData === 'function') {
                 await loadLocationMasterData();
             }
+            if (typeof updateInventoryTable === 'function') updateInventoryTable();
         }
 
         async function saveCurrentLocationSettings() {
             locationSettings.enabled = document.getElementById('locSettingEnabled')?.checked ?? false;
+            locationSettings.trackLocation = document.getElementById('locTrackLocation')?.checked ?? true;
             locationSettings.trackGodown = document.getElementById('locTrackGodown')?.checked ?? true;
             locationSettings.trackFloor = document.getElementById('locTrackFloor')?.checked ?? true;
             locationSettings.trackRack = document.getElementById('locTrackRack')?.checked ?? true;
+            locationSettings.trackSection = document.getElementById('locTrackSection')?.checked ?? true;
             locationSettings.trackShelf = document.getElementById('locTrackShelf')?.checked ?? true;
-            locationSettings.trackCode = document.getElementById('locTrackCode')?.checked ?? true;
+            locationSettings.trackBin = document.getElementById('locTrackBin')?.checked ?? true;
+
+            syncFormLocationFieldsVisibility();
 
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.locations) {
                     const res = await window.electronAPI.sqlite.locations.saveSettings(locationSettings);
-                    if (res && res.success) {
+                    const isSuccess = (res && res.success !== false);
+                    if (isSuccess) {
                         showToast('Stock location settings saved successfully.', 'success');
                     } else {
                         showToast('Failed to save location settings: ' + (res?.error || 'Unknown error'), 'error');
@@ -6747,6 +6973,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 console.error('Error saving location settings:', err);
                 showToast('Error saving location settings.', 'error');
             }
+            if (typeof updateInventoryTable === 'function') updateInventoryTable();
         }
 
         async function loadLocationMasterData() {
@@ -6798,28 +7025,28 @@ input:focus, select:focus, textarea:focus, button:focus {
                     : '<span class="badge" style="background: #fce8e6; color: #c5221f; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Inactive</span>';
                 
                 const parentName = loc.parent_name 
-                    ? \`\${escapeHtml(loc.parent_name)} <span style="color:#94a3b8; font-size:11px;">(\${escapeHtml(loc.parent_code || '')})</span>\` 
+                    ? `${escapeHtml(loc.parent_name)} <span style="color:#94a3b8; font-size:11px;">(${escapeHtml(loc.parent_code || '')})</span>` 
                     : '<span style="color: #cbd5e1;">—</span>';
 
-                return \`
-                    <tr style="border-bottom: 1px solid #f1f5f9; \${loc.is_active ? '' : 'opacity: 0.6;'}">
-                        <td><strong style="color: #1e293b; font-family: monospace;">\${escapeHtml(loc.code || '—')}</strong></td>
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9; ${loc.is_active ? '' : 'opacity: 0.6;'}">
+                        <td><strong style="color: #1e293b; font-family: monospace;">${escapeHtml(loc.code || '—')}</strong></td>
                         <td>
-                            <div style="font-weight: 600; color: #0f172a;">\${escapeHtml(loc.name)}</div>
-                            \${loc.notes ? \`<div style="font-size: 11.5px; color: #64748b;">\${escapeHtml(loc.notes)}</div>\` : ''}
+                            <div style="font-weight: 600; color: #0f172a;">${escapeHtml(loc.name)}</div>
+                            ${loc.notes ? `<div style="font-size: 11.5px; color: #64748b;">${escapeHtml(loc.notes)}</div>` : ''}
                         </td>
-                        <td><span style="font-size: 12px; font-weight: 500;">\${typeIcons[loc.type] || loc.type}</span></td>
-                        <td>\${parentName}</td>
-                        <td style="text-align: center;">\${statusBadge}</td>
+                        <td><span style="font-size: 12px; font-weight: 500;">${typeIcons[loc.type] || loc.type}</span></td>
+                        <td>${parentName}</td>
+                        <td style="text-align: center;">${statusBadge}</td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <button class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="editLocation('\${loc.id}')">✏️ Edit</button>
-                            <button class="btn btn-sm btn-outline-secondary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="toggleLocationActive('\${loc.id}', \${!loc.is_active})">
-                                \${loc.is_active ? '⏸️ Deactivate' : '▶️ Activate'}
+                            <button class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="editLocation('${loc.id}')">✏️ Edit</button>
+                            <button class="btn btn-sm btn-outline-secondary" style="padding: 2px 8px; font-size: 11.5px; margin-right: 4px;" onclick="toggleLocationActive('${loc.id}', ${!loc.is_active})">
+                                ${loc.is_active ? '⏸️ Deactivate' : '▶️ Activate'}
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" style="padding: 2px 6px; font-size: 11.5px;" onclick="deleteLocation('\${loc.id}')">🗑️</button>
+                            <button class="btn btn-sm btn-outline-danger" style="padding: 2px 6px; font-size: 11.5px;" onclick="deleteLocation('${loc.id}')">🗑️</button>
                         </td>
                     </tr>
-                \`;
+                `;
             }).join('');
 
             tbody.innerHTML = html;
@@ -6872,7 +7099,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 if (parentSelect) {
                     parentSelect.innerHTML = '<option value="">Select Parent Location...</option>' +
-                        validParents.map(p => \`<option value="\${p.id}" \${p.id === preselectedParentId ? 'selected' : ''}>\${p.name} (\${p.code || p.type})</option>\`).join('');
+                        validParents.map(p => `<option value="${p.id}" ${p.id === preselectedParentId ? 'selected' : ''}>${p.name} (${p.code || p.type})</option>`).join('');
                 }
             }
         }
@@ -7543,6 +7770,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 id: p.id,
                                 name: p.name,
                                 category: p.category,
+                                loc_location: p.loc_location,
+                                loc_godown: p.loc_godown,
+                                loc_floor: p.loc_floor,
+                                loc_rack: p.loc_rack,
+                                loc_section: p.loc_section,
+                                loc_shelf: p.loc_shelf,
+                                loc_bin: p.loc_bin,
                                 barcode: vBarcode,
                                 price: Number(vPrice),
                                 sellingPrice: Number(vPrice),
@@ -7554,13 +7788,20 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 variants: (p.variants || []).map(v => ({
                                     id: v.id,
                                     productId: v.productId || v.product_id || p.id,
-                                    variantName: v.variantName || v.variant_name || 'Default',
+                                    variantName: v.variantName !== undefined ? v.variantName : (v.variant_name !== undefined ? v.variant_name : ''),
                                     sku: v.sku,
                                     barcode: v.barcode,
                                     buyingPrice: Number(v.buyingPrice !== undefined ? v.buyingPrice : (v.buying_price || 0)),
                                     sellingPrice: Number(v.sellingPrice !== undefined ? v.sellingPrice : (v.selling_price || 0)),
                                     stock: Number(v.stock || 0),
-                                    minimumStock: Number(p.min_stock || p.minStock || 0)
+                                    minimumStock: Number(p.min_stock || p.minStock || 0),
+                                    loc_location: v.loc_location || null,
+                                    loc_godown: v.loc_godown || null,
+                                    loc_floor: v.loc_floor || null,
+                                    loc_rack: v.loc_rack || null,
+                                    loc_section: v.loc_section || null,
+                                    loc_shelf: v.loc_shelf || null,
+                                    loc_bin: v.loc_bin || null
                                 }))
                             };
                         });
@@ -7575,6 +7816,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         window.addEventListener('DOMContentLoaded', async () => {
             await window.loadProductsFromDatabase();
             if (typeof updateProductsTable === 'function') updateProductsTable();
+            if (typeof initLocationsSettingsUI === 'function') {
+                await initLocationsSettingsUI();
+            }
         });
         
 
@@ -7605,6 +7849,14 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         // --- Product Variant Helper Functions ---
+        window.hasRealVariants = function(product) {
+            if (!product || !Array.isArray(product.variants) || product.variants.length === 0) return false;
+            if (product.variants.length > 1) return true;
+            const vName = product.variants[0].variantName || product.variants[0].variant_name || product.variants[0].name || '';
+            const trimmed = String(vName).trim();
+            return trimmed !== '' && trimmed.toLowerCase() !== 'default';
+        };
+
         window.hasVariants = function(product) {
             return product && Array.isArray(product.variants) && product.variants.length > 0;
         };
@@ -7627,12 +7879,16 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (!product) return 'Unknown Product';
             let name = product.name || 'Unknown Product';
             
-            if (variant && variant.variantName) {
-                return `${name} - ${variant.variantName}`;
+            const vName = variant && variant.variantName ? String(variant.variantName).trim() : '';
+            if (vName && vName.toLowerCase() !== 'default') {
+                return `${name} - ${vName}`;
             }
             
             if (product.variant && product.variant.trim()) {
-                name += ' ' + product.variant.trim();
+                const pv = product.variant.trim();
+                if (pv.toLowerCase() !== 'default') {
+                    name += ' ' + pv;
+                }
             }
             return name;
         };
@@ -9704,6 +9960,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function showPurchaseAddNewProductForm() {
             document.getElementById('purchaseNewProductContainer').style.display = 'flex';
+            if (typeof syncFormLocationFieldsVisibility === 'function') {
+                syncFormLocationFieldsVisibility();
+            }
+            if (document.getElementById('newProductLoc_location')) document.getElementById('newProductLoc_location').value = '';
+            if (document.getElementById('newProductLoc_godown')) document.getElementById('newProductLoc_godown').value = '';
+            if (document.getElementById('newProductLoc_floor')) document.getElementById('newProductLoc_floor').value = '';
+            if (document.getElementById('newProductLoc_rack')) document.getElementById('newProductLoc_rack').value = '';
+            if (document.getElementById('newProductLoc_section')) document.getElementById('newProductLoc_section').value = '';
+            if (document.getElementById('newProductLoc_shelf')) document.getElementById('newProductLoc_shelf').value = '';
+            if (document.getElementById('newProductLoc_bin')) document.getElementById('newProductLoc_bin').value = '';
             
             const currentSettings = JSON.parse(localStorage.getItem('settings') || 'null') || {};
             const expTrack = currentSettings.expiryTracking !== undefined ? currentSettings.expiryTracking : false;
@@ -9906,7 +10172,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 unit: unit,
                 quantityType: quantityType,
                 gstRate: gstRate,
-                packSizes: packSizes
+                packSizes: packSizes,
+                loc_location: (locationSettings && locationSettings.trackLocation !== false && document.getElementById('newVarLoc_location')) ? document.getElementById('newVarLoc_location').value.trim() : '',
+                loc_godown: (locationSettings && locationSettings.trackGodown !== false && document.getElementById('newVarLoc_godown')) ? document.getElementById('newVarLoc_godown').value.trim() : '',
+                loc_floor: (locationSettings && locationSettings.trackFloor !== false && document.getElementById('newVarLoc_floor')) ? document.getElementById('newVarLoc_floor').value.trim() : '',
+                loc_rack: (locationSettings && locationSettings.trackRack !== false && document.getElementById('newVarLoc_rack')) ? document.getElementById('newVarLoc_rack').value.trim() : '',
+                loc_section: (locationSettings && locationSettings.trackSection !== false && document.getElementById('newVarLoc_section')) ? document.getElementById('newVarLoc_section').value.trim() : '',
+                loc_shelf: (locationSettings && locationSettings.trackShelf !== false && document.getElementById('newVarLoc_shelf')) ? document.getElementById('newVarLoc_shelf').value.trim() : '',
+                loc_bin: (locationSettings && locationSettings.trackBin !== false && document.getElementById('newVarLoc_bin')) ? document.getElementById('newVarLoc_bin').value.trim() : ''
             };
 
             currentNewProductVariants.push(newVariant);
@@ -9926,6 +10199,13 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (hsnCustomResetEl) { hsnCustomResetEl.value = ''; hsnCustomResetEl.style.display = 'none'; }
 
             if (varPackContainer) varPackContainer.innerHTML = '';
+            if (document.getElementById('newVarLoc_location')) document.getElementById('newVarLoc_location').value = '';
+            if (document.getElementById('newVarLoc_godown')) document.getElementById('newVarLoc_godown').value = '';
+            if (document.getElementById('newVarLoc_floor')) document.getElementById('newVarLoc_floor').value = '';
+            if (document.getElementById('newVarLoc_rack')) document.getElementById('newVarLoc_rack').value = '';
+            if (document.getElementById('newVarLoc_section')) document.getElementById('newVarLoc_section').value = '';
+            if (document.getElementById('newVarLoc_shelf')) document.getElementById('newVarLoc_shelf').value = '';
+            if (document.getElementById('newVarLoc_bin')) document.getElementById('newVarLoc_bin').value = '';
             document.getElementById('varName').focus();
         }
 
@@ -10053,7 +10333,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         };
 
-        function addNewProductToPurchase() {
+        async function addNewProductToPurchase() {
             try {
                 const barcodeEl = document.getElementById('newProductBarcode');
                 const barcode = barcodeEl ? barcodeEl.value : '';
@@ -10191,7 +10471,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 }
 
-                const proceedToAdd = () => {
+                const proceedToAdd = async () => {
                     // Check if updating existing
                     let newProd = products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
                     
@@ -10253,8 +10533,53 @@ input:focus, select:focus, textarea:focus, button:focus {
                         products.push(newProd);
                     }
 
+                    // Save to SQLite if in sqlite backend mode
+                    if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                        try {
+                            const locObj = {
+                                loc_location: (locationSettings && locationSettings.trackLocation !== false && document.getElementById('newProductLoc_location')) ? document.getElementById('newProductLoc_location').value.trim() : '',
+                                loc_godown: (locationSettings && locationSettings.trackGodown !== false && document.getElementById('newProductLoc_godown')) ? document.getElementById('newProductLoc_godown').value.trim() : '',
+                                loc_floor: (locationSettings && locationSettings.trackFloor !== false && document.getElementById('newProductLoc_floor')) ? document.getElementById('newProductLoc_floor').value.trim() : '',
+                                loc_rack: (locationSettings && locationSettings.trackRack !== false && document.getElementById('newProductLoc_rack')) ? document.getElementById('newProductLoc_rack').value.trim() : '',
+                                loc_section: (locationSettings && locationSettings.trackSection !== false && document.getElementById('newProductLoc_section')) ? document.getElementById('newProductLoc_section').value.trim() : '',
+                                loc_shelf: (locationSettings && locationSettings.trackShelf !== false && document.getElementById('newProductLoc_shelf')) ? document.getElementById('newProductLoc_shelf').value.trim() : '',
+                                loc_bin: (locationSettings && locationSettings.trackBin !== false && document.getElementById('newProductLoc_bin')) ? document.getElementById('newProductLoc_bin').value.trim() : ''
+                            };
+                            Object.assign(newProd, locObj);
+                            const sqlPayload = {
+                                name: newProd.name,
+                                category: newProd.category,
+                                unit: newProd.unit,
+                                min_stock: newProd.minStock,
+                                description: newProd.description,
+                                supplier: newProd.supplier,
+                                loc_location: newProd.loc_location || null,
+                                loc_godown: newProd.loc_godown || null,
+                                loc_floor: newProd.loc_floor || null,
+                                loc_rack: newProd.loc_rack || null,
+                                loc_section: newProd.loc_section || null,
+                                loc_shelf: newProd.loc_shelf || null,
+                                loc_bin: newProd.loc_bin || null,
+                                variants: hasVariants ? newProd.variants : [{
+                                    variantName: newProd.variant || '',
+                                    sku: newProd.barcode,
+                                    barcode: newProd.barcode,
+                                    buyingPrice: newProd.costPrice || 0,
+                                    sellingPrice: newProd.price || 0,
+                                    stock: newProd.stock || 0
+                                }]
+                            };
+                            const createdRes = await window.electronAPI.sqlite.products.create(sqlPayload);
+                            if (createdRes && (createdRes.id || typeof createdRes === 'number')) {
+                                newProd.id = createdRes.id || createdRes;
+                            }
+                        } catch (err) {
+                            console.error('Error creating product in SQLite:', err);
+                        }
+                    } else {
+                        saveData();
+                    }
                     console.log('Product saved:', newProd);
-                    saveData();
                     updateProductsTable();
 
 
@@ -10633,6 +10958,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('purchaseDetailsModal').style.display = 'none';
         }
 
+        window.switchTab = switchTab;
         function switchTab(tabName, clickedNav = null) {
             if (tabName === 'settings' && typeof window.isUserAdmin !== 'undefined' && !window.isUserAdmin) {
                 alert('🔒 Access Denied\nYou do not have permission to access this module.');
@@ -11271,6 +11597,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                         barcode: p.barcode,
                         name: p.name,
                         category: p.category,
+                        loc_location: p.loc_location,
+                        loc_godown: p.loc_godown,
+                        loc_floor: p.loc_floor,
+                        loc_rack: p.loc_rack,
+                        loc_section: p.loc_section,
+                        loc_shelf: p.loc_shelf,
+                        loc_bin: p.loc_bin,
                         price: p.price,
                         costPrice: p.cost_price,
                         stock: p.stock,
@@ -11288,7 +11621,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                             buyingPrice: v.buyingPrice,
                             sellingPrice: v.sellingPrice,
                             stock: v.stock,
-                            minimumStock: p.min_stock
+                            minimumStock: p.min_stock,
+                            loc_location: v.loc_location || null,
+                            loc_godown: v.loc_godown || null,
+                            loc_floor: v.loc_floor || null,
+                            loc_rack: v.loc_rack || null,
+                            loc_section: v.loc_section || null,
+                            loc_shelf: v.loc_shelf || null,
+                            loc_bin: v.loc_bin || null
                         }))
                     };
                 });
@@ -11312,8 +11652,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return true;
             });
 
+            const isLocEnabled = (typeof locationSettings !== 'undefined' && locationSettings && locationSettings.enabled);
+            const thLoc = document.getElementById('thInventoryLocation');
+            if (thLoc) thLoc.style.display = isLocEnabled ? 'table-cell' : 'none';
+
             if (filteredProducts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${settings.gstEnabled ? '10' : '8'}" style="text-align: center;">No matching products found</td></tr>`;
+                let baseCols = settings.gstEnabled ? 10 : 8;
+                if (isLocEnabled) baseCols++;
+                tbody.innerHTML = `<tr><td colspan="${baseCols}" style="text-align: center;">No matching products found</td></tr>`;
                 return;
             }
 
@@ -11360,11 +11706,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                         const isMainVariant = product.variants.length > 0 && String(v.id) === String(product.variants[0].id);
                         
                         rows += `
-                        <tr data-product-id="${product.id}" data-variant-id="${v.id}">
+                        <tr data-product-id="${product.id}" data-variant-id="${v.id}" data-parent-id="${product.id}" data-record-type="variant">
                             <td>${v.barcode || v.sku || '-'}</td>
                             <td>${vDisplayName}</td>
                             ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
                             <td>${product.category || 'Uncategorized'}</td>
+                            ${isLocEnabled ? `<td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${formatProductLocationSummary(v) || '—'}">${formatProductLocationSummary(v) || '—'}</td>` : ''}
                             <td class="expiry-tracking-feature">—</td>
                             <td class="${stockStatus}">${vStock}</td>
                             <td>₹${(v.sellingPrice || 0).toFixed(2)}</td>
@@ -11374,7 +11721,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <td>
                                 ${isMainVariant ? `<button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>` : ''}
                                 <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}','${v.id}')" title="PO">PO</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryVariant('${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
+                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="handleEditInventoryRow('variant','${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
                                 ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete">Del</button>` : ''}
                             </td>
                         </tr>`;
@@ -11408,12 +11755,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                     const totalValue = (vPrice * vStock).toFixed(2);
                     
                     return `
-                    <tr data-product-id="${product.id}" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
+                    <tr data-product-id="${product.id}" data-parent-id="${product.id}" data-record-type="product" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
                         <td>${product.barcode || 'N/A'}</td>
                         <td>${product.name}</td>
                         ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
                         ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                         <td>${product.category || 'Uncategorized'}</td>
+                        ${isLocEnabled ? `<td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${formatProductLocationSummary(product) || '—'}">${formatProductLocationSummary(product) || '—'}</td>` : ''}
                         <td class="expiry-tracking-feature">${expiryDisplay}</td>
                         <td class="${stockStatus}">${vStock}</td>
                         <td>₹${vPrice.toFixed(2)}</td>
@@ -11422,7 +11770,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <td class="${stockStatus}">${statusText}</td>
                         <td>
                             <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
-                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editInventoryProduct('${product.id}')" title="Refill/Edit">Edit</button>` : ''}
+                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="handleEditInventoryRow('product','${product.id}')" title="Refill/Edit">Edit</button>` : ''}
                             ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
                         </td>
                     </tr>`;
@@ -11971,13 +12319,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const priceFormatted = parseFloat(itemObj.price || 0).toFixed(2);
                 const stockVal = itemObj.stock;
                 const stockColor = stockVal <= 0 ? '#dc3545' : '#198754';
+                const locSummary = (typeof formatProductLocationSummary === 'function') ? (variant ? formatProductLocationSummary(variant) : formatProductLocationSummary(product)) : '';
 
                 item.innerHTML = `
                     <div style="display:flex; flex-direction:column; gap:2px;">
                         <div style="font-weight:600; font-size:15px; color:#212529;">${itemObj.displayName}</div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#6c757d;">
-                            <span>${barcodeDisplay}</span>
-                            <span>Stock: <strong style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong style="color:#0d6efd;">₹${priceFormatted}</strong></span>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; color:#6c757d;">
+                            <div>
+                                <span>${barcodeDisplay}</span>
+                                ${locSummary ? `<div style="font-size:11px; color:#888; margin-top:1px;">${locSummary}</div>` : ''}
+                            </div>
+                            <span style="white-space:nowrap; margin-left:8px;">Stock: <strong style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong style="color:#0d6efd;">₹${priceFormatted}</strong></span>
                         </div>
                     </div>
                 `;
@@ -17051,7 +17403,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         description: product.description,
                         supplier: product.supplier,
                         variants: [{
-                            variantName: product.variant || 'Default',
+                            variantName: product.variant || '',
                             sku: product.barcode,
                             barcode: product.barcode,
                             buyingPrice: product.costPrice || 0,
@@ -17344,27 +17696,65 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         async function editProduct(id) {
-            let product;
+            let product = null;
             if (window.DATA_BACKEND === 'sqlite') {
-                product = await window.electronAPI.sqlite.products.get(id);
-                if (product) {
-                    // Map SQLite product format back to UI format
-                    const defVar = product.variants && product.variants.length > 0 ? product.variants[0] : null;
-                    product = {
-                        ...product,
-                        stock: defVar ? defVar.stock : 0,
-                        price: defVar ? defVar.selling_price : 0,
-                        costPrice: defVar ? defVar.buying_price : 0,
-                        barcode: defVar ? defVar.barcode : product.barcode,
-                        expiryDays: product.expiry_days,
-                        minStock: product.min_stock
-                    };
+                try {
+                    const res = await window.electronAPI.sqlite.products.get(id);
+                    const rawProd = (res && res.success && res.data) ? res.data : (res && res.id ? res : null);
+                    if (rawProd) {
+                        const defVar = rawProd.variants && rawProd.variants.length > 0 ? rawProd.variants[0] : null;
+                        let parsedPackSizes = [];
+                        if (rawProd.pack_sizes) {
+                            try {
+                                parsedPackSizes = typeof rawProd.pack_sizes === 'string' ? JSON.parse(rawProd.pack_sizes) : rawProd.pack_sizes;
+                            } catch(e) { parsedPackSizes = []; }
+                        } else if (rawProd.packSizes) {
+                            parsedPackSizes = rawProd.packSizes;
+                        }
+
+                        product = {
+                            ...rawProd,
+                            id: rawProd.id,
+                            name: rawProd.name || '',
+                            barcode: (defVar && defVar.barcode) ? defVar.barcode : (rawProd.barcode || ''),
+                            category: rawProd.category || '',
+                            unit: rawProd.unit || 'Piece',
+                            quantityType: rawProd.quantity_type || rawProd.quantityType || 'whole',
+                            price: defVar ? (defVar.sellingPrice !== undefined ? defVar.sellingPrice : defVar.selling_price) : (rawProd.price || 0),
+                            costPrice: defVar ? (defVar.buyingPrice !== undefined ? defVar.buyingPrice : defVar.buying_price) : (rawProd.cost_price || rawProd.costPrice || 0),
+                            stock: defVar ? (defVar.stock !== undefined ? defVar.stock : 0) : (rawProd.stock || 0),
+                            minStock: rawProd.min_stock !== undefined ? rawProd.min_stock : (rawProd.minStock || 0),
+                            supplier: rawProd.supplier_text !== undefined ? rawProd.supplier_text : (rawProd.supplier || ''),
+                            description: rawProd.description || '',
+                            hsn: rawProd.hsn || '',
+                            gstRate: rawProd.gst_rate !== undefined ? rawProd.gst_rate : (rawProd.gstRate || 0),
+                            productDiscount: rawProd.product_discount !== undefined ? rawProd.product_discount : (rawProd.productDiscount || 0),
+                            expiryDays: rawProd.expiry_days || rawProd.expiryDays || '',
+                            packSizes: parsedPackSizes,
+                            variants: rawProd.variants || [],
+                            loc_location: rawProd.loc_location || rawProd.location || '',
+                            loc_godown: rawProd.loc_godown || rawProd.godown || '',
+                            loc_floor: rawProd.loc_floor || rawProd.floor || '',
+                            loc_rack: rawProd.loc_rack || rawProd.rack || '',
+                            loc_section: rawProd.loc_section || rawProd.section || '',
+                            loc_shelf: rawProd.loc_shelf || rawProd.shelf || '',
+                            loc_bin: rawProd.loc_bin || rawProd.bin || ''
+                        };
+                    }
+                } catch(err) {
+                    console.error('Error fetching product from SQLite:', err);
                 }
-            } else {
+            }
+            
+            if (!product) {
+                // Fallback to in-memory products array
                 product = products.find(p => String(p.id) === String(id));
             }
             
-            if (!product) return;
+            if (!product) {
+                showAlert('Product not found!', '❌');
+                return;
+            }
 
             currentEditingProductId = id;
 
@@ -17449,9 +17839,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             const editDescEl = document.getElementById('editProductDescription');
             if (editDescEl) editDescEl.value = product.description || '';
 
+            // Populate location fields
+            if (typeof syncFormLocationFieldsVisibility === 'function') {
+                syncFormLocationFieldsVisibility();
+            }
+            const elLocLocation = document.getElementById('editProductLoc_location');
+            const elLocGodown = document.getElementById('editProductLoc_godown');
+            const elLocFloor = document.getElementById('editProductLoc_floor');
+            const elLocRack = document.getElementById('editProductLoc_rack');
+            const elLocSection = document.getElementById('editProductLoc_section');
+            const elLocShelf = document.getElementById('editProductLoc_shelf');
+            const elLocBin = document.getElementById('editProductLoc_bin');
+
+            if (elLocLocation) elLocLocation.value = product.loc_location || product.location || '';
+            if (elLocGodown) elLocGodown.value = product.loc_godown || product.godown || '';
+            if (elLocFloor) elLocFloor.value = product.loc_floor || product.floor || '';
+            if (elLocRack) elLocRack.value = product.loc_rack || product.rack || '';
+            if (elLocSection) elLocSection.value = product.loc_section || product.section || '';
+            if (elLocShelf) elLocShelf.value = product.loc_shelf || product.shelf || '';
+            if (elLocBin) elLocBin.value = product.loc_bin || product.bin || '';
+
             const hasVariantsCb = document.getElementById('editProductHasVariants');
             const variantSection = document.getElementById('editVariantSection');
-            const hasVariants = window.hasVariants ? window.hasVariants(product) && Array.isArray(product.variants) && product.variants.length > 0 : false;
+            const hasVariants = window.hasRealVariants ? window.hasRealVariants(product) : false;
             
             if (hasVariantsCb) hasVariantsCb.checked = hasVariants;
             if (variantSection) variantSection.style.display = hasVariants ? 'block' : 'none';
@@ -17519,23 +17929,35 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 if (window.DATA_BACKEND === 'sqlite') {
                     // Fetch existing product from SQLite to preserve variants
-                    const existingProduct = await window.electronAPI.sqlite.products.get(currentEditingProductId);
+                    const resProd = await window.electronAPI.sqlite.products.get(currentEditingProductId);
+                    const existingProduct = (resProd && resProd.success && resProd.data) ? resProd.data : (resProd && resProd.id ? resProd : null);
                     if (!existingProduct) {
                         showAlert("Error: Product not found in database!", "❌");
                         return;
                     }
 
                     const newBarcode = document.getElementById('editProductBarcode').value.trim();
-                    const newPrice = parseFloat(document.getElementById('editProductPrice').value);
-                    const newStock = parseFloat(document.getElementById('editProductStock').value);
+                    const newPrice = parseFloat(document.getElementById('editProductPrice').value) || 0;
+                    const newStock = parseFloat(document.getElementById('editProductStock').value) || 0;
+                    const editPackSizes = (typeof getPackSizesFromForm === 'function') ? getPackSizesFromForm('editPackSizesContainer') : (existingProduct.pack_sizes || []);
                     
                     const updateData = {
+                        barcode: newBarcode || null,
+                        price: newPrice,
+                        pack_sizes: editPackSizes,
                         name: document.getElementById('editProductName').value,
                         category: document.getElementById('editProductCategory').value,
                         unit: document.getElementById('editProductUnit').value,
                         min_stock: parseFloat(document.getElementById('editProductMinStock').value),
                         supplier: document.getElementById('editProductSupplier').value || 'N/A',
-                        description: document.getElementById('editProductDescription') ? document.getElementById('editProductDescription').value : ''
+                        description: document.getElementById('editProductDescription') ? document.getElementById('editProductDescription').value : '',
+                        loc_location: (locationSettings && locationSettings.trackLocation !== false && document.getElementById('editProductLoc_location')) ? document.getElementById('editProductLoc_location').value.trim() : (existingProduct.loc_location || existingProduct.location || null),
+                        loc_godown: (locationSettings && locationSettings.trackGodown !== false && document.getElementById('editProductLoc_godown')) ? document.getElementById('editProductLoc_godown').value.trim() : (existingProduct.loc_godown || existingProduct.godown || null),
+                        loc_floor: (locationSettings && locationSettings.trackFloor !== false && document.getElementById('editProductLoc_floor')) ? document.getElementById('editProductLoc_floor').value.trim() : (existingProduct.loc_floor || existingProduct.floor || null),
+                        loc_rack: (locationSettings && locationSettings.trackRack !== false && document.getElementById('editProductLoc_rack')) ? document.getElementById('editProductLoc_rack').value.trim() : (existingProduct.loc_rack || existingProduct.rack || null),
+                        loc_section: (locationSettings && locationSettings.trackSection !== false && document.getElementById('editProductLoc_section')) ? document.getElementById('editProductLoc_section').value.trim() : (existingProduct.loc_section || existingProduct.section || null),
+                        loc_shelf: (locationSettings && locationSettings.trackShelf !== false && document.getElementById('editProductLoc_shelf')) ? document.getElementById('editProductLoc_shelf').value.trim() : (existingProduct.loc_shelf || existingProduct.shelf || null),
+                        loc_bin: (locationSettings && locationSettings.trackBin !== false && document.getElementById('editProductLoc_bin')) ? document.getElementById('editProductLoc_bin').value.trim() : (existingProduct.loc_bin || existingProduct.bin || null)
                     };
                     
                     // We only update the default/first variant's price and barcode here
@@ -17581,6 +18003,20 @@ input:focus, select:focus, textarea:focus, button:focus {
             } catch (error) {
                 console.error("CRITICAL ERROR in saveEditedProduct:", error);
                 showAlert("Error saving: " + error.message, "❌");
+            }
+        }
+
+        function handleEditInventoryRow(recordType, productId, variantId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            const hasMultiple = product && Array.isArray(product.variants) && product.variants.length > 1;
+            const targetVariant = product && product.variants ? product.variants.find(v => String(v.id) === String(variantId)) : null;
+            const vName = targetVariant ? (targetVariant.variantName || targetVariant.variant_name || targetVariant.name || '') : '';
+            const isMeaningfulVariant = String(vName).trim() !== '' && String(vName).trim().toLowerCase() !== 'default';
+
+            if (recordType === 'variant' && (hasMultiple || isMeaningfulVariant)) {
+                editInventoryVariant(productId, variantId);
+            } else {
+                editInventoryProduct(productId);
             }
         }
 
@@ -17701,6 +18137,16 @@ input:focus, select:focus, textarea:focus, button:focus {
                 variant.packSizes.forEach(ps => addPackSizeInput(ps.name, ps.quantity, ps.price, 'evPackSizesContainer'));
             }
 
+            // Populate variant location fields
+            if (typeof syncFormLocationFieldsVisibility === 'function') syncFormLocationFieldsVisibility();
+            if (document.getElementById('evLoc_location')) document.getElementById('evLoc_location').value = variant.loc_location || variant.location || '';
+            if (document.getElementById('evLoc_godown')) document.getElementById('evLoc_godown').value = variant.loc_godown || variant.godown || '';
+            if (document.getElementById('evLoc_floor')) document.getElementById('evLoc_floor').value = variant.loc_floor || variant.floor || '';
+            if (document.getElementById('evLoc_rack')) document.getElementById('evLoc_rack').value = variant.loc_rack || variant.rack || '';
+            if (document.getElementById('evLoc_section')) document.getElementById('evLoc_section').value = variant.loc_section || variant.section || '';
+            if (document.getElementById('evLoc_shelf')) document.getElementById('evLoc_shelf').value = variant.loc_shelf || variant.shelf || '';
+            if (document.getElementById('evLoc_bin')) document.getElementById('evLoc_bin').value = variant.loc_bin || variant.bin || '';
+
             // Show modal
             const modal = document.getElementById('editVariantModal');
             modal.style.display = 'flex';
@@ -17784,6 +18230,29 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Pack sizes — independent from parent
             if (typeof getPackSizesFromForm === 'function') {
                 variant.packSizes = getPackSizesFromForm('evPackSizesContainer');
+            }
+
+            // Location fields — preserve existing if field disabled in settings
+            if (locationSettings && locationSettings.trackLocation !== false && document.getElementById('evLoc_location')) {
+                variant.loc_location = document.getElementById('evLoc_location').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackGodown !== false && document.getElementById('evLoc_godown')) {
+                variant.loc_godown = document.getElementById('evLoc_godown').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackFloor !== false && document.getElementById('evLoc_floor')) {
+                variant.loc_floor = document.getElementById('evLoc_floor').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackRack !== false && document.getElementById('evLoc_rack')) {
+                variant.loc_rack = document.getElementById('evLoc_rack').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackSection !== false && document.getElementById('evLoc_section')) {
+                variant.loc_section = document.getElementById('evLoc_section').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackShelf !== false && document.getElementById('evLoc_shelf')) {
+                variant.loc_shelf = document.getElementById('evLoc_shelf').value.trim() || null;
+            }
+            if (locationSettings && locationSettings.trackBin !== false && document.getElementById('evLoc_bin')) {
+                variant.loc_bin = document.getElementById('evLoc_bin').value.trim() || null;
             }
 
             if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
@@ -23483,7 +23952,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
                 try {
                     const raw = localStorage.getItem('masterCategories');
-                    masterCategories = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    masterCategories = Array.isArray(parsed) ? parsed : [];
                 } catch(e) { masterCategories = []; }
             }
             const dropdowns = ['newProductCategory', 'editProductCategory'];
@@ -23512,7 +23982,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
                 try {
                     const raw = localStorage.getItem('masterUnits');
-                    masterUnits = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    masterUnits = Array.isArray(parsed) ? parsed : [];
                 } catch(e) { masterUnits = []; }
             }
             const dropdowns = ['newProductUnit', 'editProductUnit'];
@@ -23644,19 +24115,22 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof masterCategories === 'undefined' || !Array.isArray(masterCategories)) {
                 try {
                     const raw = localStorage.getItem('masterCategories');
-                    masterCategories = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    masterCategories = Array.isArray(parsed) ? parsed : [];
                 } catch(e) { masterCategories = []; }
             }
             if (typeof masterUnits === 'undefined' || !Array.isArray(masterUnits)) {
                 try {
                     const raw = localStorage.getItem('masterUnits');
-                    masterUnits = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    masterUnits = Array.isArray(parsed) ? parsed : [];
                 } catch(e) { masterUnits = []; }
             }
             if (typeof categoryDiscounts === 'undefined' || !Array.isArray(categoryDiscounts)) {
                 try {
                     const raw = localStorage.getItem('categoryDiscounts');
-                    categoryDiscounts = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    categoryDiscounts = Array.isArray(parsed) ? parsed : [];
                 } catch(e) { categoryDiscounts = []; }
             }
             const catList = document.getElementById('settingsCategoriesList');
@@ -23695,6 +24169,13 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function renderCategoryDiscounts() {
+            if (typeof categoryDiscounts === 'undefined' || !Array.isArray(categoryDiscounts)) {
+                try {
+                    const raw = localStorage.getItem('categoryDiscounts');
+                    const parsed = (raw && !raw.startsWith('[object Object]')) ? JSON.parse(raw) : [];
+                    categoryDiscounts = Array.isArray(parsed) ? parsed : [];
+                } catch(e) { categoryDiscounts = []; }
+            }
             const list = document.getElementById('settingsCategoryDiscountsList');
             if (list) {
                 list.innerHTML = categoryDiscounts.map(cd => `
@@ -26758,8 +27239,10 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 e.preventDefault();
                 const selectedRow = rows[window.inventorySelectedIndex];
                 const productId = selectedRow.dataset.productId;
+                const variantId = selectedRow.dataset.variantId;
+                const recordType = selectedRow.dataset.recordType || (variantId ? 'variant' : 'product');
                 if (productId) {
-                    editInventoryProduct(productId);
+                    handleEditInventoryRow(recordType, productId, variantId);
                 }
             }
         }
@@ -28038,6 +28521,41 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 </div>
             </div>
 
+            <!-- Configurable Stock Location Fields (Add Variant Modal) -->
+            <div id="addVariantLocationSection" style="display: none; background: #f8fafc; padding: 12px 14px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 12px;">
+                <label style="font-size: 14px; font-weight: bold; color: #1e293b; margin-bottom: 6px; display: block;">📍 Variant Stock Location</label>
+                <div class="compact-grid" id="addVariantLocationGrid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+                    <div class="form-group" id="addVarLocField_location" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Location</label>
+                        <input type="text" id="addVariantLoc_location" placeholder="e.g. Main WH" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_godown" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Godown</label>
+                        <input type="text" id="addVariantLoc_godown" placeholder="e.g. Godown 1" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_floor" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Floor</label>
+                        <input type="text" id="addVariantLoc_floor" placeholder="e.g. 1st Floor" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_rack" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Rack</label>
+                        <input type="text" id="addVariantLoc_rack" placeholder="e.g. Rack B" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_section" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Section</label>
+                        <input type="text" id="addVariantLoc_section" placeholder="e.g. Sec 4" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_shelf" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Shelf</label>
+                        <input type="text" id="addVariantLoc_shelf" placeholder="e.g. Shelf 2" style="height: 36px; font-size: 14px;">
+                    </div>
+                    <div class="form-group" id="addVarLocField_bin" style="display: none; margin-bottom: 0;">
+                        <label style="font-size: 13px; margin-bottom: 2px;">Bin</label>
+                        <input type="text" id="addVariantLoc_bin" placeholder="e.g. Bin 12" style="height: 36px; font-size: 14px;">
+                    </div>
+                </div>
+            </div>
+
             <!-- Pack Sizes -->
             <div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #dee2e6; margin-bottom:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -28207,6 +28725,15 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             if (document.getElementById('addVariantCategory')) document.getElementById('addVariantCategory').value = '';
             if (document.getElementById('addVariantUnit')) document.getElementById('addVariantUnit').value = '';
 
+            if (typeof syncFormLocationFieldsVisibility === 'function') syncFormLocationFieldsVisibility();
+            if (document.getElementById('addVariantLoc_location')) document.getElementById('addVariantLoc_location').value = '';
+            if (document.getElementById('addVariantLoc_godown')) document.getElementById('addVariantLoc_godown').value = '';
+            if (document.getElementById('addVariantLoc_floor')) document.getElementById('addVariantLoc_floor').value = '';
+            if (document.getElementById('addVariantLoc_rack')) document.getElementById('addVariantLoc_rack').value = '';
+            if (document.getElementById('addVariantLoc_section')) document.getElementById('addVariantLoc_section').value = '';
+            if (document.getElementById('addVariantLoc_shelf')) document.getElementById('addVariantLoc_shelf').value = '';
+            if (document.getElementById('addVariantLoc_bin')) document.getElementById('addVariantLoc_bin').value = '';
+
             document.getElementById('addVariantModal').style.display = 'flex';
             setTimeout(() => document.getElementById('addVariantName').focus(), 100);
         }
@@ -28299,7 +28826,14 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 unit: unit,
                 quantityType: quantityType,
                 gstRate: gstRate,
-                packSizes: packSizes
+                packSizes: packSizes,
+                loc_location: (locationSettings && locationSettings.trackLocation !== false && document.getElementById('addVariantLoc_location')) ? document.getElementById('addVariantLoc_location').value.trim() : null,
+                loc_godown: (locationSettings && locationSettings.trackGodown !== false && document.getElementById('addVariantLoc_godown')) ? document.getElementById('addVariantLoc_godown').value.trim() : null,
+                loc_floor: (locationSettings && locationSettings.trackFloor !== false && document.getElementById('addVariantLoc_floor')) ? document.getElementById('addVariantLoc_floor').value.trim() : null,
+                loc_rack: (locationSettings && locationSettings.trackRack !== false && document.getElementById('addVariantLoc_rack')) ? document.getElementById('addVariantLoc_rack').value.trim() : null,
+                loc_section: (locationSettings && locationSettings.trackSection !== false && document.getElementById('addVariantLoc_section')) ? document.getElementById('addVariantLoc_section').value.trim() : null,
+                loc_shelf: (locationSettings && locationSettings.trackShelf !== false && document.getElementById('addVariantLoc_shelf')) ? document.getElementById('addVariantLoc_shelf').value.trim() : null,
+                loc_bin: (locationSettings && locationSettings.trackBin !== false && document.getElementById('addVariantLoc_bin')) ? document.getElementById('addVariantLoc_bin').value.trim() : null
             };
 
             parent.variants.push(newVariant);

@@ -628,6 +628,27 @@ function createSchema() {
         db.exec('ALTER TABLE sale_items ADD COLUMN location_id TEXT');
     }
 
+    // Add configurable location columns to products table if not exists
+    const prodCols = db.prepare('PRAGMA table_info(products)').all().map(c => c.name);
+    const locCols = ['loc_location', 'loc_godown', 'loc_floor', 'loc_rack', 'loc_section', 'loc_shelf', 'loc_bin'];
+    for (const col of locCols) {
+        if (!prodCols.includes(col)) {
+            try {
+                db.exec(`ALTER TABLE products ADD COLUMN ${col} TEXT`);
+            } catch(e) {}
+        }
+    }
+
+    // Add configurable location columns to product_variants table if not exists
+    const varCols = db.prepare('PRAGMA table_info(product_variants)').all().map(c => c.name);
+    for (const col of locCols) {
+        if (!varCols.includes(col)) {
+            try {
+                db.exec(`ALTER TABLE product_variants ADD COLUMN ${col} TEXT`);
+            } catch(e) {}
+        }
+    }
+
     // Runtime table creation for draft_sales
     db.exec(`
         CREATE TABLE IF NOT EXISTS draft_sales (
