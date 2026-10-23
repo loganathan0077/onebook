@@ -11005,7 +11005,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             // SQLITE DIRECT INTEGRATION FOR DASHBOARD (Phase 4E.17A)
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.dashboard) {
                 try {
-                    const metrics = await window.electronAPI.sqlite.dashboard.getMetrics();
+                    const res = await window.electronAPI.sqlite.dashboard.getMetrics();
+                    const metrics = (res && res.success && res.data) ? res.data : res;
                     if (metrics) {
                         if (todayEl) todayEl.textContent = '₹' + Number(metrics.todaySalesAmount || 0).toFixed(2);
                         if (todayCnt) todayCnt.textContent = (metrics.todaySalesCount || 0) + ' transactions';
