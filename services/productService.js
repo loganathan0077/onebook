@@ -63,7 +63,7 @@ class ProductService {
     createProduct(product) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
-            const stmt = db.prepare('INSERT INTO products (name, barcode, category, unit, price, cost_price, stock, min_stock, description, supplier_text, pack_sizes, loc_location, loc_godown, loc_floor, loc_rack, loc_section, loc_shelf, loc_bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            const stmt = db.prepare('INSERT INTO products (name, barcode, category, unit, price, cost_price, stock, min_stock, description, supplier_text, pack_sizes, loc_location, loc_godown, loc_floor, loc_rack, loc_section, loc_shelf, loc_bin, is_favorite) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
             const info = stmt.run(
                 product.name,
                 product.barcode || null,
@@ -82,7 +82,8 @@ class ProductService {
                 product.loc_rack !== undefined ? product.loc_rack : (product.rack || null),
                 product.loc_section !== undefined ? product.loc_section : (product.section || null),
                 product.loc_shelf !== undefined ? product.loc_shelf : (product.shelf || null),
-                product.loc_bin !== undefined ? product.loc_bin : (product.bin || null)
+                product.loc_bin !== undefined ? product.loc_bin : (product.bin || null),
+                product.is_favorite ? 1 : 0
             );
             const productId = info.lastInsertRowid;
 
@@ -118,7 +119,7 @@ class ProductService {
     updateProduct(id, product) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
-            const stmt = db.prepare('UPDATE products SET name = ?, barcode = ?, category = ?, unit = ?, price = ?, cost_price = ?, min_stock = ?, description = ?, supplier_text = ?, pack_sizes = ?, loc_location = ?, loc_godown = ?, loc_floor = ?, loc_rack = ?, loc_section = ?, loc_shelf = ?, loc_bin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            const stmt = db.prepare('UPDATE products SET name = ?, barcode = ?, category = ?, unit = ?, price = ?, cost_price = ?, min_stock = ?, description = ?, supplier_text = ?, pack_sizes = ?, loc_location = ?, loc_godown = ?, loc_floor = ?, loc_rack = ?, loc_section = ?, loc_shelf = ?, loc_bin = ?, is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
             stmt.run(
                 product.name,
                 product.barcode || null,
@@ -137,6 +138,7 @@ class ProductService {
                 product.loc_section !== undefined ? product.loc_section : (product.section !== undefined ? product.section : null),
                 product.loc_shelf !== undefined ? product.loc_shelf : (product.shelf !== undefined ? product.shelf : null),
                 product.loc_bin !== undefined ? product.loc_bin : (product.bin !== undefined ? product.bin : null),
+                product.is_favorite !== undefined ? (product.is_favorite ? 1 : 0) : 0,
                 id
             );
 

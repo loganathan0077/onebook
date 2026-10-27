@@ -630,6 +630,9 @@ function createSchema() {
 
     // Add configurable location columns to products table if not exists
     const prodCols = db.prepare('PRAGMA table_info(products)').all().map(c => c.name);
+    if (!prodCols.includes('is_favorite')) {
+        try { db.exec('ALTER TABLE products ADD COLUMN is_favorite INTEGER DEFAULT 0'); } catch(e) {}
+    }
     const locCols = ['loc_location', 'loc_godown', 'loc_floor', 'loc_rack', 'loc_section', 'loc_shelf', 'loc_bin'];
     for (const col of locCols) {
         if (!prodCols.includes(col)) {
@@ -641,6 +644,9 @@ function createSchema() {
 
     // Add configurable location columns to product_variants table if not exists
     const varCols = db.prepare('PRAGMA table_info(product_variants)').all().map(c => c.name);
+    if (!varCols.includes('is_favorite')) {
+        try { db.exec('ALTER TABLE product_variants ADD COLUMN is_favorite INTEGER DEFAULT 0'); } catch(e) {}
+    }
     for (const col of locCols) {
         if (!varCols.includes(col)) {
             try {

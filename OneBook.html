@@ -1627,6 +1627,37 @@ window.searchProductsUnified = function(query, allProducts) {
             background-color: #0d6efd;
             color: white;
         }
+        /* High-contrast colors for selected/hovered product in search dropdown */
+        .custom-dropdown-item:hover .product-dropdown-name,
+        .custom-dropdown-item.active .product-dropdown-name {
+            color: #ffffff !important;
+        }
+        .custom-dropdown-item:hover .product-dropdown-meta,
+        .custom-dropdown-item.active .product-dropdown-meta {
+            color: #e2e8f0 !important;
+        }
+        .custom-dropdown-item:hover .product-dropdown-barcode-loc,
+        .custom-dropdown-item.active .product-dropdown-barcode-loc,
+        .custom-dropdown-item:hover .product-dropdown-barcode-loc span,
+        .custom-dropdown-item.active .product-dropdown-barcode-loc span {
+            color: #e2e8f0 !important;
+        }
+        .custom-dropdown-item:hover .product-dropdown-stock-price,
+        .custom-dropdown-item.active .product-dropdown-stock-price {
+            color: #ffffff !important;
+        }
+        .custom-dropdown-item:hover .product-dropdown-stock,
+        .custom-dropdown-item.active .product-dropdown-stock {
+            color: #86efac !important; /* High-contrast bright green on blue */
+        }
+        .custom-dropdown-item:hover .product-dropdown-stock[style*="#dc3545"],
+        .custom-dropdown-item.active .product-dropdown-stock[style*="#dc3545"] {
+            color: #fca5a5 !important; /* High-contrast bright red on blue when out of stock */
+        }
+        .custom-dropdown-item:hover .product-dropdown-price,
+        .custom-dropdown-item.active .product-dropdown-price {
+            color: #ffffff !important; /* High-contrast white price on blue */
+        }
 
         /* Modern Toggle Switch */
         .toggle-switch {
@@ -2292,29 +2323,73 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             <!-- Sales Tab with Scanner -->
             <div id="sales" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; z-index: 200; background: #f8f9fa; padding: 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <h2 class="section-title" style="margin: 0;">Record New Sale</h2>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 20px;">
-                        <div id="customSaleDateContainer" style="display: none; background: #fff; padding: 5px 15px; border-radius: 8px; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);">
-                            <span style="font-weight: bold; font-size: 14px; color: #495057; display: block; margin-bottom: 2px;">📅 Sale Date <small style="font-weight:normal;color:#6c757d">(Ctrl+D)</small></span>
+                <!-- Sticky Top Sale Entry Toolbar -->
+                <div id="salesStickyToolbar" style="position: sticky; top: -20px; z-index: 200; background: #f8f9fa; padding: 10px 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <form id="addItemForm" onsubmit="addItemToCart(event)" style="margin: 0; display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: nowrap;">
+                        <!-- 1. Sale Date (far left) -->
+                        <div id="customSaleDateContainer" style="display: none; background: #fff; padding: 2px 10px; border-radius: 6px; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); flex: 0 0 auto; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;">
+                            <span style="font-weight: 600; font-size: 11px; color: #6c757d; line-height: 1.1; margin-bottom: 1px; white-space: nowrap;">Sale Date <small style="font-weight:normal;color:#888">(Ctrl+D)</small></span>
                             <div style="display: flex; align-items: center; position: relative;">
-                                <input type="text" id="customSaleDate" placeholder="DD/MM/YYYY" autocomplete="off" inputmode="numeric" style="border: none; outline: none; font-size: 16px; font-weight: bold; color: #212529; background: transparent; padding: 0; width: 110px;" onblur="normalizeSaleDateInput(this)" onkeydown="if(event.key === 'Enter') normalizeSaleDateInput(this)">
-                                <span style="cursor: pointer; font-size: 16px; margin-left: 5px;" onclick="document.getElementById('nativeSalePicker').showPicker()">📅</span>
+                                <input type="text" id="customSaleDate" placeholder="DD/MM/YYYY" autocomplete="off" inputmode="numeric" style="border: none; outline: none; font-size: 14px; font-weight: bold; color: #212529; background: transparent; padding: 0; width: 95px; line-height: 1.2;" onblur="normalizeSaleDateInput(this)" onkeydown="if(event.key === 'Enter') normalizeSaleDateInput(this)">
                                 <input type="date" id="nativeSalePicker" style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;" onchange="handleNativePickerChange(this)">
                             </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px; background: #e8f5e9; padding: 5px 20px; border-radius: 8px; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                                <span style="font-weight: bold; font-size: 20px; color: #155724; line-height: 1;">Total Amount (₹)</span>
-                                <span id="topRightTotalAmount" style="font-weight: bold; font-size: 40px; color: #28a745; line-height: 1.2;">0.00</span>
+
+                        <!-- 2. Product Search with Barcode Scanner Icon -->
+                        <div style="flex: 3; min-width: 180px; position: relative;">
+                            <div class="combobox-container" style="position: relative; width: 100%;">
+                                <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product or scan barcode..." autocomplete="off" oninput="filterSaleProducts()" style="width: 100%; padding: 8px 56px 8px 12px; height: 42px; font-size: 15px; font-weight: 600; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                                <span class="combobox-clear" id="saleProductClear" onclick="clearSaleProductSelection()" title="Clear selection" style="right: 40px; top: 50%; transform: translateY(-50%); font-size: 18px;">×</span>
+                                <button type="button" id="btnScanBarcode" class="scanner-suffix-btn" onclick="openScannerModal('sale')" title="Scan Barcode" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: #004085; color: #fff; border: none; border-radius: 5px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: background 0.2s;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="11" y1="8" x2="11" y2="16"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/></svg>
+                                </button>
+                                <div id="saleProductDropdown" class="custom-dropdown" style="display: none;"></div>
+                            </div>
+                            <input type="hidden" id="saleProductId">
+                            <div id="addInventoryPrompt" style="display: none; position: absolute; left: 0; top: 100%; margin-top: 4px; z-index: 100; padding: 4px 8px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 6px; font-size: 12px; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: nowrap;">
+                                <span style="color: #856404; font-weight: bold;">⚠️ No inventory</span>
+                                <button type="button" class="btn btn-sm btn-warning" style="padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 4px;" onclick="handleAddInventoryFromSale()" onkeydown="if(event.key==='ArrowUp'){event.preventDefault();document.getElementById('saleProductSearch').focus();}">+ Add</button>
                             </div>
                         </div>
-                    </div>
+
+                        <!-- 3. Unit/Pack Dropdown -->
+                        <div style="flex: 1.2; min-width: 100px;">
+                            <div class="combobox-container" style="position: relative; width: 100%;">
+                                <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterSaleUnits()" style="width: 100%; padding: 8px 28px 8px 10px; height: 42px; font-size: 14px; font-weight: 600; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                                <span class="combobox-clear" id="saleUnitClear" onclick="clearSaleUnitSelection()" title="Clear selection" style="top: 50%; transform: translateY(-50%); font-size: 18px;">×</span>
+                                <div id="saleUnitDropdown" class="custom-dropdown" style="display: none;"></div>
+                            </div>
+                            <select id="saleUnit" onchange="onSaleUnitChange()" style="display: none;">
+                                <option value="">Select Unit...</option>
+                            </select>
+                        </div>
+
+                        <!-- 4. Quantity -->
+                        <div style="flex: 0.8; min-width: 65px;">
+                            <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required placeholder="Qty" onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('salePrice').focus();}" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; text-align: center; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+
+                        <!-- 5. Price (₹) -->
+                        <div style="flex: 1; min-width: 85px;">
+                            <input type="number" id="salePrice" class="form-control" step="0.01" placeholder="Price (₹)" onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                        </div>
+
+                        <!-- 6. Add Item Button -->
+                        <div style="flex: 0 0 auto;">
+                            <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 42px; padding: 0 16px; white-space: nowrap; font-size: 15px; font-weight: bold; border-radius: 6px; background-color: #004085; border: none; display: inline-flex; align-items: center; justify-content: center;">+ Add Item</button>
+                        </div>
+
+                        <!-- 7. Total Amount (₹) (far right) -->
+                        <div style="flex: 0 0 auto; display: flex; align-items: center; background: #e8f5e9; padding: 2px 14px; border-radius: 6px; border: 2px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.08); height: 42px; box-sizing: border-box;">
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center;">
+                                <span style="font-weight: 700; font-size: 11px; color: #155724; line-height: 1;">Total Amount (₹)</span>
+                                <span id="topRightTotalAmount" style="font-weight: 800; font-size: 22px; color: #28a745; line-height: 1.1;">0.00</span>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
-                <!-- Continuous Scanner Container -->
+                <!-- Continuous Scanner Container (Optional) -->
                 <div id="continuousScannerContainer" style="display: none; background: #fff; border: 2px solid #28a745; border-radius: 8px; padding: 10px; text-align: center; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h3 style="margin-top: 0; color: #28a745;" id="continuousScanStatusIndicator">🟢 Ready to Scan</h3>
                     <div id="continuous-scanner-region" style="width: 100%; max-width: 500px; margin: 0 auto 15px auto; overflow: hidden; border-radius: 8px;"></div>
@@ -2331,91 +2406,263 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <!-- Cards will be rendered here -->
                         </div>
                     </div>
+                </div>
 
-                    <div style="display: flex; gap: 15px; align-items: stretch; flex-wrap: wrap; margin-bottom: 15px;">
-                        <!-- Quick Sale with Scanner -->
-                        <div id="quickSaleBarcodePanel" class="scanner-container" style="flex: 1; min-width: 300px; padding: 15px; margin-bottom: 0; border-radius: 8px; background: #eef8ff; border: 1px solid #cce5ff; display: flex; flex-direction: column; justify-content: space-between;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="margin: 0; font-size: 22px; font-weight: bold; color: #004085; display: flex; align-items: center; gap: 8px;">
-                                    Quick Sale with Barcode
-                                </h4>
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="font-weight: bold; font-size: 12px;">Scan Mode</span>
-                                    <label class="switch" style="margin: 0; transform: scale(0.7);">
-                                        <input type="checkbox" id="continuousScanToggle" onchange="toggleContinuousScanMode()">
-                                        <span class="slider round"></span>
-                                    </label>
-                                    <span id="continuousScanStatusText" style="font-weight: bold; color: #dc3545; font-size: 12px; min-width: 25px; display: none;">OFF</span>
-                                </div>
-                            </div>
-                            <div class="barcode-input-group" style="flex-wrap: wrap; display: flex; gap: 10px; align-items: flex-end;">
-                                <div class="combobox-container" style="flex: 1; min-width: 200px;">
-                                    <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500; display: block;">Barcode</label>
-                                    <input type="text" id="quickSaleBarcode" class="combobox-input" placeholder="Scan or enter barcode" autocomplete="off" oninput="filterBarcodeSale()" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
-                                    <span class="combobox-clear" id="quickSaleBarcodeClear" onclick="clearBarcodeSaleSelection()" title="Clear selection" style="display: none; top: 38px;">×</span>
-                                    <div id="barcodeSaleDropdown" class="custom-dropdown" style="display: none;"></div>
-                                </div>
-                                <button id="btnScanBarcode" class="btn btn-scanner" onclick="openScannerModal('sale')" style="white-space: nowrap; height: 48px; padding: 0 20px; font-size: 18px; font-weight: bold;" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.click();}">
-                                    📷 Scan Barcode
-                                </button>
+                <!-- Favorites & Shopping Cart Area -->
+                <div id="recordSaleCenterArea" class="record-sale-center-area">
+                    <!-- Favorites Panel -->
+                    <div id="favoritesPanelContainer" class="favorites-panel-card" style="display: none;">
+                        <div class="favorites-panel-header">
+                            <h4 id="favoritesPanelTitle" class="favorites-panel-title">⭐ Favourites (0)</h4>
+                            <div class="favorites-search-wrapper">
+                                <input type="text" id="favSearchInput" placeholder="Search favourites..." oninput="handleFavoriteSearch(this.value)">
+                                <span id="favSearchClear" onclick="clearFavoriteSearch()" style="display: none;">&times;</span>
                             </div>
                         </div>
+                        <div id="favoritesScrollArea" class="favorites-scroll-area">
+                            <div id="favoritesGrid" class="favorites-grid">
+                                <!-- Cards rendered dynamically -->
+                            </div>
+                            <div id="favoritesEmptyMsg" class="favorites-empty-msg" style="display: none;">
+                                No favorite products yet. Mark products as favorites in Products.
+                            </div>
+                        </div>
+                    </div>
 
-                        <!-- Add Item Form -->
-                        <div class="scanner-container"
-                            style="flex: 2; min-width: 400px; background: #eef8ff; border: 1px solid #cce5ff; padding: 15px; border-radius: 8px; margin-bottom: 0;">
-                            <h4 style="margin: 0 0 10px 0; font-size: 22px; font-weight: bold; color: #004085; display: flex; align-items: center; gap: 8px;">
-                                🛒 Add Item to Sale
-                            </h4>
-                            <form id="addItemForm" onsubmit="addItemToCart(event)" style="margin: 0;">
-                                <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-                                    <div class="form-group" style="flex: 2; min-width: 150px; margin-bottom: 0; position: relative;">
-                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Product</label>
-                                        <div class="combobox-container">
-                                            <input type="text" id="saleProductSearch" class="combobox-input" placeholder="Type to search product..." autocomplete="off" oninput="filterSaleProducts()" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
-                                            <span class="combobox-clear" id="saleProductClear" onclick="clearSaleProductSelection()" title="Clear selection">×</span>
-                                            <div id="saleProductDropdown" class="custom-dropdown" style="display: none;"></div>
-                                        </div>
-                                        <input type="hidden" id="saleProductId">
-                                        <div id="addInventoryPrompt" style="display: none; position: absolute; left: 0; top: 100%; margin-top: 4px; z-index: 100; padding: 4px 8px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 6px; font-size: 12px; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: nowrap;">
-                                            <span style="color: #856404; font-weight: bold;">⚠️ No inventory</span>
-                                            <button type="button" class="btn btn-sm btn-warning" style="padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 4px;" onclick="handleAddInventoryFromSale()" onkeydown="if(event.key==='ArrowUp'){event.preventDefault();document.getElementById('saleProductSearch').focus();}">+ Add</button>
-                                        </div>
-                                    </div>
-                                    <div class="form-group" style="flex: 1; min-width: 90px; margin-bottom: 0;">
-                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Unit/Pack</label>
-                                        <div class="combobox-container">
-                                            <input type="text" id="saleUnitSearch" class="combobox-input" placeholder="Select..." autocomplete="off" oninput="filterSaleUnits()" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
-                                            <span class="combobox-clear" id="saleUnitClear" onclick="clearSaleUnitSelection()" title="Clear selection">×</span>
-                                            <div id="saleUnitDropdown" class="custom-dropdown" style="display: none;"></div>
-                                        </div>
-                                        <select id="saleUnit" onchange="onSaleUnitChange()" style="display: none;">
-                                            <option value="">Select Unit...</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group" style="flex: 0.5; min-width: 60px; margin-bottom: 0;">
-                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Qty</label>
-                                        <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('salePrice').focus();}" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
-                                    </div>
-                                    <div class="form-group" style="flex: 0.8; min-width: 70px; margin-bottom: 0;">
-                                        <label style="font-size: 14px; margin-bottom: 4px; font-weight: 500;">Price (₹)</label>
-                                        <input type="number" id="salePrice" class="form-control" step="0.01" onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="padding: 10px 15px; height: 48px; font-size: 20px; font-weight: bold;">
-                                    </div>
-                                    <div class="form-group" style="flex: 0 0 auto; margin-bottom: 0;">
-                                        <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 48px; padding: 0 20px; white-space: nowrap; font-size: 18px; font-weight: bold; margin-bottom: 2px;">+ Add Item</button>
-                                    </div>
-                                </div>
-                            </form>
+                    <!-- Shopping Cart Container -->
+                    <div id="cartItemsWrapper" class="cart-items-wrapper">
+                        <div id="cartItems"></div>
+                    </div>
+                </div>
+
+                <!-- Variant Picker Modal for Favorites -->
+                <div id="favVariantModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 3500; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 8px; width: 90%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); overflow: hidden;">
+                        <div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <h4 id="favVariantModalTitle" style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">Select Variant</h4>
+                            <span onclick="closeFavVariantModal()" style="cursor: pointer; font-size: 22px; font-weight: bold; color: #64748b; line-height: 1;">&times;</span>
+                        </div>
+                        <div id="favVariantModalBody" style="padding: 12px 16px; max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Variant buttons rendered dynamically -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Cart Items -->
-
-                <div id="cartItems" style="margin-bottom: 20px;"></div>
-
 
                 <style>
+                
+                /* Record Sale Center Area (Favorites 30% + Cart 70%) */
+                .record-sale-center-area {
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                    align-items: stretch;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .favorites-panel-card {
+                    flex: 0 0 30%;
+                    max-width: 30%;
+                    min-width: 260px;
+                    background: #ffffff;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    padding: 6px;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .cart-items-wrapper {
+                    flex: 1 1 70%;
+                    min-width: 0;
+                    box-sizing: border-box;
+                }
+                .cart-items-wrapper.full-width {
+                    flex: 1 1 100%;
+                    max-width: 100%;
+                }
+                .favorites-panel-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    margin-bottom: 6px;
+                    padding-bottom: 2px;
+                }
+                .favorites-panel-title {
+                    margin: 0;
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    white-space: nowrap;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .favorites-search-wrapper {
+                    position: relative;
+                    flex: 1;
+                    max-width: 160px;
+                }
+                .favorites-search-wrapper input {
+                    width: 100%;
+                    padding: 3px 20px 3px 6px;
+                    height: 26px;
+                    font-size: 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 4px;
+                    box-sizing: border-box;
+                    background: #f8fafc;
+                    transition: border-color 0.2s, background-color 0.2s;
+                }
+                .favorites-search-wrapper input:focus {
+                    outline: none;
+                    border-color: #0284c7;
+                    background: #ffffff;
+                    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+                }
+                #favSearchClear {
+                    position: absolute;
+                    right: 6px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    font-size: 14px;
+                    color: #94a3b8;
+                    cursor: pointer;
+                    line-height: 1;
+                }
+                #favSearchClear:hover {
+                    color: #ef4444;
+                }
+                .favorites-scroll-area {
+                    height: 295px;
+                    max-height: 295px;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 4px;
+                    padding: 6px;
+                    box-sizing: border-box;
+                    background: #ffffff;
+                }
+                .favorites-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+                    gap: 8px;
+                    align-content: start;
+                }
+                .fav-card {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    padding: 6px 4px 5px 4px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+                    user-select: none;
+                    position: relative;
+                    min-height: 105px;
+                    box-sizing: border-box;
+                }
+                .fav-card:hover {
+                    border-color: #0284c7;
+                    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+                    transform: translateY(-1px);
+                }
+                .fav-card:active {
+                    transform: scale(0.96);
+                }
+                .fav-card-img-wrap {
+                    width: 52px;
+                    height: 52px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 4px;
+                    border-radius: 4px;
+                    background: #f8fafc;
+                    overflow: hidden;
+                }
+                .fav-card-img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+                .fav-card-placeholder {
+                    font-size: 26px;
+                    line-height: 1;
+                    user-select: none;
+                }
+                .fav-card-name {
+                    font-size: 11.5px;
+                    font-weight: 600;
+                    color: #1e293b;
+                    line-height: 1.15;
+                    max-height: 27px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    margin-bottom: 2px;
+                    word-break: break-word;
+                    width: 100%;
+                }
+                .fav-card-price {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #0284c7;
+                    margin-top: auto;
+                }
+                .fav-card-variants-badge {
+                    position: absolute;
+                    top: 2px;
+                    right: 2px;
+                    background: #3b82f6;
+                    color: #ffffff;
+                    font-size: 9px;
+                    font-weight: 700;
+                    padding: 1px 3px;
+                    border-radius: 3px;
+                    line-height: 1;
+                }
+                .fav-card-out-of-stock {
+                    opacity: 0.55;
+                    background: #fef2f2;
+                    border-color: #fca5a5;
+                }
+                .fav-card-out-of-stock .fav-card-price {
+                    color: #ef4444;
+                }
+                .favorites-empty-msg {
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    color: #64748b;
+                    font-size: 13px;
+                    padding: 20px;
+                    line-height: 1.4;
+                }
+                @media (max-width: 900px) {
+                    .record-sale-center-area {
+                        flex-direction: column;
+                    }
+                    .favorites-panel-card {
+                        flex: 1 1 100%;
+                        max-width: 100%;
+                        min-width: 0;
+                    }
+                    .cart-items-wrapper {
+                        flex: 1 1 100%;
+                        max-width: 100%;
+                    }
+                }
+
                 .record-sale-bottom-grid {
                     display: grid;
                     gap: 15px;
@@ -4400,8 +4647,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                             </div>
                             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
+                                    <h4 style="margin: 0 0 5px 0;">⭐ Show Favorites in Record Sale</h4>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Display the Favorites panel beside the Shopping Cart in Record Sale.</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingsShowFavorites" onchange="toggleSetting('showFavorites', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
                                     <h4 style="margin: 0 0 5px 0;"><span style="font-weight: bold; font-family: monospace; letter-spacing: -1px; font-size: 16px; color: #0056b3;">|||||</span> Quick Sale with Barcode</h4>
-                                    <p style="color: #666; margin: 0; font-size: 13px;">Allow the barcode quick-sale panel to appear on the Record Sale screen.</p>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Show the barcode scanner icon in the product search field on the Record Sale screen.</p>
                                 </div>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="settingsQuickSaleBarcode" onchange="toggleSetting('quickSaleBarcode', this.checked)">
@@ -5001,10 +5258,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                     <!-- Variant Section -->
                     <div style="margin-top: 15px;">
+                        <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #b45309; background: #fef3c7; padding: 10px 15px; border-radius: 8px; border: 1px solid #fde68a;">
+                            <input type="checkbox" id="editProductIsFavorite" style="width: 24px; height: 24px; margin: 0;">
+                            ⭐ Add to Favorites
+                        </label>
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
                             <input type="checkbox" id="editProductHasVariants" onchange="toggleEditVariantUI()" style="width: 24px; height: 24px; margin: 0;">
                             ☑ This product has variants
                         </label>
+                    </div>
                     </div>
                     
                     <div id="editVariantSection" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px;">
@@ -5450,10 +5713,16 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                             <!-- Variant Section -->
                             <div style="margin-top: 15px;">
+                                <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #b45309; background: #fef3c7; padding: 10px 15px; border-radius: 8px; border: 1px solid #fde68a;">
+                                    <input type="checkbox" id="newProductIsFavorite" style="width: 24px; height: 24px; margin: 0;">
+                                    ⭐ Add to Favorites
+                                </label>
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 18px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
                                     <input type="checkbox" id="newProductHasVariants" onchange="toggleVariantUI()" style="width: 24px; height: 24px; margin: 0;">
                                     ☑ This product has variants
                                 </label>
+                            </div>
                             </div>
                             
                             <div id="variantSection" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 15px;">
@@ -6922,17 +7191,41 @@ input:focus, select:focus, textarea:focus, button:focus {
             });
         }
 
-        function formatProductLocationSummary(product) {
+        function formatProductLocationSummary(product, separator = ' | ', withLabels = true) {
             if (!product) return '';
             const levels = [];
-            if (product.loc_location || product.location) levels.push(product.loc_location || product.location);
-            if (product.loc_godown || product.godown) levels.push(product.loc_godown || product.godown);
-            if (product.loc_floor || product.floor) levels.push(product.loc_floor || product.floor);
-            if (product.loc_rack || product.rack) levels.push(product.loc_rack || product.rack);
-            if (product.loc_section || product.section) levels.push(product.loc_section || product.section);
-            if (product.loc_shelf || product.shelf) levels.push(product.loc_shelf || product.shelf);
-            if (product.loc_bin || product.bin) levels.push(product.loc_bin || product.bin);
-            return levels.filter(Boolean).join(' > ');
+            const getVal = (val, label) => {
+                if (val === null || val === undefined) return '';
+                let s = String(val).trim();
+                if (s === 'Unassigned' || s === 'undefined' || s === 'null' || !s) return '';
+                if (withLabels && label) {
+                    // Avoid duplicating label if already prefixed, e.g. "Godown A" or "Rack 1"
+                    const lower = s.toLowerCase();
+                    const labelLower = label.toLowerCase();
+                    if (lower.startsWith(labelLower + ' ') || lower.startsWith(labelLower + ':') || lower.startsWith(labelLower + '-')) {
+                        return s;
+                    }
+                    return label + ' ' + s;
+                }
+                return s;
+            };
+            
+            const loc = getVal(product.loc_location || product.location, 'Location');
+            if (loc) levels.push(loc);
+            const godown = getVal(product.loc_godown || product.godown, 'Godown');
+            if (godown) levels.push(godown);
+            const floor = getVal(product.loc_floor || product.floor, 'Floor');
+            if (floor) levels.push(floor);
+            const rack = getVal(product.loc_rack || product.rack, 'Rack');
+            if (rack) levels.push(rack);
+            const section = getVal(product.loc_section || product.section, 'Section');
+            if (section) levels.push(section);
+            const shelf = getVal(product.loc_shelf || product.shelf, 'Shelf');
+            if (shelf) levels.push(shelf);
+            const bin = getVal(product.loc_bin || product.bin, 'Bin');
+            if (bin) levels.push(bin);
+            
+            return levels.filter(Boolean).join(separator);
         }
 
         async function handleLocationMasterToggle() {
@@ -7203,8 +7496,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
     </script>
 
-</body>
- for modal popup implementation -->
     <!-- Select PO Modal -->
     <div id="selectPOModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
@@ -7705,6 +7996,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 showGST: false,
                 usbScannerEnabled: false,
                 quickSaleBarcode: true,
+                showFavorites: false,
                 showBarcode: false,
                 adminPassword: 'Admin@2026',
                 // Label Printing Settings
@@ -7769,6 +8061,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 ...p,
                                 id: p.id,
                                 name: p.name,
+                                is_favorite: p.is_favorite ? 1 : 0,
+                                isFavourite: !!p.is_favorite,
                                 category: p.category,
                                 loc_location: p.loc_location,
                                 loc_godown: p.loc_godown,
@@ -7819,6 +8113,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (typeof initLocationsSettingsUI === 'function') {
                 await initLocationsSettingsUI();
             }
+            try {
+                const currentSt = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+                if (typeof updateFavoritesLayout === 'function') updateFavoritesLayout(!!currentSt.showFavorites);
+            } catch(e) {}
         });
         
 
@@ -10525,7 +10823,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             supplier: supplier,
                             packSizes: packSizes,
                             image: imageBase64,
-                            isFavourite: false
+                            isFavourite: document.getElementById(newProductIsFavorite) && document.getElementById(newProductIsFavorite).checked ? true : false,
+                            is_favorite: document.getElementById(newProductIsFavorite) && document.getElementById(newProductIsFavorite).checked ? 1 : 0
                         };
                         if (hasVariants) {
                             newProd.variants = [...currentNewProductVariants];
@@ -10553,6 +10852,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 min_stock: newProd.minStock,
                                 description: newProd.description,
                                 supplier: newProd.supplier,
+                                is_favorite: newProd.is_favorite ? 1 : 0,
                                 loc_location: newProd.loc_location || null,
                                 loc_godown: newProd.loc_godown || null,
                                 loc_floor: newProd.loc_floor || null,
@@ -11164,7 +11464,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (currentScanMode === 'product') {
                 document.getElementById('productBarcode').value = barcode;
             } else if (currentScanMode === 'sale') {
-                document.getElementById('quickSaleBarcode').value = barcode;
+                const searchInput = document.getElementById('saleProductSearch');
+                if (searchInput) searchInput.value = barcode;
                 loadProductByBarcode(barcode, 'sale');
             } else if (currentScanMode === 'stock') {
                 document.getElementById('stockBarcode').value = barcode;
@@ -11211,7 +11512,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     let effStock = foundVariant ? (foundVariant.stock || 0) : (foundProduct.stock || 0);
                     if (effStock <= 0) {
                         showAlert(`Product ${window.getVariantDisplayName(foundProduct, foundVariant)} is out of stock!`, '❌');
-                        document.getElementById('quickSaleBarcode').value = '';
+                        const sInp = document.getElementById('saleProductSearch');
+                        if (sInp) sInp.value = '';
                         return;
                     }
                     selectBarcodeProduct(foundProduct, foundVariant);
@@ -12315,21 +12617,35 @@ input:focus, select:focus, textarea:focus, button:focus {
                 item.dataset.id = product.id;
                 if (variant) item.dataset.variantId = variant.id;
 
-                const barcodeDisplay = itemObj.barcode && itemObj.barcode !== 'N/A' ? `Barcode: ${itemObj.barcode}` : 'Barcode: —';
+                let barcodeText = itemObj.barcode && itemObj.barcode !== 'N/A' ? `Barcode: ${itemObj.barcode}` : 'Barcode: —';
+                let locSummary = '';
+                if (typeof formatProductLocationSummary === 'function') {
+                    if (variant) {
+                        locSummary = formatProductLocationSummary(variant, ' | ');
+                        // If variant has no distinct location, fall back to parent product location
+                        if (!locSummary && product) {
+                            locSummary = formatProductLocationSummary(product, ' | ');
+                        }
+                    } else if (product) {
+                        locSummary = formatProductLocationSummary(product, ' | ');
+                    }
+                }
+                if (locSummary) {
+                    barcodeText += ` | ${locSummary}`;
+                }
+
                 const priceFormatted = parseFloat(itemObj.price || 0).toFixed(2);
                 const stockVal = itemObj.stock;
                 const stockColor = stockVal <= 0 ? '#dc3545' : '#198754';
-                const locSummary = (typeof formatProductLocationSummary === 'function') ? (variant ? formatProductLocationSummary(variant) : formatProductLocationSummary(product)) : '';
 
                 item.innerHTML = `
-                    <div style="display:flex; flex-direction:column; gap:2px;">
-                        <div style="font-weight:600; font-size:15px; color:#212529;">${itemObj.displayName}</div>
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; color:#6c757d;">
-                            <div>
-                                <span>${barcodeDisplay}</span>
-                                ${locSummary ? `<div style="font-size:11px; color:#888; margin-top:1px;">${locSummary}</div>` : ''}
+                    <div class="product-dropdown-content" style="display:flex; flex-direction:column; gap:2px;">
+                        <div class="product-dropdown-name" style="font-weight:600; font-size:15px; color:#212529;">${itemObj.displayName}</div>
+                        <div class="product-dropdown-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#6c757d;">
+                            <div class="product-dropdown-barcode-loc" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:12px;">
+                                <span>${barcodeText}</span>
                             </div>
-                            <span style="white-space:nowrap; margin-left:8px;">Stock: <strong style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong style="color:#0d6efd;">₹${priceFormatted}</strong></span>
+                            <span class="product-dropdown-stock-price" style="white-space:nowrap; flex-shrink:0;">Stock: <strong class="product-dropdown-stock" style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong class="product-dropdown-price" style="color:#0d6efd;">₹${priceFormatted}</strong></span>
                         </div>
                     </div>
                 `;
@@ -12383,6 +12699,28 @@ input:focus, select:focus, textarea:focus, button:focus {
                         updateComboboxSelection(items);
                     } else if (e.key === 'Enter') {
                         e.preventDefault();
+                        const query = (searchInput.value || '').trim();
+                        // If exact barcode match exists in candidate products, prioritize selecting it
+                        let exactBarcodeMatch = null;
+                        for (let p of products) {
+                            if (p.barcode && String(p.barcode).trim() === query) {
+                                exactBarcodeMatch = { parent: p, variant: null };
+                                break;
+                            }
+                            if (window.hasVariants && window.hasVariants(p) && Array.isArray(p.variants)) {
+                                let v = p.variants.find(v => v.barcode && String(v.barcode).trim() === query);
+                                if (v) {
+                                    exactBarcodeMatch = { parent: p, variant: v };
+                                    break;
+                                }
+                            }
+                        }
+                        if (exactBarcodeMatch) {
+                            dropdown.style.display = 'none';
+                            selectBarcodeProduct(exactBarcodeMatch.parent, exactBarcodeMatch.variant);
+                            return;
+                        }
+
                         if (comboboxSelectedIndex >= 0) {
                             items[comboboxSelectedIndex].click();
                         } else {
@@ -12642,12 +12980,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function selectBarcodeProduct(product, variant = null) {
-            // Clear barcode input
-            document.getElementById('quickSaleBarcode').value = '';
-            document.getElementById('quickSaleBarcodeClear').style.display = 'none';
-            
             // Set quantity to 1 explicitly
-            document.getElementById('saleQuantity').value = 1;
+            const qtyInput = document.getElementById('saleQuantity');
+            if (qtyInput) qtyInput.value = 1;
             
             // Re-use existing Add Item to Sale logic (sets Product, Price, Units, and moves focus to Units/Quantity)
             onSaleProductChange(product.id, variant ? variant.id : null);
@@ -13732,83 +14067,132 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (summarySGST) summarySGST.style.display = (gstEnabled && taxType !== 'inter') ? 'block' : 'none';
             if (summaryIGST) summaryIGST.style.display = (gstEnabled && taxType === 'inter') ? 'block' : 'none';
             
-            if (cart.length === 0) {
-                cartItemsDiv.innerHTML = '<div class="alert alert-info">Cart is empty. Add items to continue.</div>';
-                return;
-            }
+            const totalColumns = gstEnabled ? 12 : 9;
 
             let tableHTML = `
-                <div class="scanner-container" style="background: white; border: 2px solid #dee2e6; padding: 10px; border-radius: 8px;">
+                <div class="scanner-container" style="background: white; border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px;">
                     <style>
-                        #cartItems table { font-size: 15px; }
-                        #cartItems th { padding: 6px 4px !important; font-size: 15px; font-weight: bold; }
-                        #cartItems td { padding: 6px 4px !important; vertical-align: middle; }
-                        #cartItems td:nth-child(2) { max-width: 220px; white-space: normal; line-height: 1.2; word-wrap: break-word; }
-                        #cartItems tr.cart-row-selected td { background-color: #e2e8f0 !important; outline: 1px solid #94a3b8; }
-                        #cartItems .quantity-controls { gap: 2px; }
-                        #cartItems .qty-btn { padding: 0 8px; font-size: 18px; height: 32px; font-weight: bold; line-height: 1; border-radius: 4px; width: 32px; }
-                        #cartItems .qty-value { min-width: 28px; font-size: 16px; padding: 0; font-weight: bold; text-align: center; }
-                        #cartItems input[type="number"] { padding: 2px 4px; height: 32px; font-size: 15px; width: 90px !important; text-align: center; font-weight: bold; border-radius: 4px; }
-                        #cartItems .btn-sm { padding: 4px 10px; font-size: 14px; height: 32px; font-weight: bold; border-radius: 4px; }
+                        #cartItems table { font-size: 13px; margin: 0; width: 100%; border-collapse: collapse; }
+                        #cartItems th { padding: 5px 4px !important; font-size: 12px; font-weight: 700; background: #f8fafc; color: #1e293b; border-bottom: 2px solid #cbd5e1; white-space: nowrap; }
+                        #cartItems td { padding: 3px 4px !important; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+                        #cartItems td:nth-child(2) { max-width: 200px; white-space: normal; line-height: 1.15; word-wrap: break-word; }
+                        #cartItems tr.cart-row { transition: background-color 0.15s ease; cursor: pointer; }
+                        #cartItems tr.cart-row:hover { background-color: #f8fafc; }
+                        #cartItems tr.cart-row-selected td { background-color: #e0f2fe !important; border-top: 1px solid #7dd3fc; border-bottom: 1px solid #7dd3fc; }
+                        #cartItems input.cart-qty-input { padding: 1px 4px; height: 26px; font-size: 13px; width: 62px !important; text-align: center; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+                        #cartItems input.cart-qty-input:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25); outline: none; }
+                        #cartItems input.cart-disc-input { padding: 1px 4px; height: 26px; font-size: 13px; width: 56px !important; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+                        #cartItems input.cart-disc-input:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25); outline: none; }
+                        #cartItems .btn-cart-remove-compact { padding: 2px 6px; font-size: 11px; height: 24px; line-height: 1.1; font-weight: bold; border-radius: 4px; }
+                        .cart-scroll-container {
+                            width: 100%;
+                            overflow-x: auto;
+                            overflow-y: auto;
+                            height: 295px; /* Fixed height for header + exactly 8 rows */
+                            max-height: 295px;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 4px;
+                            box-sizing: border-box;
+                        }
+                        .cart-scroll-container thead th {
+                            position: sticky;
+                            top: 0;
+                            z-index: 10;
+                            background-color: #f8fafc;
+                            box-shadow: inset 0 -2px 0 #cbd5e1;
+                            height: 29px;
+                            box-sizing: border-box;
+                        }
+                        #cartItems tr.cart-row, #cartItems tr.cart-placeholder-row {
+                            height: 33px;
+                            box-sizing: border-box;
+                        }
+                        #cartItems tr.cart-placeholder-row td {
+                            color: #cbd5e1;
+                            border-bottom: 1px solid #f1f5f9;
+                            background-color: #ffffff;
+                            user-select: none;
+                            pointer-events: none;
+                        }
+                        .dash-ph {
+                            display: inline-block;
+                            width: 14px;
+                            height: 2px;
+                            background-color: #e2e8f0;
+                            border-radius: 1px;
+                        }
                     </style>
-                    <h4 style="margin: 0 0 10px 0; font-size: 22px; font-weight: bold; color: #004085;">🛒 Shopping Cart (${cart.length} item(s))</h4>
-                    <div class="table-responsive">
+                    <h4 style="margin: 0 0 6px 0; font-size: 17px; font-weight: bold; color: #004085;">🛒 Shopping Cart (${cart.length} item(s))</h4>
+                    <div class="cart-scroll-container" id="cartScrollContainer">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>S.No</th>
+                                    <th style="width: 36px; text-align: center;">S.No</th>
                                     <th>Product Name</th>
-                                    ${gstEnabled ? `<th>HSN</th>` : ''}
-                                    ${gstEnabled ? `<th>GST%</th>` : ''}
-                                    <th>Qty</th>
-                                    <th>Rate</th>
-                                    <th>Discount</th>
-                                    <th>Amount</th>
-                                    <th>Subtotal</th>
-                                    ${gstEnabled ? `<th>CGST</th>` : ''}
-                                    ${gstEnabled ? `<th>SGST</th>` : ''}
-                                    ${gstEnabled ? `<th>IGST</th>` : ''}
-                                    <th>Total</th>
-                                    <th>Action</th>
+                                    ${gstEnabled ? `<th style="width: 65px;">HSN</th>` : ''}
+                                    ${gstEnabled ? `<th style="width: 50px; text-align: center;">GST%</th>` : ''}
+                                    <th style="width: 105px;">Qty</th>
+                                    <th style="width: 70px; text-align: right;">Rate</th>
+                                    <th style="width: 70px; text-align: center;">Discount</th>
+                                    <th style="width: 75px; text-align: right;">Amount</th>
+                                    <th style="width: 80px; text-align: right;">Subtotal</th>
+                                    ${gstEnabled ? `<th style="width: 70px; text-align: right;">Tax</th>` : ''}
+                                    <th style="width: 85px; text-align: right;">Total</th>
+                                    <th style="width: 60px; text-align: center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${cart.map((item, index) => `
-                                    <tr class="cart-row" id="cart-row-${index}">
-                                        <td>${index + 1}</td>
+                                ${cart.map((item, index) => {
+                                    const itemTax = ((item.cgst || 0) + (item.sgst || 0) + (item.igst || 0)).toFixed(2);
+                                    return `
+                                    <tr class="cart-row" id="cart-row-${index}" onclick="window.setCartRowHighlight(${index})">
+                                        <td style="text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
                                         <td>
                                             <div style="font-weight: 600; color: #1e293b;">${item.productName}</div>
-                                            ${(typeof locationSettings !== 'undefined' && locationSettings.enabled) ? `
-                                                <div style="margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                    <span style="font-size: 11px; color: #64748b;">📍</span>
-                                                    <select class="form-control" style="font-size: 11px; height: 24px; padding: 0 4px; width: auto; max-width: 140px;" onchange="updateCartItemLocation(${index}, this.value)">
-                                                        <option value="">Unassigned</option>
-                                                        ${(cachedLocations || []).filter(l => l.is_active).map(l => `<option value="${l.id}" ${item.locationId === l.id ? 'selected' : ''}>${l.name} (${l.code || l.type})</option>`).join('')}
-                                                    </select>
-                                                </div>
-                                            ` : ''}
                                         </td>
                                         ${gstEnabled ? `<td>${item.hsn || ''}</td>` : ''}
-                                        ${gstEnabled ? `<td>${item.gstRate || 0}%</td>` : ''}
+                                        ${gstEnabled ? `<td style="text-align: center;">${item.gstRate || 0}%</td>` : ''}
                                         <td style="text-align: left; vertical-align: middle;">
-                                            <div style="display: flex; align-items: center; justify-content: flex-start; gap: 8px;">
-                                                <input type="number" id="cart-qty-${index}" value="${item.quantity}" class="form-control cart-qty-input" style="width: 100px; padding: 2px 8px; text-align: center; height: 32px; font-weight: bold;" min="0" step="any" onchange="updateCartItemQuantity(${index}, this.value)" onkeydown="handleCartInputKeydown(event, ${index}, 'qty')" onfocus="window.setCartRowHighlight(${index})">
-                                                <span style="white-space: nowrap; font-weight: normal; color: #333;">${item.unit || ''}</span>
+                                            <div style="display: flex; align-items: center; justify-content: flex-start; gap: 4px;">
+                                                <input type="number" id="cart-qty-${index}" value="${item.quantity}" class="form-control cart-qty-input" min="0" step="any" onchange="updateCartItemQuantity(${index}, this.value)" onkeydown="handleCartInputKeydown(event, ${index}, 'qty')" onfocus="window.setCartRowHighlight(${index})">
+                                                <span style="white-space: nowrap; font-size: 12px; font-weight: normal; color: #475569;">${item.unit || ''}</span>
                                             </div>
                                         </td>
-                                        <td>₹${item.price.toFixed(2)}</td>
-                                        <td>
-                                            <input type="text" id="cart-disc-${index}" value="${(item.discountType || 'percentage') === 'percentage' ? (item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0)) + '%' : (item.discountValue || 0)}" class="form-control cart-disc-input" style="width:75px; padding:2px; text-align:center; height: 32px;" onchange="updateCartItemDiscount(${index}, this.value)" onkeydown="handleCartInputKeydown(event, ${index}, 'disc')" onfocus="window.setCartRowHighlight(${index})">
+                                        <td style="text-align: right; white-space: nowrap;">₹${item.price.toFixed(2)}</td>
+                                        <td style="text-align: center;">
+                                            <input type="text" id="cart-disc-${index}" value="${(item.discountType || 'percentage') === 'percentage' ? (item.discountValue !== undefined ? item.discountValue : (item.discountPercent || 0)) + '%' : (item.discountValue || 0)}" class="form-control cart-disc-input" onchange="updateCartItemDiscount(${index}, this.value)" onkeydown="handleCartInputKeydown(event, ${index}, 'disc')" onfocus="window.setCartRowHighlight(${index})">
                                         </td>
-                                        <td>₹${item.grossAmount.toFixed(2)}</td>
-                                        <td>₹${(item.taxableValue || 0).toFixed(2)}</td>
-                                        ${gstEnabled ? `<td>₹${(item.cgst || 0).toFixed(2)}</td>` : ''}
-                                        ${gstEnabled ? `<td>₹${(item.sgst || 0).toFixed(2)}</td>` : ''}
-                                        ${gstEnabled ? `<td>₹${(item.igst || 0).toFixed(2)}</td>` : ''}
-                                        <td><strong>₹${item.finalTotal.toFixed(2)}</strong></td>
-                                        <td><button class="btn btn-cart-remove btn-sm" onclick="removeFromCart(${index})">Remove</button></td>
-                                    </tr>
-                                `).join('')}
+                                        <td style="text-align: right; white-space: nowrap;">₹${item.grossAmount.toFixed(2)}</td>
+                                        <td style="text-align: right; white-space: nowrap;">₹${(item.taxableValue || 0).toFixed(2)}</td>
+                                        ${gstEnabled ? `<td style="text-align: right; color: #475569; white-space: nowrap;">₹${itemTax}</td>` : ''}
+                                        <td style="text-align: right; white-space: nowrap;"><strong>₹${item.finalTotal.toFixed(2)}</strong></td>
+                                        <td style="text-align: center;"><button class="btn btn-cart-remove btn-cart-remove-compact" onclick="removeFromCart(${index})">Remove</button></td>
+                                    </tr>`;
+                                }).join('')}
+                                ${(() => {
+                                    const minRows = 8;
+                                    const placeholderCount = Math.max(0, minRows - cart.length);
+                                    let phHtml = '';
+                                    for (let i = 0; i < placeholderCount; i++) {
+                                        const rowNum = cart.length + i + 1;
+                                        phHtml += `
+                                        <tr class="cart-placeholder-row">
+                                            <td style="text-align: center; color: #94a3b8; font-weight: 500;">${rowNum}</td>
+                                            <td><span class="dash-ph"></span></td>
+                                            ${gstEnabled ? `<td><span class="dash-ph"></span></td>` : ''}
+                                            ${gstEnabled ? `<td style="text-align: center;"><span class="dash-ph"></span></td>` : ''}
+                                            <td><span class="dash-ph"></span></td>
+                                            <td style="text-align: right;"><span class="dash-ph"></span></td>
+                                            <td style="text-align: center;"><span class="dash-ph"></span></td>
+                                            <td style="text-align: right;"><span class="dash-ph"></span></td>
+                                            <td style="text-align: right;"><span class="dash-ph"></span></td>
+                                            ${gstEnabled ? `<td style="text-align: right;"><span class="dash-ph"></span></td>` : ''}
+                                            <td style="text-align: right;"><span class="dash-ph"></span></td>
+                                            <td style="text-align: center;"><span class="dash-ph"></span></td>
+                                        </tr>`;
+                                    }
+                                    return phHtml;
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -17979,6 +18363,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
 
                     await window.electronAPI.sqlite.products.update(currentEditingProductId, updateData);
+                    const memProd = products.find(p => String(p.id) === String(currentEditingProductId));
+                    if (memProd) {
+                        memProd.is_favorite = updateData.is_favorite;
+                        memProd.isFavourite = updateData.is_favorite === 1;
+                    }
+                    if (typeof renderFavoritesPanel === function) renderFavoritesPanel();
                 } else {
                     // Legacy JSON fallback
                     const product = products.find(p => String(p.id) === String(currentEditingProductId));
@@ -21199,7 +21589,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                         
                         // Context-Aware Routing
                         if (document.getElementById('sales').classList.contains('active')) {
-                            document.getElementById('quickSaleBarcode').value = barcode;
+                            const searchInput = document.getElementById('saleProductSearch');
+                            if (searchInput) searchInput.value = barcode;
                             if (typeof loadProductByBarcode === 'function') loadProductByBarcode(barcode, 'sale');
                         } else if (document.getElementById('inventory').classList.contains('active')) {
                             document.getElementById('searchInput').value = barcode;
@@ -22045,8 +22436,16 @@ input:focus, select:focus, textarea:focus, button:focus {
             const salesDateToggle = document.getElementById('settingsEnableSalesDate');
             if(salesDateToggle) currentSettings.enableSalesDate = salesDateToggle.checked;
 
-            const qsbToggle = document.getElementById('settingsQuickSaleBarcode');
+            const favToggle = document.getElementById(settingsShowFavorites);
+            const isFavActive = !!settings.showFavorites;
+            if(favToggle) favToggle.checked = isFavActive;
+            if (typeof updateFavoritesLayout === function) updateFavoritesLayout(isFavActive);
+
+            const qsbToggle = document.getElementById(settingsQuickSaleBarcode);
             if(qsbToggle) currentSettings.quickSaleBarcode = qsbToggle.checked;
+
+            const favToggleSetting = document.getElementById('settingsShowFavorites');
+            if(favToggleSetting) currentSettings.showFavorites = favToggleSetting.checked;
 
             const usbToggle = document.getElementById('globalUsbScannerToggle');
             if(usbToggle) currentSettings.usbScannerEnabled = usbToggle.checked;
@@ -22324,6 +22723,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if(setting === 'buyingPriceTracking') document.getElementById('settingsBuyingPriceTracking').checked = settings.buyingPriceTracking || false;
                 if(setting === 'enableSalesDate') document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate || false;
                 if(setting === 'quickSaleBarcode') document.getElementById('settingsQuickSaleBarcode').checked = settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true;
+                if(setting === 'showFavorites') document.getElementById('settingsShowFavorites').checked = settings.showFavorites || false;
                 return;
             }
             const currentSettings = _getSafeSettings();
@@ -22344,11 +22744,19 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if(saleDateContainer) saleDateContainer.style.display = value ? 'block' : 'none';
             }
             
-            if (setting === 'quickSaleBarcode') {
-                const qsbPanel = document.getElementById('quickSaleBarcodePanel');
-                if (qsbPanel) {
-                    qsbPanel.style.display = value ? 'block' : 'none';
+            if (setting === showFavorites) {
+                if (typeof updateFavoritesLayout === function) updateFavoritesLayout(value);
+            }
+            
+            if (setting === quickSaleBarcode) {
+                const scanBtn = document.getElementById('btnScanBarcode');
+                if (scanBtn) {
+                    scanBtn.style.display = value ? 'inline-flex' : 'none';
                 }
+                const clearBtn = document.getElementById('saleProductClear');
+                const searchInp = document.getElementById('saleProductSearch');
+                if (clearBtn) clearBtn.style.right = value ? '42px' : '10px';
+                if (searchInp) searchInp.style.paddingRight = value ? '58px' : '30px';
             }
             
             if (typeof loadProducts === 'function') loadProducts();
@@ -22393,10 +22801,15 @@ input:focus, select:focus, textarea:focus, button:focus {
             if(expToggle) expToggle.checked = (settings.expiryTracking !== undefined ? settings.expiryTracking : false);
             
             const qsbToggle = document.getElementById('settingsQuickSaleBarcode');
-            if(qsbToggle) qsbToggle.checked = (settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true);
+            const isQsbActive = (settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true);
+            if(qsbToggle) qsbToggle.checked = isQsbActive;
             
-            const qsbPanel = document.getElementById('quickSaleBarcodePanel');
-            if(qsbPanel) qsbPanel.style.display = (settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true) ? 'block' : 'none';
+            const scanBtn = document.getElementById('btnScanBarcode');
+            if(scanBtn) scanBtn.style.display = isQsbActive ? 'inline-flex' : 'none';
+            const clearBtn = document.getElementById('saleProductClear');
+            const searchInp = document.getElementById('saleProductSearch');
+            if(clearBtn) clearBtn.style.right = isQsbActive ? '42px' : '10px';
+            if(searchInp) searchInp.style.paddingRight = isQsbActive ? '58px' : '30px';
             
             const buyToggle = document.getElementById('settingsBuyingPriceTracking');
             if(buyToggle) buyToggle.checked = (settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false);
@@ -23775,6 +24188,233 @@ input:focus, select:focus, textarea:focus, button:focus {
                 infoEl.style.display = 'none';
             }
         }
+
+        
+        // ==========================================
+        // Favorites Panel Logic for Record Sale
+        // ==========================================
+        window.favoriteSearchTerm = "";
+
+        function updateFavoritesLayout(showFavorites) {
+            const favPanel = document.getElementById("favoritesPanelContainer");
+            const cartWrapper = document.getElementById("cartItemsWrapper");
+            if (!favPanel || !cartWrapper) return;
+
+            if (showFavorites) {
+                favPanel.style.display = "flex";
+                cartWrapper.classList.remove("full-width");
+                renderFavoritesPanel();
+            } else {
+                favPanel.style.display = "none";
+                cartWrapper.classList.add("full-width");
+            }
+        }
+        window.updateFavoritesLayout = updateFavoritesLayout;
+
+        function handleFavoriteSearch(query) {
+            window.favoriteSearchTerm = (query || "").trim().toLowerCase();
+            const clearBtn = document.getElementById("favSearchClear");
+            if (clearBtn) clearBtn.style.display = window.favoriteSearchTerm ? "block" : "none";
+            renderFavoritesPanel();
+        }
+        window.handleFavoriteSearch = handleFavoriteSearch;
+
+        function clearFavoriteSearch() {
+            const input = document.getElementById("favSearchInput");
+            if (input) input.value = "";
+            handleFavoriteSearch("");
+            if (input) input.focus();
+        }
+        window.clearFavoriteSearch = clearFavoriteSearch;
+
+        function renderFavoritesPanel() {
+            const grid = document.getElementById("favoritesGrid");
+            const emptyMsg = document.getElementById("favoritesEmptyMsg");
+            const titleEl = document.getElementById("favoritesPanelTitle");
+            if (!grid) return;
+
+            // Filter products that are marked as favorite
+            const allFavorites = products.filter(p => !!(p.is_favorite || p.isFavourite));
+            
+            if (titleEl) {
+                titleEl.textContent = "⭐ Favourites (" + allFavorites.length + ")";
+            }
+
+            const query = (window.favoriteSearchTerm || "").toLowerCase();
+            const filtered = allFavorites.filter(p => {
+                if (!query) return true;
+                const pName = (p.name || "").toLowerCase();
+                const pBarcode = (p.barcode || "").toLowerCase();
+                if (pName.includes(query) || pBarcode.includes(query)) return true;
+                if (p.variants && Array.isArray(p.variants)) {
+                    return p.variants.some(v => 
+                        (v.variantName && v.variantName.toLowerCase().includes(query)) ||
+                        (v.barcode && String(v.barcode).toLowerCase().includes(query))
+                    );
+                }
+                return false;
+            });
+
+            if (allFavorites.length === 0) {
+                grid.innerHTML = "";
+                if (emptyMsg) {
+                    emptyMsg.textContent = "No favorite products yet. Mark products as favorites in Products.";
+                    emptyMsg.style.display = "flex";
+                }
+                return;
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = "";
+                if (emptyMsg) {
+                    emptyMsg.textContent = 'No favorites match "' + window.favoriteSearchTerm + '".';
+                    emptyMsg.style.display = "flex";
+                }
+                return;
+            }
+
+            if (emptyMsg) emptyMsg.style.display = "none";
+
+            grid.innerHTML = filtered.map(prod => {
+                const hasVariants = window.hasRealVariants ? window.hasRealVariants(prod) : (prod.variants && prod.variants.length > 1);
+                const price = parseFloat(prod.price || prod.sellingPrice || 0).toFixed(2);
+                const outOfStock = (prod.stock !== undefined && prod.stock <= 0);
+                
+                let imageHtml = "";
+                if (prod.image) {
+                    imageHtml = '<img src="' + prod.image + '" alt="' + (prod.name || '') + '" class="fav-card-img" onerror="this.onerror=null; this.parentElement.innerHTML=\'<span class=\\"fav-card-placeholder\\">📦</span>\';">';
+                } else {
+                    imageHtml = '<span class="fav-card-placeholder">📦</span>';
+                }
+
+                const variantBadge = hasVariants ? ('<span class="fav-card-variants-badge">' + prod.variants.length + ' vars</span>') : '';
+
+                return '<div class="fav-card ' + (outOfStock ? 'fav-card-out-of-stock' : '') + '" ' +
+                       'onclick="handleFavoriteProductClick(\'' + prod.id + '\')" ' +
+                       'title="' + (prod.name || '') + (outOfStock ? ' (Out of stock)' : '') + '">' +
+                       variantBadge +
+                       '<div class="fav-card-img-wrap">' + imageHtml + '</div>' +
+                       '<div class="fav-card-name">' + (prod.name || '') + '</div>' +
+                       '<div class="fav-card-price">₹' + price + '</div>' +
+                       '</div>';
+            }).join("");
+        }
+        window.renderFavoritesPanel = renderFavoritesPanel;
+
+        function handleFavoriteProductClick(productId) {
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+
+            // Check if product has multiple variants
+            const hasMultipleVariants = window.hasRealVariants ? window.hasRealVariants(product) : (product.variants && product.variants.length > 1);
+            if (hasMultipleVariants && Array.isArray(product.variants) && product.variants.length > 1) {
+                openFavVariantModal(product);
+                return;
+            }
+
+            const defaultVariant = (product.variants && product.variants.length > 0) ? product.variants[0] : null;
+            addFavoriteProductToCart(product, defaultVariant);
+        }
+        window.handleFavoriteProductClick = handleFavoriteProductClick;
+
+        function openFavVariantModal(product) {
+            const modal = document.getElementById("favVariantModal");
+            const title = document.getElementById("favVariantModalTitle");
+            const body = document.getElementById("favVariantModalBody");
+            if (!modal || !body) return;
+
+            if (title) title.textContent = "Select Variant: " + (product.name || "");
+            
+            body.innerHTML = (product.variants || []).map(v => {
+                const vName = v.variantName || v.name || "Default";
+                const vPrice = parseFloat(v.sellingPrice !== undefined ? v.sellingPrice : (v.price || 0)).toFixed(2);
+                const vStock = v.stock !== undefined ? v.stock : 0;
+                const outOfStock = vStock <= 0;
+
+                return '<button type="button" class="btn btn-outline-primary" onclick="selectFavVariantAndAdd(\'' + product.id + '\', \'' + v.id + '\')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; text-align: left; font-size: 14px; ' + (outOfStock ? 'border-color: #fca5a5; background: #fff5f5; color: #dc2626;' : '') + '">' +
+                       '<div><strong>' + vName + '</strong>' + (v.barcode ? '<div style="font-size: 11px; color: #64748b;">Barcode: ' + v.barcode + '</div>' : '') + '</div>' +
+                       '<div style="text-align: right;"><span style="font-weight: 700; color: #0284c7;">₹' + vPrice + '</span><div style="font-size: 11px; ' + (outOfStock ? 'color: #dc2626; font-weight: bold;' : 'color: #16a34a;') + '">Stock: ' + vStock + '</div></div>' +
+                       '</button>';
+            }).join("");
+
+            modal.style.display = "flex";
+        }
+        window.openFavVariantModal = openFavVariantModal;
+
+        function closeFavVariantModal() {
+            const modal = document.getElementById("favVariantModal");
+            if (modal) modal.style.display = "none";
+        }
+        window.closeFavVariantModal = closeFavVariantModal;
+
+        function selectFavVariantAndAdd(productId, variantId) {
+            closeFavVariantModal();
+            const product = products.find(p => String(p.id) === String(productId));
+            if (!product) return;
+            const variant = (product.variants || []).find(v => String(v.id) === String(variantId));
+            addFavoriteProductToCart(product, variant);
+        }
+        window.selectFavVariantAndAdd = selectFavVariantAndAdd;
+
+        function addFavoriteProductToCart(product, variant) {
+            const targetVariantId = variant ? variant.id : undefined;
+            const effStock = variant ? (variant.stock !== undefined ? variant.stock : 0) : (product.stock !== undefined ? product.stock : 0);
+            const effUnit = (variant && variant.unit) ? variant.unit : (product.unit || "Piece");
+
+            if (effStock <= 0) {
+                showAlert("Inventory is 0 — unable to add item to cart", "⚠️");
+                return;
+            }
+
+            const prec = (product.quantityType === "decimal") ? (product.decimalPrecision || 0.01) : 1;
+            const quantityToAdd = 1;
+            const unitPrice = parseFloat(variant ? (variant.sellingPrice !== undefined ? variant.sellingPrice : (variant.price || 0)) : (product.price || 0));
+
+            // Check existing stock in cart for this product and variant
+            const currentStockInCart = cart
+                .filter(item => String(item.productId) === String(product.id) && String(item.variantId) === String(targetVariantId))
+                .reduce((sum, item) => sum + (item.quantity * (item.baseQuantity || 1)), 0);
+
+            if (currentStockInCart + quantityToAdd > effStock) {
+                showAlert("Insufficient stock! Available: " + effStock + " " + effUnit + ". You are trying to sell " + (currentStockInCart + quantityToAdd) + ".", "⚠️");
+                return;
+            }
+
+            // Check if already in cart
+            const existingItemIndex = cart.findIndex(item => 
+                String(item.productId) === String(product.id) && 
+                item.unit === effUnit && 
+                String(item.variantId) === String(targetVariantId)
+            );
+
+            if (existingItemIndex >= 0) {
+                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + quantityToAdd).toFixed(3));
+                cart[existingItemIndex].total = cart[existingItemIndex].quantity * cart[existingItemIndex].price;
+            } else {
+                let effDisc = getEffectiveDiscount(product, variant);
+                const dispName = window.getVariantDisplayName ? window.getVariantDisplayName(product, variant) : (product.name + (variant && variant.variantName ? " - " + variant.variantName : ""));
+                
+                cart.push({
+                    productId: product.id,
+                    variantId: targetVariantId,
+                    variantName: variant ? variant.variantName : undefined,
+                    productName: dispName,
+                    barcode: variant ? (variant.barcode || product.barcode) : product.barcode,
+                    unit: effUnit,
+                    price: unitPrice,
+                    quantity: quantityToAdd,
+                    baseQuantity: 1,
+                    discountType: effDisc.type,
+                    discountValue: effDisc.value,
+                    discountPercent: effDisc.type === "percentage" ? effDisc.value : 0,
+                    total: quantityToAdd * unitPrice
+                });
+            }
+
+            updateCartDisplay();
+            if (typeof playSuccessBeep === "function") playSuccessBeep();
+        }
+        window.addFavoriteProductToCart = addFavoriteProductToCart;
 
         function toggleFavourite(id) {
             const product = products.find(p => String(p.id) === String(id));
@@ -27378,14 +28018,26 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
         function updateCartRowSelection() {
             document.querySelectorAll('.cart-row').forEach(row => row.classList.remove('cart-row-selected'));
             
-            // Prefer focused index, then selected index
             const idxToHighlight = window.focusedCartRowIndex >= 0 ? window.focusedCartRowIndex : selectedCartRowIndex;
             
-            if (idxToHighlight >= 0 && idxToHighlight < cart.length) {
+            if (idxToHighlight >= 0 && typeof cart !== 'undefined' && idxToHighlight < cart.length) {
                 const selectedRow = document.getElementById('cart-row-' + idxToHighlight);
                 if (selectedRow) {
                     selectedRow.classList.add('cart-row-selected');
-                    selectedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    const container = document.getElementById('cartScrollContainer');
+                    if (container) {
+                        const rowTop = selectedRow.offsetTop;
+                        const rowBottom = rowTop + selectedRow.offsetHeight;
+                        const containerTop = container.scrollTop;
+                        const containerBottom = containerTop + container.clientHeight;
+                        if (rowTop < containerTop) {
+                            container.scrollTop = rowTop;
+                        } else if (rowBottom > containerBottom) {
+                            container.scrollTop = rowBottom - container.clientHeight;
+                        }
+                    } else {
+                        selectedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
                 }
             }
         }
@@ -27662,7 +28314,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 if (!atBoundary) return;
                 
                 const sequences = [
-                    ['quickSaleBarcode', 'btnScanBarcode', 'saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'],
+                    ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'],
                     ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethod']
                 ];
                 
@@ -27687,7 +28339,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // ARROW DOWN / UP (VERTICAL)
             // -------------------------------------------------------------
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                const addItemIds = ['quickSaleBarcode', 'btnScanBarcode', 'saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'];
+                const addItemIds = ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'];
                 if (addItemIds.includes(activeId)) {
                     if (e.key === 'ArrowDown') {
                         e.preventDefault();
@@ -27731,18 +28383,19 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 let currentIdx = typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 ? window.focusedCartRowIndex : -1;
                 
                 if (cartActive || (!isCartInput && currentIdx >= 0)) {
+                    const isDisc = activeElem && activeElem.classList && activeElem.classList.contains('cart-disc-input');
+                    const targetFieldType = isDisc ? 'cart-disc-' : 'cart-qty-';
+
                     if (e.key === 'ArrowDown') {
                         e.preventDefault();
                         if (currentIdx < cart.length - 1) {
                             currentIdx++;
                             window.setCartRowHighlight(currentIdx);
-                            const nextQty = document.getElementById('cart-qty-' + currentIdx);
-                            if (nextQty) nextQty.focus();
-                        } else {
-                            window.clearCartRowHighlight();
-                            if (isCartInput) activeElem.blur();
-                            const cust = document.getElementById('saleCustomerSearch');
-                            if (cust) { cust.focus(); cust.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                            const nextElem = document.getElementById(targetFieldType + currentIdx) || document.getElementById('cart-qty-' + currentIdx);
+                            if (nextElem) {
+                                nextElem.focus();
+                                if (nextElem.select) nextElem.select();
+                            }
                         }
                         return;
                     }
@@ -27751,13 +28404,11 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                         if (currentIdx > 0) {
                             currentIdx--;
                             window.setCartRowHighlight(currentIdx);
-                            const prevQty = document.getElementById('cart-qty-' + currentIdx);
-                            if (prevQty) prevQty.focus();
-                        } else {
-                            window.clearCartRowHighlight();
-                            if (isCartInput) activeElem.blur();
-                            const prod = document.getElementById('saleProductSearch');
-                            if (prod) { prod.focus(); prod.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                            const prevElem = document.getElementById(targetFieldType + currentIdx) || document.getElementById('cart-qty-' + currentIdx);
+                            if (prevElem) {
+                                prevElem.focus();
+                                if (prevElem.select) prevElem.select();
+                            }
                         }
                         return;
                     }
