@@ -18368,7 +18368,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         memProd.is_favorite = updateData.is_favorite;
                         memProd.isFavourite = updateData.is_favorite === 1;
                     }
-                    if (typeof renderFavoritesPanel === function) renderFavoritesPanel();
+                    if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
                 } else {
                     // Legacy JSON fallback
                     const product = products.find(p => String(p.id) === String(currentEditingProductId));
@@ -22436,12 +22436,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const salesDateToggle = document.getElementById('settingsEnableSalesDate');
             if(salesDateToggle) currentSettings.enableSalesDate = salesDateToggle.checked;
 
-            const favToggle = document.getElementById(settingsShowFavorites);
-            const isFavActive = !!settings.showFavorites;
-            if(favToggle) favToggle.checked = isFavActive;
-            if (typeof updateFavoritesLayout === function) updateFavoritesLayout(isFavActive);
-
-            const qsbToggle = document.getElementById(settingsQuickSaleBarcode);
+            const qsbToggle = document.getElementById('settingsQuickSaleBarcode');
             if(qsbToggle) currentSettings.quickSaleBarcode = qsbToggle.checked;
 
             const favToggleSetting = document.getElementById('settingsShowFavorites');
@@ -22744,11 +22739,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if(saleDateContainer) saleDateContainer.style.display = value ? 'block' : 'none';
             }
             
-            if (setting === showFavorites) {
-                if (typeof updateFavoritesLayout === function) updateFavoritesLayout(value);
+            if (setting === 'showFavorites') {
+                if (typeof updateFavoritesLayout === 'function') updateFavoritesLayout(value);
             }
             
-            if (setting === quickSaleBarcode) {
+            if (setting === 'quickSaleBarcode') {
                 const scanBtn = document.getElementById('btnScanBarcode');
                 if (scanBtn) {
                     scanBtn.style.display = value ? 'inline-flex' : 'none';
