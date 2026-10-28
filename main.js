@@ -1190,9 +1190,9 @@ ipcMain.handle('sqlite:gdrive:backupNow', async () => {
 });
 
 // Draft Sales SQLite Handlers
-ipcMain.handle('sqlite:draftSales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.getAll()));
-ipcMain.handle('sqlite:draftSales:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.save(args?.draft !== undefined ? args.draft : args)));
-ipcMain.handle('sqlite:draftSales:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'sales', () => dbManager.draftSalesService.delete(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:draftSales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => dbManager.draftSalesService.getAll()));
+ipcMain.handle('sqlite:draftSales:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => dbManager.draftSalesService.save(args?.draft !== undefined ? args.draft : args)));
+ipcMain.handle('sqlite:draftSales:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => dbManager.draftSalesService.delete(args?.id !== undefined ? args.id : args)));
 
 
 // --- Stock Location Management IPC Handlers (Phase 1) ---

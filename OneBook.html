@@ -34,6 +34,17 @@
 
     <!-- Offline File Storage Override -->
     <script>
+    function escapeHtml(str) {
+        if (!str && str !== 0) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+    window.escapeHtml = escapeHtml;
+
 
 window.labelCenterSortColumn = 'id';
 window.labelCenterSortDesc = true;
@@ -2380,11 +2391,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 7. Total Amount (₹) (far right) -->
-                        <div style="flex: 0 0 auto; display: flex; align-items: center; background: #e8f5e9; padding: 2px 14px; border-radius: 6px; border: 2px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.08); height: 42px; box-sizing: border-box;">
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center;">
-                                <span style="font-weight: 700; font-size: 11px; color: #155724; line-height: 1;">Total Amount (₹)</span>
-                                <span id="topRightTotalAmount" style="font-weight: 800; font-size: 22px; color: #28a745; line-height: 1.1;">0.00</span>
-                            </div>
+                        <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: #e8f5e9; padding: 0 16px; border-radius: 6px; border: 2px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.08); height: 42px; box-sizing: border-box;">
+                            <span id="topRightTotalAmount" style="font-weight: 800; font-size: 36px; color: #28a745; line-height: 1; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap;">₹ 0.00</span>
                         </div>
                     </form>
                 </div>
@@ -2398,15 +2406,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <button class="btn btn-danger" onclick="document.getElementById('continuousScanToggle').checked=false; toggleContinuousScanMode();" style="margin-left: 10px;">❌ Close Scanner</button>
                 </div>
 
-                <div id="manualAddContainer">
-                    <!-- Favourite Products / Quick Sale -->
-                    <div class="scanner-container" id="favouriteProductsSection" style="display: none; background: #fff8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffeeba;">
-                        <h3 style="color: #d39e00; margin-top: 0; margin-bottom: 15px;">⭐ Favourite Products (Quick Sale)</h3>
-                        <div id="quickSaleGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
-                            <!-- Cards will be rendered here -->
-                        </div>
-                    </div>
-                </div>
+                <div id="manualAddContainer" style="display: none;"></div>
 
                 <!-- Favorites & Shopping Cart Area -->
                 <div id="recordSaleCenterArea" class="record-sale-center-area">
@@ -2476,6 +2476,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                     flex: 1 1 70%;
                     min-width: 0;
                     box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                }
+                #cartItems {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1 1 auto;
+                    height: 100%;
                 }
                 .cart-items-wrapper.full-width {
                     flex: 1 1 100%;
@@ -2486,8 +2494,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                     align-items: center;
                     justify-content: space-between;
                     gap: 8px;
+                    height: 28px;
                     margin-bottom: 6px;
-                    padding-bottom: 2px;
+                    box-sizing: border-box;
                 }
                 .favorites-panel-title {
                     margin: 0;
@@ -2535,8 +2544,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     color: #ef4444;
                 }
                 .favorites-scroll-area {
-                    height: 295px;
-                    max-height: 295px;
+                    height: 330px;
+                    max-height: 330px;
                     overflow-y: auto;
                     overflow-x: hidden;
                     border: 1px solid #e2e8f0;
@@ -8207,7 +8216,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         let stockHistory = _safeParseStorageArray('stockHistory');
         let purchaseOrders = _safeParseStorageArray('purchaseOrders');
         var categoryDiscounts = _safeParseStorageArray('categoryDiscounts');
-        let draftSales = _safeParseStorageArray('draftSales'); // Initialize drafts
+        let draftSales = []; // SQLite draft_sales is authoritative
+        try { localStorage.removeItem('draftSales'); } catch(e){}
         let modalScanner = null;
         let currentScanMode = '';
         let cart = []; // Shopping cart for multi-item sales
@@ -8469,6 +8479,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('paymentMethod').value = draft.paymentMethod || 'cash';
 
                 draftSales.splice(index, 1);
+                try { localStorage.removeItem('draftSales'); } catch(e){}
                 updateCartDisplay();
                 updateDraftsDisplay();
                 togglePaymentFields();
@@ -8501,6 +8512,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 }
                 draftSales.splice(index, 1);
+                try { localStorage.removeItem('draftSales'); } catch(e){}
                 updateDraftsDisplay();
                 showAlert('Draft sale deleted from database.', '🗑️');
             });
@@ -11384,6 +11396,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     updateTodaysSales();
                     updateCartDisplay();
                     updateDraftsDisplay();
+                    if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
                 } else if (tabName === 'reports') {
                     generateReports();
                 } else if (tabName === 'products') {
@@ -12738,9 +12751,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Hide dropdowns when clicking outside
                 document.addEventListener('click', function(e) {
                     if (!e.target.closest('.combobox-container')) {
-                        document.getElementById('saleProductDropdown').style.display = 'none';
-                        document.getElementById('saleUnitDropdown').style.display = 'none';
-                        document.getElementById('barcodeSaleDropdown').style.display = 'none';
+                        const elProd = document.getElementById('saleProductDropdown');
+                        if (elProd) elProd.style.display = 'none';
+                        const elUnit = document.getElementById('saleUnitDropdown');
+                        if (elUnit) elUnit.style.display = 'none';
+                        const elBarcode = document.getElementById('barcodeSaleDropdown');
+                        if (elBarcode) elBarcode.style.display = 'none';
                     }
                 });
                 
@@ -14040,7 +14056,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('cartTotal').value = netGrandTotal.toFixed(2);
             
             const elTopRightTotal = document.getElementById('topRightTotalAmount');
-            if (elTopRightTotal) elTopRightTotal.textContent = netGrandTotal.toFixed(2);
+            if (elTopRightTotal) elTopRightTotal.textContent = '₹ ' + netGrandTotal.toFixed(2);
 
             const elTaxable = document.getElementById('cartTaxableAmount');
             if (elTaxable) elTaxable.value = finalTaxableValue.toFixed(2);
@@ -14070,26 +14086,26 @@ input:focus, select:focus, textarea:focus, button:focus {
             const totalColumns = gstEnabled ? 12 : 9;
 
             let tableHTML = `
-                <div class="scanner-container" style="background: white; border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px;">
+                <div class="cart-panel-card" style="background: white; border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px; box-sizing: border-box; display: flex; flex-direction: column; height: 100%;">
                     <style>
                         #cartItems table { font-size: 13px; margin: 0; width: 100%; border-collapse: collapse; }
-                        #cartItems th { padding: 5px 4px !important; font-size: 12px; font-weight: 700; background: #f8fafc; color: #1e293b; border-bottom: 2px solid #cbd5e1; white-space: nowrap; }
-                        #cartItems td { padding: 3px 4px !important; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+                        #cartItems th { padding: 4px 4px !important; font-size: 12px; font-weight: 700; background: #f8fafc; color: #1e293b; border-bottom: 2px solid #cbd5e1; white-space: nowrap; height: 28px; box-sizing: border-box; }
+                        #cartItems td { padding: 2px 4px !important; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: 13px; height: 30px; box-sizing: border-box; }
                         #cartItems td:nth-child(2) { max-width: 200px; white-space: normal; line-height: 1.15; word-wrap: break-word; }
-                        #cartItems tr.cart-row { transition: background-color 0.15s ease; cursor: pointer; }
+                        #cartItems tr.cart-row { transition: background-color 0.15s ease; cursor: pointer; height: 30px; box-sizing: border-box; }
                         #cartItems tr.cart-row:hover { background-color: #f8fafc; }
                         #cartItems tr.cart-row-selected td { background-color: #e0f2fe !important; border-top: 1px solid #7dd3fc; border-bottom: 1px solid #7dd3fc; }
-                        #cartItems input.cart-qty-input { padding: 1px 4px; height: 26px; font-size: 13px; width: 62px !important; text-align: center; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+                        #cartItems input.cart-qty-input { padding: 1px 4px; height: 24px; font-size: 13px; width: 62px !important; text-align: center; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
                         #cartItems input.cart-qty-input:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25); outline: none; }
-                        #cartItems input.cart-disc-input { padding: 1px 4px; height: 26px; font-size: 13px; width: 56px !important; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+                        #cartItems input.cart-disc-input { padding: 1px 4px; height: 24px; font-size: 13px; width: 56px !important; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
                         #cartItems input.cart-disc-input:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25); outline: none; }
-                        #cartItems .btn-cart-remove-compact { padding: 2px 6px; font-size: 11px; height: 24px; line-height: 1.1; font-weight: bold; border-radius: 4px; }
+                        #cartItems .btn-cart-remove-compact { padding: 1px 6px; font-size: 11px; height: 22px; line-height: 1.1; font-weight: bold; border-radius: 4px; }
                         .cart-scroll-container {
                             width: 100%;
                             overflow-x: auto;
                             overflow-y: auto;
-                            height: 295px; /* Fixed height for header + exactly 8 rows */
-                            max-height: 295px;
+                            height: 330px; /* Fixed height for header + exactly 10 rows */
+                            max-height: 330px;
                             border: 1px solid #e2e8f0;
                             border-radius: 4px;
                             box-sizing: border-box;
@@ -14100,11 +14116,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                             z-index: 10;
                             background-color: #f8fafc;
                             box-shadow: inset 0 -2px 0 #cbd5e1;
-                            height: 29px;
+                            height: 28px;
                             box-sizing: border-box;
                         }
                         #cartItems tr.cart-row, #cartItems tr.cart-placeholder-row {
-                            height: 33px;
+                            height: 30px;
                             box-sizing: border-box;
                         }
                         #cartItems tr.cart-placeholder-row td {
@@ -14113,6 +14129,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             background-color: #ffffff;
                             user-select: none;
                             pointer-events: none;
+                            height: 30px;
                         }
                         .dash-ph {
                             display: inline-block;
@@ -14122,7 +14139,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                             border-radius: 1px;
                         }
                     </style>
-                    <h4 style="margin: 0 0 6px 0; font-size: 17px; font-weight: bold; color: #004085;">🛒 Shopping Cart (${cart.length} item(s))</h4>
+                    <div style="display: flex; align-items: center; justify-content: space-between; height: 28px; margin-bottom: 6px;">
+                        <h4 style="margin: 0; font-size: 16px; font-weight: bold; color: #004085; line-height: 28px;">🛒 Shopping Cart (${cart.length} item(s))</h4>
+                    </div>
                     <div class="cart-scroll-container" id="cartScrollContainer">
                         <table>
                             <thead>
@@ -14170,7 +14189,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </tr>`;
                                 }).join('')}
                                 ${(() => {
-                                    const minRows = 8;
+                                    const minRows = 10;
                                     const placeholderCount = Math.max(0, minRows - cart.length);
                                     let phHtml = '';
                                     for (let i = 0; i < placeholderCount; i++) {
@@ -15084,7 +15103,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 <tr>
                                     <td>${item.productName}</td>
                                     ${showGstOnReceipt ? '' : `<td>${item.unit || 'Piece'}</td>`}
-                                    <td style="text-align: right;">${item.quantity} ${item.unit || ''}</td>
+                                    <td style="text-align: right;">${item.quantity}</td>
                                     <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
                                     ${showGstOnReceipt ? `<td style="text-align: right;">${item.gstRate || 0}%</td>` : ''}
                                     <td style="text-align: right;">₹${item.total.toFixed(2)}</td>
@@ -15770,9 +15789,53 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function viewBill(saleId) {
+        async function viewBill(saleId) {
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales) {
+                try {
+                    const res = await window.electronAPI.sqlite.sales.get(saleId);
+                    const saleDataSql = (res && res.success && res.data) ? res.data : (res && res.id ? res : null);
+                    if (saleDataSql) {
+                        lastSaleData = {
+                            saleId: saleDataSql.id,
+                            receiptNumber: saleDataSql.receipt_number,
+                            date: saleDataSql.date,
+                            customerName: saleDataSql.customer_name || 'Walk-in',
+                            customerGSTIN: saleDataSql.customer_gstin || '',
+                            customerAddress: saleDataSql.customer_address || '',
+                            customerState: saleDataSql.customer_state || '',
+                            subtotal: saleDataSql.subtotal || 0,
+                            discount: saleDataSql.discount || 0,
+                            total: saleDataSql.total,
+                            cashAmount: saleDataSql.cash_amount || 0,
+                            otherPaymentAmount: saleDataSql.other_payment_amount || 0,
+                            customerAmount: saleDataSql.customer_amount || 0,
+                            change: saleDataSql.change_amount || 0,
+                            paymentMethod: saleDataSql.payment_method || 'cash',
+                            gstApplied: saleDataSql.gst_applied === 1,
+                            counterCode: '-',
+                            courier: saleDataSql.courier || 0,
+                            items: (saleDataSql.items || []).map(item => ({
+                                productName: item.product_name,
+                                unit: item.unit || 'Piece',
+                                quantity: item.quantity,
+                                price: item.price,
+                                total: item.total,
+                                taxableValue: item.taxable_value,
+                                cgst: item.cgst,
+                                sgst: item.sgst,
+                                igst: item.igst
+                            }))
+                        };
+                        showReceipt();
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Error fetching sale from SQLite for viewBill:', e);
+                }
+            }
+
             const id = parseInt(saleId);
-            const billItems = sales.filter(s => s.saleId === id);
+            const billItems = sales.filter(s => s.saleId === id || s.id === saleId);
             if (billItems.length === 0) return;
 
             const firstItem = billItems[0];
@@ -15830,7 +15893,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             try {
                 // Find all sales matching this query (could be bill number, customer name, date, etc)
-                const searchResults = await window.electronAPI.sqlite.sales.search(billNumber);
+                const res = await window.electronAPI.sqlite.sales.search(billNumber);
+                const searchResults = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
 
                 if (!searchResults || searchResults.length === 0) {
                     container.style.display = 'block';
@@ -15894,7 +15958,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         async function viewSearchedBill(saleId) {
             const container = document.getElementById('billDetailsContainer');
             try {
-                const saleDataSql = await window.electronAPI.sqlite.sales.get(saleId);
+                const res = await window.electronAPI.sqlite.sales.get(saleId);
+                const saleDataSql = (res && res.success && res.data) ? res.data : (res && res.id ? res : null);
                 if (!saleDataSql) {
                     showAlert('Sale details not found!', 'error');
                     return;
@@ -15946,7 +16011,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         async function printReceiptFromBillSql(saleId) {
             try {
-                const saleDataSql = await window.electronAPI.sqlite.sales.get(saleId);
+                const res = await window.electronAPI.sqlite.sales.get(saleId);
+                const saleDataSql = (res && res.success && res.data) ? res.data : (res && res.id ? res : null);
                 if (!saleDataSql) return;
                 
                 const saleData = {
@@ -17910,7 +17976,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                         costPrice: Number(rawCost) || 0,
                         barcode: defVar ? defVar.barcode : p.barcode,
                         expiryDays: p.expiry_days,
-                        minStock: p.min_stock
+                        minStock: p.min_stock,
+                        is_favorite: p.is_favorite ? 1 : 0,
+                        isFavourite: !!p.is_favorite
                     };
                 });
             } else {
@@ -18007,7 +18075,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </tr>
             `).join('');
 
-            if (typeof renderQuickSaleCards === 'function') renderQuickSaleCards();
+
         }
 
         function deleteProduct(id) {
@@ -18116,6 +18184,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             expiryDays: rawProd.expiry_days || rawProd.expiryDays || '',
                             packSizes: parsedPackSizes,
                             variants: rawProd.variants || [],
+                            is_favorite: rawProd.is_favorite ? 1 : 0,
+                            isFavourite: !!rawProd.is_favorite,
                             loc_location: rawProd.loc_location || rawProd.location || '',
                             loc_godown: rawProd.loc_godown || rawProd.godown || '',
                             loc_floor: rawProd.loc_floor || rawProd.floor || '',
@@ -18145,6 +18215,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Populate edit form
             document.getElementById('editProductId').value = product.id;
             document.getElementById('editProductBarcode').value = product.barcode || '';
+            const editFavCb = document.getElementById('editProductIsFavorite');
+            if (editFavCb) editFavCb.checked = !!(product.is_favorite || product.isFavourite);
             document.getElementById('editProductName').value = product.name;
             const editVarInput = document.getElementById('editProductVariant');
             if (editVarInput) editVarInput.value = product.variant || '';
@@ -18334,6 +18406,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         unit: document.getElementById('editProductUnit').value,
                         min_stock: parseFloat(document.getElementById('editProductMinStock').value),
                         supplier: document.getElementById('editProductSupplier').value || 'N/A',
+                        is_favorite: (document.getElementById('editProductIsFavorite') && document.getElementById('editProductIsFavorite').checked) ? 1 : 0,
                         description: document.getElementById('editProductDescription') ? document.getElementById('editProductDescription').value : '',
                         loc_location: (locationSettings && locationSettings.trackLocation !== false && document.getElementById('editProductLoc_location')) ? document.getElementById('editProductLoc_location').value.trim() : (existingProduct.loc_location || existingProduct.location || null),
                         loc_godown: (locationSettings && locationSettings.trackGodown !== false && document.getElementById('editProductLoc_godown')) ? document.getElementById('editProductLoc_godown').value.trim() : (existingProduct.loc_godown || existingProduct.godown || null),
@@ -18369,6 +18442,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         memProd.isFavourite = updateData.is_favorite === 1;
                     }
                     if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
+                    if (typeof window.loadProductsFromDatabase === 'function') await window.loadProductsFromDatabase();
                 } else {
                     // Legacy JSON fallback
                     const product = products.find(p => String(p.id) === String(currentEditingProductId));
@@ -18382,6 +18456,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     product.stock = parseFloat(document.getElementById('editProductStock').value);
                     product.minStock = parseFloat(document.getElementById('editProductMinStock').value);
                     product.supplier = document.getElementById('editProductSupplier').value || 'N/A';
+                    product.is_favorite = (document.getElementById('editProductIsFavorite') && document.getElementById('editProductIsFavorite').checked) ? 1 : 0;
+                    product.isFavourite = product.is_favorite === 1;
                     saveData();
                 }
 
@@ -18970,7 +19046,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             newTotal = Math.max(newTotal, 0);
             document.getElementById('cartTotal').value = newTotal.toFixed(2);
             const elTopRightTotal = document.getElementById('topRightTotalAmount');
-            if (elTopRightTotal) elTopRightTotal.textContent = newTotal.toFixed(2);
+            if (elTopRightTotal) elTopRightTotal.textContent = '₹ ' + newTotal.toFixed(2);
             calculateChange();
         }
 
@@ -24411,104 +24487,34 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
         window.addFavoriteProductToCart = addFavoriteProductToCart;
 
-        function toggleFavourite(id) {
+        async function toggleFavourite(id) {
             const product = products.find(p => String(p.id) === String(id));
+            const newFavStatus = product ? !product.isFavourite : true;
+
             if (product) {
-                product.isFavourite = !product.isFavourite;
-                saveData();
-                updateProductsTable();
-            }
-        }
-
-        function renderQuickSaleCards() {
-            const container = document.getElementById('favouriteProductsSection');
-            const grid = document.getElementById('quickSaleGrid');
-            if (!container || !grid) return;
-
-            const favProducts = products.filter(p => p.isFavourite);
-
-            if (favProducts.length === 0) {
-                container.style.display = 'none';
-                return;
+                product.isFavourite = newFavStatus;
+                product.is_favorite = newFavStatus ? 1 : 0;
             }
 
-            container.style.display = 'block';
-
-            grid.innerHTML = favProducts.map(product => {
-                const imageHtml = product.image 
-                    ? `<img src="${product.image}" alt="${product.name}">` 
-                    : `<div class="quick-sale-placeholder">📦</div>`;
-                
-                const outOfStock = product.stock <= 0;
-                
-                return `
-                    <div class="quick-sale-card" onclick="addQuickSaleItem('${product.id}')" style="${outOfStock ? 'opacity: 0.5; filter: grayscale(1);' : ''}">
-                        <div style="position: absolute; top: 5px; right: 5px; font-size: 14px; z-index: 2;">⭐</div>
-                        ${imageHtml}
-                        <div class="quick-sale-name" title="${product.name}">${product.name}</div>
-                        <div class="quick-sale-price">₹${parseFloat(product.price).toFixed(2)}</div>
-                        <div class="quick-sale-stock" style="${outOfStock ? 'color: red; font-weight: bold;' : ''}">
-                            Stock: ${product.stock}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function addQuickSaleItem(productId) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-            
-            const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
-
-            // Calculate total stock used by this product in cart
-            const currentStockInCart = cart
-                .filter(item => item.productId === product.id)
-                .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
-
-            if (currentStockInCart + prec > product.stock) {
-                showAlert('⚠️ Insufficient Stock for ' + product.name, 'error');
-                return;
-            }
-
-            // Check if product already in cart
-            const unitName = product.unit || 'Piece';
-            const unitPrice = parseFloat(product.price);
-            
-            const existingItemIndex = cart.findIndex(item => item.productId === product.id && item.unit === unitName);
-
-            if (existingItemIndex >= 0) {
-                cart[existingItemIndex].quantity = parseFloat((cart[existingItemIndex].quantity + prec).toFixed(3));
-                cart[existingItemIndex].total = cart[existingItemIndex].quantity * unitPrice;
-            } else {
-                let effDisc = getEffectiveDiscount(product);
-                cart.push({
-                    productId: product.id,
-                    productName: product.name,
-                    barcode: product.barcode,
-                    unit: unitName,
-                    price: unitPrice,
-                    quantity: prec,
-                    baseQuantity: 1,
-                    total: unitPrice,
-                    discountType: effDisc.type,
-                    discountValue: effDisc.value,
-                    discountPercent: effDisc.type === 'percentage' ? effDisc.value : 0
-                });
-            }
-
-            updateCartDisplay();
-            if (typeof playSuccessBeep === 'function') playSuccessBeep();
-            
-            // Visual feedback on card
-            const cards = document.querySelectorAll('.quick-sale-card');
-            cards.forEach(card => {
-                if(card.getAttribute('onclick').includes(`addQuickSaleItem('${product.id}')`)) {
-                    card.style.transform = 'scale(0.95)';
-                    setTimeout(() => card.style.transform = '', 100);
+            if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
+                try {
+                    const res = await window.electronAPI.sqlite.products.get(id);
+                    const dbProd = (res && res.success && res.data) ? res.data : (res && res.id ? res : null);
+                    if (dbProd) {
+                        dbProd.is_favorite = newFavStatus ? 1 : 0;
+                        await window.electronAPI.sqlite.products.update(id, dbProd);
+                    }
+                } catch(err) {
+                    console.error('Failed to update favorite status in SQLite:', err);
                 }
-            });
+            } else {
+                saveData();
+            }
+
+            if (typeof updateProductsTable === 'function') updateProductsTable();
+            if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
         }
+
         // ==========================================
         
         // SQLite-aware Master Data Synchronization

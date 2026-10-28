@@ -119,9 +119,10 @@ class ProductService {
     updateProduct(id, product) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
+            const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
             const stmt = db.prepare('UPDATE products SET name = ?, barcode = ?, category = ?, unit = ?, price = ?, cost_price = ?, min_stock = ?, description = ?, supplier_text = ?, pack_sizes = ?, loc_location = ?, loc_godown = ?, loc_floor = ?, loc_rack = ?, loc_section = ?, loc_shelf = ?, loc_bin = ?, is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
             stmt.run(
-                product.name,
+                product.name !== undefined ? product.name : (existing ? existing.name : ''),
                 product.barcode || null,
                 product.category || null,
                 product.unit || null,

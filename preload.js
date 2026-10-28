@@ -187,9 +187,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
             backupNow: () => ipcRenderer.invoke('sqlite:gdrive:backupNow')
         },
         draftSales: {
-            getAll: (args) => ipcRenderer.invoke('sqlite:draftSales:getAll', args),
-            save: (args) => ipcRenderer.invoke('sqlite:draftSales:save', args),
-            delete: (args) => ipcRenderer.invoke('sqlite:draftSales:delete', args)
+            getAll: (args) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                const payload = (args && typeof args === 'object' && !Array.isArray(args)) ? { sessionToken: token, ...args } : { sessionToken: token, data: args };
+                return ipcRenderer.invoke('sqlite:draftSales:getAll', payload);
+            },
+            save: (draft) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                const payload = (draft && typeof draft === 'object' && draft.sessionToken) ? draft : { sessionToken: token, draft };
+                return ipcRenderer.invoke('sqlite:draftSales:save', payload);
+            },
+            delete: (id) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                const payload = (id && typeof id === 'object' && id.sessionToken) ? id : { sessionToken: token, id };
+                return ipcRenderer.invoke('sqlite:draftSales:delete', payload);
+            }
         },
         dashboard: {
             getMetrics: (options) => ipcRenderer.invoke('sqlite:dashboard:getMetrics', { sessionToken: currentSessionToken, options })
