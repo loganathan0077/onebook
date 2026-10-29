@@ -1979,6 +1979,367 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+
+        
+        /* Today Recent Sales Search Box */
+        .today-sales-search-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            flex: 1;
+            max-width: 320px;
+            min-width: 220px;
+        }
+        .today-sales-search-icon {
+            position: absolute;
+            left: 9px;
+            font-size: 13px;
+            color: #94a3b8;
+            pointer-events: none;
+            line-height: 1;
+            z-index: 2;
+        }
+        .today-sales-search-input {
+            width: 100%;
+            height: 34px;
+            padding: 6px 26px 6px 28px;
+            font-size: 12.5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #ffffff;
+            color: #1e293b;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .today-sales-search-input:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+        }
+        .today-sales-search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: #94a3b8;
+            cursor: pointer;
+            line-height: 1;
+            user-select: none;
+            transition: color 0.15s ease;
+            z-index: 2;
+        }
+        .today-sales-search-clear:hover {
+            color: #ef4444;
+        }
+
+        /* Compact Today Recent Sales Table Styles */
+        .today-sales-table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            margin-bottom: 25px;
+        }
+        .today-sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+            margin: 0 !important;
+            background: #fff;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+        .today-sales-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 8px 10px !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            white-space: nowrap;
+            height: 34px;
+            box-sizing: border-box;
+        }
+        .today-sales-table tbody tr {
+            height: 38px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background-color 0.15s ease;
+        }
+        .today-sales-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        .today-sales-table tbody td {
+            padding: 6px 10px !important;
+            font-size: 12.5px;
+            line-height: 1.3;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9 !important;
+            vertical-align: middle;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+        .today-sales-btn-group {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .today-sales-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 28px;
+            padding: 0 9px;
+            font-size: 11.5px;
+            font-weight: 600;
+            line-height: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            box-sizing: border-box;
+            transition: all 0.15s ease;
+        }
+        .today-sales-btn-view {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border-color: #bae6fd;
+        }
+        .today-sales-btn-view:hover {
+            background-color: #0284c7;
+            color: #ffffff;
+            border-color: #0284c7;
+        }
+        .today-sales-btn-cancel {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+        .today-sales-btn-cancel:hover {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+        .report-actions-btn-group {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        .report-btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 26px;
+            padding: 0 6px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            box-sizing: border-box;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+        .report-btn-receipt {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border-color: #bae6fd;
+        }
+        .report-btn-receipt:hover {
+            background-color: #0284c7;
+            color: #ffffff;
+            border-color: #0284c7;
+        }
+        .report-btn-invoice {
+            background-color: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+        .report-btn-invoice:hover {
+            background-color: #475569;
+            color: #ffffff;
+            border-color: #475569;
+        }
+        .report-btn-cancel {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+        .report-btn-cancel:hover {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+
+        /* Reliable Sticky table header for inventory table */
+        .inventory-table-container {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            display: block;
+            overflow: visible !important;
+            background: white;
+            position: relative;
+        }
+        .inventory-table-container .table-responsive {
+            max-height: 60vh !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            position: relative !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        .inventory-table {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+        }
+        .inventory-table thead {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 30 !important;
+        }
+        .inventory-table thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 30 !important;
+            background-color: #e2e8f0 !important;
+            color: #1e293b !important;
+            border-top: none !important;
+            border-bottom: 2px solid #94a3b8 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08) !important;
+            white-space: nowrap !important;
+        }
+
+        /* Compact Inventory Action Icon Buttons */
+        .inv-actions-cell {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 5px !important;
+            flex-wrap: nowrap !important;
+            white-space: nowrap !important;
+            vertical-align: middle !important;
+        }
+        .inv-action-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            height: 28px !important;
+            padding: 0 !important;
+            border-radius: 5px !important;
+            border: 1px solid transparent !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            box-sizing: border-box !important;
+            text-decoration: none !important;
+            background: transparent;
+        }
+        .inv-action-btn svg {
+            width: 15px !important;
+            height: 15px !important;
+            stroke-width: 2 !important;
+            display: block !important;
+            pointer-events: none !important;
+        }
+        /* 1. Add Variant: warm yellow/orange */
+        .inv-action-variant {
+            background-color: #fef3c7 !important;
+            color: #b45309 !important;
+            border-color: #fde68a !important;
+        }
+        .inv-action-variant:hover {
+            background-color: #d97706 !important;
+            color: #ffffff !important;
+            border-color: #d97706 !important;
+            transform: translateY(-1px);
+        }
+        /* 2. Purchase Order: warm amber/orange */
+        .inv-action-po {
+            background-color: #ffedd5 !important;
+            color: #c2410c !important;
+            border-color: #fed7aa !important;
+        }
+        .inv-action-po:hover {
+            background-color: #ea580c !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+            transform: translateY(-1px);
+        }
+        /* 3. Edit: blue */
+        .inv-action-edit {
+            background-color: #e0f2fe !important;
+            color: #0369a1 !important;
+            border-color: #bae6fd !important;
+        }
+        .inv-action-edit:hover {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+            border-color: #0284c7 !important;
+            transform: translateY(-1px);
+        }
+        /* 4. Delete: red */
+        .inv-action-del {
+            background-color: #fee2e2 !important;
+            color: #b91c1c !important;
+            border-color: #fecaca !important;
+        }
+        .inv-action-del:hover {
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: #dc2626 !important;
+            transform: translateY(-1px);
+        }
+
+        /* Quick Edit Inventory Inputs */
+        .quick-edit-input {
+            width: 100% !important;
+            max-width: 90px !important;
+            height: 28px !important;
+            padding: 2px 6px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            text-align: right !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            background-color: #fff !important;
+            color: #0f172a !important;
+            box-sizing: border-box !important;
+            transition: all 0.15s ease !important;
+        }
+        .quick-edit-input:focus {
+            outline: none !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+            background-color: #f8fafc !important;
+        }
+        .quick-edit-input.save-success {
+            border-color: #22c55e !important;
+            background-color: #f0fdf4 !important;
+            color: #166534 !important;
+        }
+        .quick-edit-input.save-error {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            color: #991b1b !important;
+        }
 </style>
 <style>
 .shortcut-letter {
@@ -2304,24 +2665,25 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <option value="no_expiry">No Expiry</option>
                     </select>
                 </div>
-                <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
-                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;">
-                        <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
-                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
+                <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; background: white;">
+                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: auto;">
+                        <table class="inventory-table" style="margin: 0; min-width: 1280px; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                            <thead>
                                 <tr>
-                                    <th onclick="sortInventory('barcode')" style="cursor: pointer; width: 12%;">Barcode <span id="sort-barcode"></span></th>
+                                    <th onclick="sortInventory('barcode')" style="cursor: pointer; width: 11%;">Barcode <span id="sort-barcode"></span></th>
                                     <th onclick="sortInventory('name')" style="cursor: pointer; width: 18%;">Product <span id="sort-name"></span></th>
-                                    <th class="gst-field" style="display:none; width: 6%;">HSN</th>
-                                    <th class="gst-field" style="display:none; width: 6%;">GST%</th>
-                                    <th onclick="sortInventory('category')" style="cursor: pointer; width: 10%;">Category <span id="sort-category"></span></th>
-                                    <th id="thInventoryLocation" style="width: 10%; display: none;">Location</th>
-                                    <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 10%;" class="expiry-tracking-feature">Expiry Date <span id="sort-expiryDate"></span></th>
-                                    <th onclick="sortInventory('stock')" style="cursor: pointer; width: 8%;">Stock <span id="sort-stock"></span></th>
-                                    <th onclick="sortInventory('price')" style="cursor: pointer; width: 8%;">Price <span id="sort-price"></span></th>
-                                    <th onclick="sortInventory('discount')" style="cursor: pointer; width: 8%;">Disc <span id="sort-discount"></span></th>
-                                    <th onclick="sortInventory('totalValue')" style="cursor: pointer; width: 8%;">Total <span id="sort-totalValue"></span></th>
-                                    <th onclick="sortInventory('status')" style="cursor: pointer; width: 8%;">Status <span id="sort-status"></span></th>
-                                    <th style="width: 14%; text-align: center;">Actions</th>
+                                    <th class="gst-field" style="display:none; width: 5%;">HSN</th>
+                                    <th class="gst-field" style="display:none; width: 5%;">GST%</th>
+                                    <th onclick="sortInventory('category')" style="cursor: pointer; width: 9%;">Category <span id="sort-category"></span></th>
+                                    <th id="thInventoryLocation" onclick="sortInventory('location')" style="cursor: pointer; width: 11%;">Location <span id="sort-location"></span></th>
+                                    <th onclick="sortInventory('expiryDate')" style="cursor: pointer; width: 7%;" class="expiry-tracking-feature">Expiry Date <span id="sort-expiryDate"></span></th>
+                                    <th onclick="sortInventory('unit')" style="cursor: pointer; width: 5%;">Unit <span id="sort-unit"></span></th>
+                                    <th onclick="sortInventory('stock')" style="cursor: pointer; width: 7%; text-align: right;">Stock <span id="sort-stock"></span></th>
+                                    <th onclick="sortInventory('price')" style="cursor: pointer; width: 7%; text-align: right;">Price <span id="sort-price"></span></th>
+                                    <th onclick="sortInventory('discount')" style="cursor: pointer; width: 4%; text-align: center;">Disc <span id="sort-discount"></span></th>
+                                    <th onclick="sortInventory('totalValue')" style="cursor: pointer; width: 7%; text-align: right;">Total <span id="sort-totalValue"></span></th>
+                                    <th onclick="sortInventory('status')" style="cursor: pointer; width: 6%; text-align: center;">Status <span id="sort-status"></span></th>
+                                    <th style="width: 14%; min-width: 145px; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody"></tbody>
@@ -2956,67 +3318,38 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <div id="draftSalesList" style="display: grid; gap: 10px;"></div>
                 </div>
 
-                <!-- Sale Receipt Modal -->
-                <div id="saleReceipt" class="modal" style="display: none; z-index: 3000; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.6);">
-                    <div class="modal-content" style="max-width: 500px; padding: 0; border-radius: 12px; text-align: center; max-height: 90vh; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
-                        <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 15px 25px; margin: 0; justify-content: space-between; flex-shrink: 0; background: #fff;">
-                            <h2 style="margin: 0; font-size: 20px; color: #333;">Sale Receipt</h2>
-                            <span class="close" onclick="closeReceipt()" style="font-size: 26px; cursor: pointer; color: #999; line-height: 1;">&times;</span>
-                        </div>
-                        <div id="receiptContent" style="padding: 20px 25px; overflow-y: auto; flex-grow: 1; background: #fff;"></div>
-                        <div style="padding: 15px 20px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; flex-shrink: 0;">
-                            <button class="btn btn-primary" onclick="printReceipt()" style="padding: 6px 12px; font-size: 13px;">🖨️ <span style="color: #ffc107; font-weight: 900;">P</span>rint</button>
-                            <button class="btn btn-danger" onclick="saveReceiptPDF()" style="padding: 6px 12px; font-size: 13px;">💾 <span style="color: #ffc107; font-weight: 900;">S</span>ave as PDF</button>
-                            <button class="btn btn-success" onclick="sendReceiptToWhatsApp()" style="background: #25D366; border-color: #25D366; padding: 6px 12px; font-size: 13px;">📱 Send to <span style="color: #ffc107; font-weight: 900;">W</span>hatsApp</button>
-                            <button class="btn btn-info" onclick="openGSTInvoice()" style="padding: 6px 12px; font-size: 13px;">📄 <span style="color: #ffc107; font-weight: 900;">I</span>nvoice</button>
-                            <button class="btn btn-warning" onclick="closeReceipt()" style="padding: 6px 12px; font-size: 13px;">✖️ Close</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- GST Invoice Modal -->
-                <div id="gstInvoiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; overflow-y: auto; padding: 20px;">
-                    <div style="max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
-                        <!-- Action Bar -->
-                        <div style="padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0;">
-                            <h3 style="margin: 0;">GST Tax Invoice</h3>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-primary" onclick="printGSTInvoice()">🖨️ Print Invoice</button>
-                                <button class="btn btn-danger" onclick="downloadGSTInvoicePDF()">⬇️ Download PDF</button>
-                                <button class="btn btn-success" onclick="sendInvoiceToWhatsApp()" style="background: #25D366; border-color: #25D366;">📱 Send to WhatsApp</button>
-                                <button class="btn btn-warning" onclick="closeGSTInvoice()">✖️ Close</button>
-                            </div>
-                        </div>
-                        
-                        <!-- Printable A4 Area -->
-                        <div id="gstInvoicePrintArea" style="padding: 40px; background: white; min-height: 1122px; width: 100%; max-width: 794px; margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; color: #333;">
-                            <!-- Content injected via JS -->
-                        </div>
-                    </div>
-                </div>
-
                 <div class="responsive-header"
                     style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
                     <h4 class="section-title"
-                        style="margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;"
+                        style="margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                         id="recordSalesTitle">Today's Sales</h4>
-                    <input type="date" id="recordSalesDate" onchange="updateTodaysSales()"
-                        style="padding: 8px; border-radius: 5px; border: 1px solid #dee2e6; max-width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto;">
+                        <div class="today-sales-search-wrapper">
+                            <span class="today-sales-search-icon">🔍</span>
+                            <input type="text" id="todaySalesSearchInput" class="today-sales-search-input"
+                                placeholder="Search bill no, amount, or customer..."
+                                oninput="handleTodaySalesSearch(this.value)" autocomplete="off">
+                            <span id="todaySalesSearchClear" class="today-sales-search-clear"
+                                onclick="clearTodaySalesSearch()" style="display: none;" title="Clear search">&times;</span>
+                        </div>
+                        <input type="date" id="recordSalesDate" onchange="updateTodaysSales()"
+                            style="padding: 6px 10px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12.5px; box-sizing: border-box; background: #fff; color: #1e293b;">
+                    </div>
                 </div>
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div class="today-sales-table-wrapper">
+                    <table class="today-sales-table">
+                        <thead>
                             <tr>
-                                <th>Sale Date</th>
-                                <th>Entry Date & Time</th>
-                                <th>Bill No</th>
-                                <th>Subtotal</th>
-                                <th>Discount</th>
-                                <th>Courier</th>
-                                <th>Total</th>
-                                <th>Customer</th>
-                                <th>Payment</th>
-                                <th>Actions</th>
+                                <th style="text-align: left; width: 95px;">Sale Date</th>
+                                <th style="text-align: left; width: 140px;">Entry Date & Time</th>
+                                <th style="text-align: left; width: 120px;">Bill No</th>
+                                <th style="text-align: right; width: 85px;">Subtotal</th>
+                                <th style="text-align: right; width: 80px;">Discount</th>
+                                <th style="text-align: right; width: 80px;">Courier</th>
+                                <th style="text-align: right; width: 95px;">Total</th>
+                                <th style="text-align: left; min-width: 130px;">Customer</th>
+                                <th style="text-align: left; width: 110px;">Payment</th>
+                                <th style="text-align: center; width: 145px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="todaySalesBody"></tbody>
@@ -3035,53 +3368,51 @@ input:focus, select:focus, textarea:focus, button:focus {
                 <div class="report-section" style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     
                     <!-- Filters -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
+                    <!-- Unified Filters Bar -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 15px;">
                         
-                        <!-- Date Filter -->
-                        <div style="flex: 1; min-width: 300px;">
-                            <label style="font-weight: bold; color: #495057;">📅 Date Range</label>
-                            <div style="display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap;">
-                                <select id="globalReportDateFilter" class="form-control" style="width: 100%; max-width: 400px; padding: 10px; font-size: 16px; height: auto;" onchange="handleGlobalDateFilterChange()">
-                                    <option value="today">Today</option>
-                                    <option value="yesterday">Yesterday</option>
-                                    <option value="this_week">This Week</option>
-                                    <option value="this_month">This Month</option>
-                                    <option value="last_month">Last Month</option>
-                                    <option value="custom">Custom Date</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Custom Date Range -->
-                            <div id="globalReportCustomDateContainer" style="display: none; gap: 10px; margin-top: 10px; align-items: center;">
-                                <input type="date" id="globalReportStartDate" class="form-control">
-                                <span>to</span>
-                                <input type="date" id="globalReportEndDate" class="form-control">
-                                <button class="btn btn-primary btn-sm" onclick="generateOnScreenReports()">Apply Filter</button>
+                        <!-- 1. Quick Date Range Dropdown -->
+                        <div style="flex: 0 0 auto; min-width: 170px;">
+                            <label style="display: block; font-weight: bold; color: #495057; font-size: 13px; margin-bottom: 5px;">📅 Date Range</label>
+                            <select id="globalReportDateFilter" class="form-control" style="width: 100%; height: 38px; padding: 6px 12px; font-size: 13px; border-radius: 6px; border: 1px solid #ced4da; box-sizing: border-box;" onchange="handleGlobalDateFilterChange()">
+                                <option value="today" selected>Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="last_week">Last Week</option>
+                                <option value="this_month">This Month</option>
+                                <option value="last_month">Last Month</option>
+                                <option value="this_year">This Year</option>
+                                <option value="custom">Custom Date Range</option>
+                            </select>
+                        </div>
+
+                        <!-- 2. Single-Date Calendar Filter -->
+                        <div style="flex: 0 0 auto; min-width: 150px;">
+                            <label style="display: block; font-weight: bold; color: #495057; font-size: 13px; margin-bottom: 5px;">🗓️ Select Date</label>
+                            <input type="date" id="globalReportSingleDate" class="form-control" style="width: 100%; height: 38px; padding: 6px 10px; font-size: 13px; border-radius: 6px; border: 1px solid #ced4da; box-sizing: border-box;" onchange="handleGlobalSingleDateChange(this.value)">
+                        </div>
+
+                        <!-- 3. Combined Search Sales Input -->
+                        <div style="flex: 1 1 340px; min-width: 280px;">
+                            <label style="display: block; font-weight: bold; color: #495057; font-size: 13px; margin-bottom: 5px;">🔍 Search Sales</label>
+                            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                <input type="text" id="globalReportSalesSearch" class="form-control" style="width: 100%; height: 38px; padding: 6px 36px 6px 12px; font-size: 13px; border-radius: 6px; border: 1px solid #ced4da; box-sizing: border-box;" placeholder="Search by customer name, bill/invoice number, amount, GSTIN, or phone number..." oninput="handleGlobalSalesSearchInput(this.value)">
+                                <button type="button" id="clearGlobalReportSearchBtn" onclick="clearGlobalReportSalesSearch()" style="display: none; position: absolute; right: 10px; background: none; border: none; font-size: 16px; color: #94a3b8; cursor: pointer; padding: 0; line-height: 1;" title="Clear search">✕</button>
                             </div>
                         </div>
 
-                        <!-- Customer Filter -->
-                        <div style="flex: 1; min-width: 300px;">
-                            <label style="font-weight: bold; color: #495057;">👥 Customer Filter (Optional)</label>
-                            <div style="position: relative; margin-top: 5px;">
-                                <input type="text" id="globalReportCustomerSearch" class="form-control" style="width: 100%; max-width: 400px; padding: 10px; font-size: 16px; height: auto;" placeholder="Search customer name, phone, or GSTIN..." oninput="searchGlobalReportCustomer(this.value)">
-                                <div id="globalReportCustomerResults" class="custom-dropdown" style="display: none; position: absolute; width: 100%; top: 100%; left: 0; z-index: 1000; max-height: 200px; overflow-y: auto;"></div>
-                            </div>
-                            <div id="globalReportSelectedCustomerContainer" style="display: none; margin-top: 10px; padding: 10px; background: #e9ecef; border-radius: 5px; align-items: center; justify-content: space-between;">
-                                <div><strong id="globalReportSelectedCustomerName"></strong></div>
-                                <button class="btn btn-sm btn-outline-danger" onclick="clearGlobalReportCustomer()">❌ Clear</button>
-                            </div>
-                            <input type="hidden" id="globalReportCustomerId" value="">
-                        </div>
-                        
-                        <!-- View Bill Search -->
-                        <div style="flex: 1; min-width: 250px;">
-                            <label style="font-weight: bold; color: #495057;">🔍 View Bill</label>
-                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                                <input type="text" id="billSearchInput" class="form-control" placeholder="Bill No. (e.g., 13-112025)" style="flex: 1; max-width: 250px; padding: 10px; font-size: 16px; height: 44px; box-sizing: border-box;">
-                                <button class="btn btn-primary" onclick="searchBill()" style="height: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; white-space: nowrap;">🔍 Search</button>
-                            </div>
-                        </div>
+                        <!-- Hidden fields for compatibility -->
+                        <input type="hidden" id="globalReportCustomerId" value="">
+                        <input type="hidden" id="billSearchInput" value="">
+                    </div>
+
+                    <!-- Custom Date Range Row (Shown when 'Custom Date Range' is selected) -->
+                    <div id="globalReportCustomDateContainer" style="display: none; gap: 10px; margin-bottom: 15px; align-items: center; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                        <span style="font-weight: 600; font-size: 13px; color: #475569;">From:</span>
+                        <input type="date" id="globalReportStartDate" class="form-control" style="height: 34px; padding: 4px 8px; font-size: 13px; border-radius: 4px; width: auto;">
+                        <span style="font-weight: 600; font-size: 13px; color: #475569;">To:</span>
+                        <input type="date" id="globalReportEndDate" class="form-control" style="height: 34px; padding: 4px 8px; font-size: 13px; border-radius: 4px; width: auto;">
+                        <button type="button" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 14px; font-size: 12px;" onclick="generateOnScreenReports()">Apply Range</button>
                     </div>
                     
                     <div id="billDetailsContainer" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px;">
@@ -3112,25 +3443,25 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <!-- Tab Contents -->
                     <div id="subTabBillWise" class="report-sub-tab">
                         <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
-                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
-                                <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
+                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto; overflow-x: auto;">
+                                <table class="inventory-table" style="margin: 0; min-width: 1300px; width: 100%; table-layout: fixed; border-collapse: collapse;">
                                     <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
                                         <tr>
-                                            <th style="width: 8%">Sale Date</th>
-                                            <th style="width: 12%">Entry Date & Time</th>
-                                            <th style="width: 8%">Bill No</th>
-                                            <th style="width: 8%">Counter</th>
-                                            <th style="width: 12%">Customer</th>
-                                            <th style="width: 8%">GSTIN</th>
-                                            <th style="width: 8%">Subtotal</th>
-                                            <th style="width: 8%">Discount</th>
-                                            <th style="width: 8%">Taxable</th>
-                                            <th style="width: 6%">CGST</th>
-                                            <th style="width: 6%">SGST</th>
-                                            <th style="width: 6%">IGST</th>
-                                            <th style="width: 8%">Total</th>
-                                            <th style="width: 8%">Payment</th>
-                                            <th style="width: 8%; text-align: center;">Actions</th>
+                                            <th style="width: 7%">Sale Date</th>
+                                            <th style="width: 11%">Entry Date & Time</th>
+                                            <th style="width: 9%">Bill No</th>
+                                            <th style="width: 5%">Counter</th>
+                                            <th style="width: 10%">Customer</th>
+                                            <th style="width: 7%">GSTIN</th>
+                                            <th style="width: 6%">Subtotal</th>
+                                            <th style="width: 6%">Discount</th>
+                                            <th style="width: 6%">Taxable</th>
+                                            <th style="width: 5%">CGST</th>
+                                            <th style="width: 5%">SGST</th>
+                                            <th style="width: 5%">IGST</th>
+                                            <th style="width: 7%">Total</th>
+                                            <th style="width: 7%">Payment</th>
+                                            <th style="width: 15%; min-width: 195px; text-align: center;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="billWiseReportBody"></tbody>
@@ -4634,6 +4965,16 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <!-- General Settings -->
                         <div id="settings-pane-general" class="settings-pane">
                             <h3>⚙️ General Settings</h3>
+                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0;">⚡ Quick Edit Inventory</h4>
+                                    <p style="color: #666; margin: 0; font-size: 13px;">Edit stock and selling price directly in the inventory table.</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingsQuickEditInventory" onchange="toggleSetting('quickEditInventory', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                             <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h4 style="margin: 0 0 5px 0;">📅 Enable Sales Date</h4>
@@ -8007,6 +8348,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 quickSaleBarcode: true,
                 showFavorites: false,
                 showBarcode: false,
+                quickEditInventory: false,
                 adminPassword: 'Admin@2026',
                 // Label Printing Settings
                 labelPreset: 'pen',
@@ -11352,6 +11694,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 
                 if (tabName === 'sales') {
+                    if (window.DATA_BACKEND === 'sqlite' && typeof window.loadProductsFromDatabase === 'function') {
+                        window.loadProductsFromDatabase().catch(console.error);
+                    }
                     // Aggressively attempt to focus the Search Product field (solves edge-case race conditions on load/tab switch)
                     let focusAttempts = 0;
                     const focusInterval = setInterval(() => {
@@ -11841,6 +12186,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                         valA = (a.category || '').toLowerCase();
                         valB = (b.category || '').toLowerCase();
                         break;
+                    case 'location':
+                        valA = (formatProductLocationSummary(a) || '').toLowerCase();
+                        valB = (formatProductLocationSummary(b) || '').toLowerCase();
+                        break;
+                    case 'unit':
+                        valA = (a.unit || 'Piece').toLowerCase();
+                        valB = (b.unit || 'Piece').toLowerCase();
+                        break;
                     case 'expiryDate':
                         valA = a.expiryDate ? new Date(a.expiryDate).getTime() : 9999999999999;
                         valB = b.expiryDate ? new Date(b.expiryDate).getTime() : 9999999999999;
@@ -11882,6 +12235,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const tbody = document.getElementById('inventoryTableBody');
             if (!tbody) return;
 
+            const isQuickEdit = settings.quickEditInventory === true;
+
             const searchInput = document.getElementById('inventorySearch');
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
@@ -11911,6 +12266,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         id: p.id,
                         barcode: p.barcode,
                         name: p.name,
+                        unit: p.unit || 'Piece',
                         category: p.category,
                         loc_location: p.loc_location,
                         loc_godown: p.loc_godown,
@@ -11933,17 +12289,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                             variantName: v.variantName,
                             sku: v.sku,
                             barcode: v.barcode,
+                            unit: v.unit || p.unit || 'Piece',
                             buyingPrice: v.buyingPrice,
                             sellingPrice: v.sellingPrice,
                             stock: v.stock,
                             minimumStock: p.min_stock,
-                            loc_location: v.loc_location || null,
-                            loc_godown: v.loc_godown || null,
-                            loc_floor: v.loc_floor || null,
-                            loc_rack: v.loc_rack || null,
-                            loc_section: v.loc_section || null,
-                            loc_shelf: v.loc_shelf || null,
-                            loc_bin: v.loc_bin || null
+                            loc_location: v.loc_location || p.loc_location || null,
+                            loc_godown: v.loc_godown || p.loc_godown || null,
+                            loc_floor: v.loc_floor || p.loc_floor || null,
+                            loc_rack: v.loc_rack || p.loc_rack || null,
+                            loc_section: v.loc_section || p.loc_section || null,
+                            loc_shelf: v.loc_shelf || p.loc_shelf || null,
+                            loc_bin: v.loc_bin || p.loc_bin || null
                         }))
                     };
                 });
@@ -11967,14 +12324,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return true;
             });
 
-            const isLocEnabled = (typeof locationSettings !== 'undefined' && locationSettings && locationSettings.enabled);
-            const thLoc = document.getElementById('thInventoryLocation');
-            if (thLoc) thLoc.style.display = isLocEnabled ? 'table-cell' : 'none';
-
             if (filteredProducts.length === 0) {
-                let baseCols = settings.gstEnabled ? 10 : 8;
-                if (isLocEnabled) baseCols++;
-                tbody.innerHTML = `<tr><td colspan="${baseCols}" style="text-align: center;">No matching products found</td></tr>`;
+                let baseCols = settings.gstEnabled ? 13 : 11;
+                tbody.innerHTML = `<tr><td colspan="${baseCols}" style="text-align: center; padding: 20px; color: #64748b;">No matching products found</td></tr>`;
                 return;
             }
 
@@ -11994,6 +12346,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     expiryDisplay = `${formattedDate}`;
                 }
 
+                const parentLocationSummary = formatProductLocationSummary(product);
+
                 if (window.hasVariants(product)) {
                     let rows = '';
                     
@@ -12012,32 +12366,66 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                     variantsToRender.forEach(v => {
                         let vStock = parseInt(v.stock) || 0;
+                        let vPrice = parseFloat(v.sellingPrice) || 0;
                         let vMinStock = parseInt(v.minimumStock) || parseInt(product.minStock) || 0;
                         let stockStatus = vStock <= 0 ? 'stock-low' : (vStock <= vMinStock ? 'stock-low' : 'stock-ok');
                         let statusText = vStock <= 0 ? '🔴 Out of Stock' : (vStock <= vMinStock ? '🟡 Low Stock' : '🟢 In Stock');
-                        let totalValue = ((v.sellingPrice || 0) * vStock).toFixed(2);
+                        let totalValue = (vPrice * vStock).toFixed(2);
                         let vDisplayName = window.getVariantDisplayName(product, v);
+                        let vUnit = v.unit || product.unit || 'Piece';
+                        let vLoc = formatProductLocationSummary(v) || parentLocationSummary || '—';
                         
                         const isMainVariant = product.variants.length > 0 && String(v.id) === String(product.variants[0].id);
-                        
+
+                        const stockCell = isQuickEdit ? `
+                            <td style="text-align: right; padding: 4px 8px;">
+                                <input type="number" class="quick-edit-input quick-edit-stock" 
+                                    data-record-type="variant" data-product-id="${product.id}" data-variant-id="${v.id}" 
+                                    data-saved-val="${vStock}" value="${vStock}" min="0" step="1"
+                                    onkeydown="handleQuickEditKeydown(event, this, 'stock')"
+                                    onblur="handleQuickEditBlur(this, 'stock')">
+                            </td>` : `<td class="${stockStatus}" style="text-align: right; font-weight: 600;">${vStock}</td>`;
+
+                        const priceCell = isQuickEdit ? `
+                            <td style="text-align: right; padding: 4px 8px;">
+                                <input type="number" class="quick-edit-input quick-edit-price" 
+                                    data-record-type="variant" data-product-id="${product.id}" data-variant-id="${v.id}" 
+                                    data-saved-val="${vPrice.toFixed(2)}" value="${vPrice.toFixed(2)}" min="0" step="0.01"
+                                    onkeydown="handleQuickEditKeydown(event, this, 'price')"
+                                    onblur="handleQuickEditBlur(this, 'price')">
+                            </td>` : `<td style="text-align: right; font-weight: 600;">₹${vPrice.toFixed(2)}</td>`;
+
                         rows += `
                         <tr data-product-id="${product.id}" data-variant-id="${v.id}" data-parent-id="${product.id}" data-record-type="variant">
                             <td>${v.barcode || v.sku || '-'}</td>
                             <td>${vDisplayName}</td>
                             ${settings.gstEnabled ? `<td>${product.hsn || ''}</td><td>${product.gstRate || 0}%</td>` : ''}
                             <td>${product.category || 'Uncategorized'}</td>
-                            ${isLocEnabled ? `<td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${formatProductLocationSummary(v) || '—'}">${formatProductLocationSummary(v) || '—'}</td>` : ''}
+                            <td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${vLoc}">${vLoc}</td>
                             <td class="expiry-tracking-feature">—</td>
-                            <td class="${stockStatus}">${vStock}</td>
-                            <td>₹${(v.sellingPrice || 0).toFixed(2)}</td>
-                            <td>—</td>
-                            <td>₹${totalValue}</td>
-                            <td class="${stockStatus}">${statusText}</td>
-                            <td>
-                                ${isMainVariant ? `<button class="btn btn-info btn-sm" onclick="openAddVariantModal('${product.id}')" title="Add Variant" style="margin-right: 2px;">+ Variant</button>` : ''}
-                                <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}','${v.id}')" title="PO">PO</button>
-                                ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="handleEditInventoryRow('variant','${product.id}','${v.id}')" title="Edit">Edit</button>` : ''}
-                                ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete">Del</button>` : ''}
+                            <td style="font-size: 12px; color: #475569;">${vUnit}</td>
+                            ${stockCell}
+                            ${priceCell}
+                            <td style="text-align: center;">—</td>
+                            <td class="inv-row-total" style="text-align: right; font-weight: 600;">₹${totalValue}</td>
+                            <td class="inv-row-status ${stockStatus}" style="text-align: center;">${statusText}</td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <div class="inv-actions-cell">
+                                    <button type="button" class="inv-action-btn inv-action-variant" onclick="openAddVariantModal('${product.id}')" title="Add Variant" aria-label="Add Variant">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                                    </button>
+                                    <button type="button" class="inv-action-btn inv-action-po" onclick="addToPOFromInventory('${product.id}','${v.id}')" title="Create Purchase Order" aria-label="Create Purchase Order">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                    </button>
+                                    ${window.hasPermission('product_add_edit') ? `
+                                    <button type="button" class="inv-action-btn inv-action-edit" onclick="handleEditInventoryRow('variant','${product.id}','${v.id}')" title="Edit Product" aria-label="Edit Product">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                    </button>` : ''}
+                                    ${window.hasPermission('delete') ? `
+                                    <button type="button" class="inv-action-btn inv-action-del" onclick="deleteInventoryVariant('${product.id}','${v.id}')" title="Delete Product" aria-label="Delete Product">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                    </button>` : ''}
+                                </div>
                             </td>
                         </tr>`;
                     });
@@ -12046,10 +12434,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 } else {
                     let vStock = 0;
                     let vPrice = 0;
+                    let vId = '';
                     
                     if (window.DATA_BACKEND === 'sqlite' && product.variants && product.variants.length > 0) {
                         vStock = parseInt(product.variants[0].stock) || 0;
                         vPrice = parseFloat(product.variants[0].sellingPrice) || 0;
+                        vId = String(product.variants[0].id);
                     } else {
                         vStock = parseInt(product.stock) || 0;
                         vPrice = parseFloat(product.price) || 0;
@@ -12068,6 +12458,26 @@ input:focus, select:focus, textarea:focus, button:focus {
                         statusText = '🟢 In Stock';
                     }
                     const totalValue = (vPrice * vStock).toFixed(2);
+                    const prodUnit = product.unit || 'Piece';
+                    const prodLoc = parentLocationSummary || '—';
+
+                    const stockCell = isQuickEdit ? `
+                        <td style="text-align: right; padding: 4px 8px;">
+                            <input type="number" class="quick-edit-input quick-edit-stock" 
+                                data-record-type="product" data-product-id="${product.id}" data-variant-id="${vId}" 
+                                data-saved-val="${vStock}" value="${vStock}" min="0" step="1"
+                                onkeydown="handleQuickEditKeydown(event, this, 'stock')"
+                                onblur="handleQuickEditBlur(this, 'stock')">
+                        </td>` : `<td class="${stockStatus}" style="text-align: right; font-weight: 600;">${vStock}</td>`;
+
+                    const priceCell = isQuickEdit ? `
+                        <td style="text-align: right; padding: 4px 8px;">
+                            <input type="number" class="quick-edit-input quick-edit-price" 
+                                data-record-type="product" data-product-id="${product.id}" data-variant-id="${vId}" 
+                                data-saved-val="${vPrice.toFixed(2)}" value="${vPrice.toFixed(2)}" min="0" step="0.01"
+                                onkeydown="handleQuickEditKeydown(event, this, 'price')"
+                                onblur="handleQuickEditBlur(this, 'price')">
+                        </td>` : `<td style="text-align: right; font-weight: 600;">₹${vPrice.toFixed(2)}</td>`;
                     
                     return `
                     <tr data-product-id="${product.id}" data-parent-id="${product.id}" data-record-type="product" onclick="if(window.selectInventoryRowKeyboard) window.selectInventoryRowKeyboard('${product.id}')">
@@ -12076,21 +12486,258 @@ input:focus, select:focus, textarea:focus, button:focus {
                         ${settings.gstEnabled ? `<td>${product.hsn || ''}</td>` : ''}
                         ${settings.gstEnabled ? `<td>${product.gstRate || 0}%</td>` : ''}
                         <td>${product.category || 'Uncategorized'}</td>
-                        ${isLocEnabled ? `<td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;" title="${formatProductLocationSummary(product) || '—'}">${formatProductLocationSummary(product) || '—'}</td>` : ''}
+                        <td style="font-size: 11.5px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${prodLoc}">${prodLoc}</td>
                         <td class="expiry-tracking-feature">${expiryDisplay}</td>
-                        <td class="${stockStatus}">${vStock}</td>
-                        <td>₹${vPrice.toFixed(2)}</td>
-                        <td>${displayDiscount}</td>
-                        <td>₹${totalValue}</td>
-                        <td class="${stockStatus}">${statusText}</td>
-                        <td>
-                            <button class="btn btn-info btn-sm" onclick="addToPOFromInventory('${product.id}')" title="PO">PO</button>
-                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="handleEditInventoryRow('product','${product.id}')" title="Refill/Edit">Edit</button>` : ''}
-                            ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteInventoryProduct('${product.id}')" title="Delete">Del</button>` : ''}
+                        <td style="font-size: 12px; color: #475569;">${prodUnit}</td>
+                        ${stockCell}
+                        ${priceCell}
+                        <td style="text-align: center;">${displayDiscount}</td>
+                        <td class="inv-row-total" style="text-align: right; font-weight: 600;">₹${totalValue}</td>
+                        <td class="inv-row-status ${stockStatus}" style="text-align: center;">${statusText}</td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <div class="inv-actions-cell">
+                                <button type="button" class="inv-action-btn inv-action-variant" onclick="openAddVariantModal('${product.id}')" title="Add Variant" aria-label="Add Variant">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                                </button>
+                                <button type="button" class="inv-action-btn inv-action-po" onclick="addToPOFromInventory('${product.id}')" title="Create Purchase Order" aria-label="Create Purchase Order">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                </button>
+                                ${window.hasPermission('product_add_edit') ? `
+                                <button type="button" class="inv-action-btn inv-action-edit" onclick="handleEditInventoryRow('product','${product.id}')" title="Edit Product" aria-label="Edit Product">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                </button>` : ''}
+                                ${window.hasPermission('delete') ? `
+                                <button type="button" class="inv-action-btn inv-action-del" onclick="deleteInventoryProduct('${product.id}')" title="Delete Product" aria-label="Delete Product">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>` : ''}
+                            </div>
                         </td>
                     </tr>`;
                 }
             }).join('');
+        }
+
+        
+        // --- Quick Edit Inventory Handlers and Keyboard Navigation ---
+        let isQuickEditSaving = false;
+
+        async function handleQuickEditKeydown(e, inputEl, fieldType) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const success = await saveQuickEditField(inputEl, fieldType);
+                if (success) {
+                    // Enter navigation: if stock -> move to price in same row; if price -> move to stock in next row
+                    if (fieldType === 'stock') {
+                        moveQuickEditFocus(inputEl, 'right');
+                    } else if (fieldType === 'price') {
+                        moveQuickEditFocus(inputEl, 'down_to_stock');
+                    }
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const success = await saveQuickEditField(inputEl, fieldType);
+                if (success) moveQuickEditFocus(inputEl, 'down');
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const success = await saveQuickEditField(inputEl, fieldType);
+                if (success) moveQuickEditFocus(inputEl, 'up');
+            } else if (e.key === 'ArrowRight' && (inputEl.selectionEnd === inputEl.value.length || e.altKey)) {
+                if (fieldType === 'stock') {
+                    e.preventDefault();
+                    const success = await saveQuickEditField(inputEl, fieldType);
+                    if (success) moveQuickEditFocus(inputEl, 'right');
+                }
+            } else if (e.key === 'ArrowLeft' && (inputEl.selectionStart === 0 || e.altKey)) {
+                if (fieldType === 'price') {
+                    e.preventDefault();
+                    const success = await saveQuickEditField(inputEl, fieldType);
+                    if (success) moveQuickEditFocus(inputEl, 'left');
+                }
+            }
+        }
+
+        async function handleQuickEditBlur(inputEl, fieldType) {
+            await saveQuickEditField(inputEl, fieldType);
+        }
+
+        function moveQuickEditFocus(currentInput, direction) {
+            const row = currentInput.closest('tr');
+            if (!row) return;
+
+            let targetInput = null;
+
+            if (direction === 'right') {
+                targetInput = row.querySelector('.quick-edit-price');
+            } else if (direction === 'left') {
+                targetInput = row.querySelector('.quick-edit-stock');
+            } else if (direction === 'down') {
+                const nextRow = row.nextElementSibling;
+                if (nextRow) {
+                    const selector = currentInput.classList.contains('quick-edit-stock') ? '.quick-edit-stock' : '.quick-edit-price';
+                    targetInput = nextRow.querySelector(selector);
+                }
+            } else if (direction === 'up') {
+                const prevRow = row.previousElementSibling;
+                if (prevRow) {
+                    const selector = currentInput.classList.contains('quick-edit-stock') ? '.quick-edit-stock' : '.quick-edit-price';
+                    targetInput = prevRow.querySelector(selector);
+                }
+            } else if (direction === 'down_to_stock') {
+                const nextRow = row.nextElementSibling;
+                if (nextRow) {
+                    targetInput = nextRow.querySelector('.quick-edit-stock');
+                }
+            }
+
+            if (targetInput) {
+                targetInput.focus();
+                targetInput.select();
+            }
+        }
+
+        async function saveQuickEditField(inputEl, fieldType) {
+            if (isQuickEditSaving) return true;
+            const savedVal = inputEl.dataset.savedVal;
+            const currentValStr = inputEl.value.trim();
+
+            // If value hasn't changed, nothing to do
+            if (currentValStr === savedVal) return true;
+
+            const val = parseFloat(currentValStr);
+
+            // Validation: must be valid non-negative number
+            if (isNaN(val) || val < 0 || (fieldType === 'stock' && !Number.isInteger(val))) {
+                inputEl.classList.add('save-error');
+                showAlert(`Invalid ${fieldType}: please enter a valid non-negative ${fieldType === 'stock' ? 'whole number' : 'number'}.`, '⚠️');
+                inputEl.value = savedVal;
+                setTimeout(() => inputEl.classList.remove('save-error'), 1200);
+                return false;
+            }
+
+            isQuickEditSaving = true;
+            const productId = inputEl.dataset.productId;
+            const variantId = inputEl.dataset.variantId;
+            const row = inputEl.closest('tr');
+
+            try {
+                if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite) {
+                    // Fetch existing product from SQLite to get canonical variant records
+                    const getRes = await window.electronAPI.sqlite.products.get(productId);
+                    const prodObj = (getRes && getRes.success && getRes.data) ? getRes.data : (getRes && getRes.id ? getRes : null);
+
+                    if (fieldType === 'stock') {
+                        const oldStock = parseFloat(savedVal) || 0;
+                        const diff = val - oldStock;
+                        if (diff !== 0) {
+                            let targetVariantId = variantId;
+                            if (!targetVariantId && prodObj && prodObj.variants && prodObj.variants.length > 0) {
+                                targetVariantId = String(prodObj.variants[0].id);
+                            }
+                            if (targetVariantId) {
+                                const adjRes = await window.electronAPI.sqlite.stock.adjust(productId, targetVariantId, diff, 'ADJUSTMENT', 'MANUAL', 'Quick Edit Inventory update');
+                                if (adjRes && adjRes.success === false) {
+                                    throw new Error(adjRes.error?.message || adjRes.error || 'Failed to adjust stock in SQLite');
+                                }
+                            }
+                        }
+                    } else if (fieldType === 'price') {
+                        if (!prodObj) {
+                            throw new Error('Product not found in database for price update');
+                        }
+                        // Update both variant selling price and parent product price
+                        let targetVar = null;
+                        if (prodObj.variants && prodObj.variants.length > 0) {
+                            if (variantId) {
+                                targetVar = prodObj.variants.find(v => String(v.id) === String(variantId));
+                            }
+                            if (!targetVar) {
+                                targetVar = prodObj.variants[0];
+                            }
+                        }
+                        if (targetVar) {
+                            targetVar.sellingPrice = val;
+                            targetVar.selling_price = val;
+                        }
+                        prodObj.price = val;
+                        prodObj.sellingPrice = val;
+                        prodObj.selling_price = val;
+
+                        const updateRes = await window.electronAPI.sqlite.products.update(productId, prodObj);
+                        if (updateRes && updateRes.success === false) {
+                            throw new Error(updateRes.error?.message || updateRes.error || 'Failed to update price in SQLite');
+                        }
+                    }
+
+                    // Crucial: Synchronize canonical global memory so Record Sale, search, barcodes & cart get latest data
+                    if (typeof window.loadProductsFromDatabase === 'function') {
+                        await window.loadProductsFromDatabase();
+                    }
+                    // If Record Sale autocomplete dropdown or search is currently open, refresh it immediately
+                    const saleSearchInput = document.getElementById('saleProductSearch');
+                    if (saleSearchInput && saleSearchInput.value && typeof populateSaleProductSelect === 'function') {
+                        populateSaleProductSelect(saleSearchInput.value);
+                    }
+                    if (typeof renderFavoritesPanel === 'function') {
+                        renderFavoritesPanel();
+                    }
+                } else {
+                    // Local / Memory storage
+                    const prodObj = products.find(p => String(p.id) === String(productId));
+                    if (prodObj) {
+                        if (variantId && prodObj.variants) {
+                            const vRef = prodObj.variants.find(v => String(v.id) === String(variantId));
+                            if (vRef) {
+                                if (fieldType === 'stock') vRef.stock = val;
+                                if (fieldType === 'price') vRef.sellingPrice = val;
+                            }
+                        } else {
+                            if (fieldType === 'stock') prodObj.stock = val;
+                            if (fieldType === 'price') prodObj.price = val;
+                        }
+                        saveData();
+                    }
+                }
+
+                // Update data-saved-val and formatted display
+                const formattedVal = fieldType === 'stock' ? String(val) : val.toFixed(2);
+                inputEl.dataset.savedVal = formattedVal;
+                inputEl.value = formattedVal;
+
+                // Visual success indicator
+                inputEl.classList.remove('save-error');
+                inputEl.classList.add('save-success');
+                setTimeout(() => inputEl.classList.remove('save-success'), 800);
+
+                // Update row Total and Status immediately
+                if (row) {
+                    const stockInp = row.querySelector('.quick-edit-stock');
+                    const priceInp = row.querySelector('.quick-edit-price');
+                    const totalCell = row.querySelector('.inv-row-total');
+                    const statusCell = row.querySelector('.inv-row-status');
+
+                    const currentStock = stockInp ? parseFloat(stockInp.value) || 0 : 0;
+                    const currentPrice = priceInp ? parseFloat(priceInp.value) || 0 : 0;
+                    const newTotal = (currentStock * currentPrice).toFixed(2);
+
+                    if (totalCell) totalCell.innerText = '₹' + newTotal;
+                    if (statusCell) {
+                        statusCell.className = 'inv-row-status ' + (currentStock <= 0 ? 'stock-low' : 'stock-ok');
+                        statusCell.innerText = currentStock <= 0 ? '🔴 Out of Stock' : '🟢 In Stock';
+                    }
+                }
+
+                if (typeof updateDashboard === 'function') updateDashboard();
+                return true;
+            } catch (err) {
+                console.error('Quick edit inventory save failed:', err);
+                inputEl.classList.add('save-error');
+                inputEl.value = savedVal;
+                showAlert('Failed to save ' + fieldType + ': ' + (err.message || err), '❌');
+                setTimeout(() => inputEl.classList.remove('save-error'), 1200);
+                return false;
+            } finally {
+                isQuickEditSaving = false;
+            }
         }
 
         function filterInventoryTable() {
@@ -14776,20 +15423,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                     amountPaid: paymentMethod === 'credit' ? creditAmountPaid : totalReceived,
                     outstandingAmount: paymentMethod === 'credit' ? creditOutstanding : 0,
                     dueDate: paymentMethod === 'credit' ? creditDueDate : '',
-                    items: cart.map(item => ({
-                        product_id: item.productId,
-                        product_name: item.productName,
-                        variant_id: item.variantId || undefined,
-                        quantity: item.quantity,
-                        price: item.price,
-                        discount: item.discount || 0,
-                        total: item.finalTotal !== undefined ? item.finalTotal : item.total,
-                        taxableValue: item.taxableValue || 0,
-                        cgst: item.cgst || 0,
-                        sgst: item.sgst || 0,
-                        igst: item.igst || 0,
-                        location_id: item.locationId || item.location_id || null
-                    }))
+                    items: cart.map(item => {
+                        let finalVarId = item.variantId;
+                        if (!finalVarId) {
+                            const prodRef = products.find(p => String(p.id) === String(item.productId));
+                            if (prodRef && prodRef.variants && prodRef.variants.length > 0) {
+                                finalVarId = prodRef.variants[0].id;
+                            }
+                        }
+                        return {
+                            product_id: item.productId,
+                            product_name: item.productName,
+                            variant_id: finalVarId,
+                            quantity: item.quantity,
+                            price: item.price,
+                            discount: item.discount || 0,
+                            total: item.finalTotal !== undefined ? item.finalTotal : item.total,
+                            taxableValue: item.taxableValue || 0,
+                            cgst: item.cgst || 0,
+                            sgst: item.sgst || 0,
+                            igst: item.igst || 0,
+                            location_id: item.locationId || item.location_id || null
+                        };
+                    })
                 };
 
                 let newSaleId;
@@ -14964,10 +15620,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('creditPaymentMethod').value = 'cash';
                 document.getElementById('creditDueDate').value = '';
 
-                // Refresh UI immediately
+                // Re-hydrate canonical product memory from SQLite and refresh UI immediately
+                if (window.DATA_BACKEND === 'sqlite' && typeof window.loadProductsFromDatabase === 'function') {
+                    await window.loadProductsFromDatabase();
+                }
                 updateTodaysSales();
                 updateDashboard();
-                updateInventoryTable();
+                await updateInventoryTable();
+                if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
 
                 showReceipt();
             });
@@ -15706,6 +16366,121 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }, true); // Use capture phase to intercept before focused elements
 
+        let currentLoadedTodaySales = [];
+
+        function renderTodaySalesTable(salesList, isSearchActive = false) {
+            const tbody = document.getElementById('todaySalesBody');
+            if (!tbody) return;
+
+            if (!salesList || salesList.length === 0) {
+                if (isSearchActive) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 25px 15px; color: #64748b; font-size: 13px;"><span style="font-size: 18px; display: block; margin-bottom: 4px;">🔍</span>No matching sales found</td></tr>';
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 25px 15px; color: #64748b; font-size: 13px;">No sales for this date</td></tr>';
+                }
+                return;
+            }
+
+            const rows = salesList.map(transaction => {
+                let paymentDisplay = transaction.payment_method ? transaction.payment_method.toUpperCase() : '-';
+                if (transaction.payment_method === 'mixed') {
+                    if (transaction.cash_amount !== undefined && transaction.other_payment_amount !== undefined) {
+                        paymentDisplay = `Cash: ₹${transaction.cash_amount.toFixed(2)} + UPI: ₹${transaction.other_payment_amount.toFixed(2)}`;
+                    } else {
+                        paymentDisplay = 'Mixed';
+                    }
+                }
+                
+                const isCancelled = transaction.status === 'CANCELLED';
+                const rowStyle = isCancelled ? 'text-decoration: line-through; opacity: 0.6; color: red;' : '';
+
+                return `
+                    <tr style="${rowStyle}">
+                        <td style="text-align: left;">${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
+                        <td style="text-align: left; color: #64748b; font-size: 12px;">${transaction.created_at ? new Date(transaction.created_at).toLocaleString('en-GB') : 'N/A'}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 600; color: #0284c7;">${transaction.receipt_number}</td>
+                        <td style="text-align: right;">₹${(transaction.subtotal || 0).toFixed(2)}</td>
+                        <td style="text-align: right; color: ${transaction.discount > 0 ? '#dc2626' : '#64748b'};">${transaction.discount > 0 ? '-₹' + transaction.discount.toFixed(2) : '₹0.00'}</td>
+                        <td style="text-align: right; color: #64748b;">₹${(transaction.courier || 0).toFixed(2)}</td>
+                        <td style="text-align: right; font-weight: 700; color: #16a34a;">₹${(transaction.total || 0).toFixed(2)}</td>
+                        <td style="text-align: left; font-weight: 500;">${transaction.customer_name || 'Walk-in Customer'}</td>
+                        <td style="text-align: left;"><span style="display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: ${isCancelled ? '#fee2e2' : '#f1f5f9'}; color: ${isCancelled ? '#b91c1c' : '#334155'};">${paymentDisplay} ${isCancelled ? '(CANCELLED)' : ''}</span></td>
+                        <td style="text-align: center;">
+                            <div class="today-sales-btn-group">
+                                <button type="button" class="today-sales-btn today-sales-btn-view" onclick="viewBill('${transaction.id}')" title="View Receipt">
+                                    👁 View
+                                </button>
+                                ${!isCancelled ? `
+                                <button type="button" class="today-sales-btn today-sales-btn-cancel" onclick="deleteSale('${transaction.id}')" title="Cancel this entire bill">
+                                    ✖ Cancel
+                                </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = rows.join('');
+        }
+
+        function handleTodaySalesSearch(queryText) {
+            const clearBtn = document.getElementById('todaySalesSearchClear');
+            const cleanQuery = (queryText || '').trim().toLowerCase();
+            
+            if (clearBtn) {
+                clearBtn.style.display = cleanQuery.length > 0 ? 'block' : 'none';
+            }
+
+            if (!cleanQuery) {
+                renderTodaySalesTable(currentLoadedTodaySales, false);
+                return;
+            }
+
+            // Strip currency symbols if typed (e.g. ₹50 -> 50)
+            const cleanNumberQuery = cleanQuery.replace(/^[₹rs.s]+/, '');
+
+            const filtered = currentLoadedTodaySales.filter(sale => {
+                // 1. Match Bill No (e.g. INV-0060-2026)
+                const billNo = (sale.receipt_number || '').toLowerCase();
+                if (billNo.includes(cleanQuery)) return true;
+
+                // 2. Match Customer Name (e.g. Walk-in Customer)
+                const customer = (sale.customer_name || 'Walk-in Customer').toLowerCase();
+                if (customer.includes(cleanQuery)) return true;
+
+                // 3. Match Total Amount (exact, decimal, or partial e.g. "50", "50.00")
+                const totalNum = sale.total !== undefined ? Number(sale.total) : 0;
+                const totalFormatted = totalNum.toFixed(2);
+                const totalInteger = String(Math.floor(totalNum));
+                const totalStrWithSymbol = '₹' + totalFormatted;
+
+                if (cleanNumberQuery) {
+                    if (totalFormatted.includes(cleanNumberQuery) || totalInteger === cleanNumberQuery) {
+                        return true;
+                    }
+                }
+                if (totalStrWithSymbol.toLowerCase().includes(cleanQuery)) {
+                    return true;
+                }
+
+                return false;
+            });
+
+            renderTodaySalesTable(filtered, true);
+        }
+        window.handleTodaySalesSearch = handleTodaySalesSearch;
+
+        function clearTodaySalesSearch() {
+            const searchInput = document.getElementById('todaySalesSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            handleTodaySalesSearch('');
+        }
+        window.clearTodaySalesSearch = clearTodaySalesSearch;
+
         async function updateTodaysSales() {
             const dateInput = document.getElementById('recordSalesDate');
             let selectedDate = new Date();
@@ -15738,54 +16513,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const rawSales = await window.electronAPI.sqlite.sales.getAll(selectedDateString);
                 const todaySales = (rawSales && rawSales.success && Array.isArray(rawSales.data)) ? rawSales.data : (Array.isArray(rawSales) ? rawSales : []);
 
-                if (!todaySales || todaySales.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #6c757d;">No sales today</td></tr>';
-                    return;
+                currentLoadedTodaySales = todaySales || [];
+
+                const searchInput = document.getElementById('todaySalesSearchInput');
+                if (searchInput && searchInput.value) {
+                    handleTodaySalesSearch(searchInput.value);
+                } else {
+                    renderTodaySalesTable(currentLoadedTodaySales, false);
                 }
-
-                // Generate rows - one row per BILL (which is exactly what SQLite gives us)
-                const rows = todaySales.map(transaction => {
-                    let paymentDisplay = transaction.payment_method ? transaction.payment_method.toUpperCase() : '-';
-                    if (transaction.payment_method === 'mixed') {
-                        if (transaction.cash_amount !== undefined && transaction.other_payment_amount !== undefined) {
-                            paymentDisplay = `Cash: ₹${transaction.cash_amount.toFixed(2)} + UPI: ₹${transaction.other_payment_amount.toFixed(2)}`;
-                        } else {
-                            paymentDisplay = 'Mixed';
-                        }
-                    }
-                    
-                    const isCancelled = transaction.status === 'CANCELLED';
-                    const rowStyle = isCancelled ? 'text-decoration: line-through; opacity: 0.6; color: red;' : '';
-
-                    return `
-                        <tr style="${rowStyle}">
-                            <td>${new Date(transaction.date).toLocaleDateString('en-GB')}</td>
-                            <td>${transaction.created_at ? new Date(transaction.created_at).toLocaleString('en-GB') : 'N/A'}</td>
-                            <td>${transaction.receipt_number}</td>
-                            <td>₹${(transaction.subtotal || 0).toFixed(2)}</td>
-                            <td>₹${(transaction.discount || 0).toFixed(2)}</td>
-                            <td>₹${(transaction.courier || 0).toFixed(2)}</td>
-                            <td><strong>₹${(transaction.total || 0).toFixed(2)}</strong></td>
-                            <td>${transaction.customer_name || '-'}</td>
-                            <td>${paymentDisplay} ${isCancelled ? '(CANCELLED)' : ''}</td>
-                            <td>
-                                <button class="btn btn-sm btn-info" onclick="viewBill('${transaction.id}')" title="View Receipt">
-                                    👁️ View
-                                </button>
-                                ${!isCancelled ? `
-                                <button class="btn btn-sm btn-danger" onclick="deleteSale('${transaction.id}')" title="Cancel this entire bill">
-                                    ❌ Cancel
-                                </button>
-                                ` : ''}
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                tbody.innerHTML = rows.join('');
             } catch (err) {
                 console.error("Error fetching today's sales:", err);
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error loading sales</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Error loading sales</td></tr>';
             }
         }
 
@@ -22253,7 +22991,48 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-    <!-- Shortcuts Modal -->
+<!-- Sale Receipt Modal -->
+                <div id="saleReceipt" class="modal" style="display: none; z-index: 3000; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.6);">
+                    <div class="modal-content" style="max-width: 500px; padding: 0; border-radius: 12px; text-align: center; max-height: 90vh; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 15px 25px; margin: 0; justify-content: space-between; flex-shrink: 0; background: #fff;">
+                            <h2 style="margin: 0; font-size: 20px; color: #333;">Sale Receipt</h2>
+                            <span class="close" onclick="closeReceipt()" style="font-size: 26px; cursor: pointer; color: #999; line-height: 1;">&times;</span>
+                        </div>
+                        <div id="receiptContent" style="padding: 20px 25px; overflow-y: auto; flex-grow: 1; background: #fff;"></div>
+                        <div style="padding: 15px 20px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; flex-shrink: 0;">
+                            <button class="btn btn-primary" onclick="printReceipt()" style="padding: 6px 12px; font-size: 13px;">🖨️ <span style="color: #ffc107; font-weight: 900;">P</span>rint</button>
+                            <button class="btn btn-danger" onclick="saveReceiptPDF()" style="padding: 6px 12px; font-size: 13px;">💾 <span style="color: #ffc107; font-weight: 900;">S</span>ave as PDF</button>
+                            <button class="btn btn-success" onclick="sendReceiptToWhatsApp()" style="background: #25D366; border-color: #25D366; padding: 6px 12px; font-size: 13px;">📱 Send to <span style="color: #ffc107; font-weight: 900;">W</span>hatsApp</button>
+                            <button class="btn btn-info" onclick="openGSTInvoice()" style="padding: 6px 12px; font-size: 13px;">📄 <span style="color: #ffc107; font-weight: 900;">I</span>nvoice</button>
+                            <button class="btn btn-warning" onclick="closeReceipt()" style="padding: 6px 12px; font-size: 13px;">✖️ Close</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- GST Invoice Modal -->
+                <div id="gstInvoiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; overflow-y: auto; padding: 20px;">
+                    <div style="max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+                        <!-- Action Bar -->
+                        <div style="padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0;">
+                            <h3 style="margin: 0;">GST Tax Invoice</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary" onclick="printGSTInvoice()">🖨️ Print Invoice</button>
+                                <button class="btn btn-danger" onclick="downloadGSTInvoicePDF()">⬇️ Download PDF</button>
+                                <button class="btn btn-success" onclick="sendInvoiceToWhatsApp()" style="background: #25D366; border-color: #25D366;">📱 Send to WhatsApp</button>
+                                <button class="btn btn-warning" onclick="closeGSTInvoice()">✖️ Close</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Printable A4 Area -->
+                        <div id="gstInvoicePrintArea" style="padding: 40px; background: white; min-height: 1122px; width: 100%; max-width: 794px; margin: 0 auto; box-sizing: border-box; font-family: Arial, sans-serif; color: #333;">
+                            <!-- Content injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                
+
+        <!-- Shortcuts Modal -->
     <div id="shortcutsModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -22795,6 +23574,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if(setting === 'enableSalesDate') document.getElementById('settingsEnableSalesDate').checked = settings.enableSalesDate || false;
                 if(setting === 'quickSaleBarcode') document.getElementById('settingsQuickSaleBarcode').checked = settings.quickSaleBarcode !== undefined ? settings.quickSaleBarcode : true;
                 if(setting === 'showFavorites') document.getElementById('settingsShowFavorites').checked = settings.showFavorites || false;
+                if(setting === 'quickEditInventory') document.getElementById('settingsQuickEditInventory').checked = settings.quickEditInventory || false;
                 return;
             }
             const currentSettings = _getSafeSettings();
@@ -22830,6 +23610,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (searchInp) searchInp.style.paddingRight = value ? '58px' : '30px';
             }
             
+            if (setting === 'quickEditInventory') {
+                if (typeof updateInventoryTable === 'function') updateInventoryTable();
+            }
             if (typeof loadProducts === 'function') loadProducts();
         }
 
@@ -22884,6 +23667,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             const buyToggle = document.getElementById('settingsBuyingPriceTracking');
             if(buyToggle) buyToggle.checked = (settings.buyingPriceTracking !== undefined ? settings.buyingPriceTracking : false);
+
+            const qeiToggle = document.getElementById('settingsQuickEditInventory');
+            if(qeiToggle) qeiToggle.checked = (settings.quickEditInventory !== undefined ? settings.quickEditInventory : false);
             
             const gstExtendedSettings = document.getElementById('gstExtendedSettings');
             if (gstExtendedSettings) {
@@ -24044,7 +24830,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const unitName = product.unit || 'Piece';
             const unitPrice = parseFloat(product.price);
             
-            const existingItemIndex = cart.findIndex(item => item.productId === product.id && item.unit === unitName);
+            const defaultVarId = (product.variants && product.variants.length > 0) ? product.variants[0].id : undefined;
+            const existingItemIndex = cart.findIndex(item => item.productId === product.id && item.unit === unitName && String(item.variantId) === String(defaultVarId));
 
             if (existingItemIndex >= 0) {
                 cart[existingItemIndex].quantity += 1;
@@ -24053,6 +24840,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 let effDisc = getEffectiveDiscount(product);
                 cart.push({
                     productId: product.id,
+                    variantId: defaultVarId,
+                    variantName: (product.variants && product.variants.length > 0) ? product.variants[0].variantName : undefined,
                     productName: product.name,
                     barcode: product.barcode,
                     unit: unitName,
@@ -25236,71 +26025,101 @@ input:focus, select:focus, textarea:focus, button:focus {
         let itemWiseSortColumn = 'date';
         let itemWiseSortAsc = false;
 
+        let globalReportSearchQuery = '';
+
         function handleGlobalDateFilterChange() {
-            const filter = document.getElementById('globalReportDateFilter').value;
+            const filterSelect = document.getElementById('globalReportDateFilter');
+            const filter = filterSelect ? filterSelect.value : 'today';
             const customContainer = document.getElementById('globalReportCustomDateContainer');
+            const singleDateInput = document.getElementById('globalReportSingleDate');
+            
             if (filter === 'custom') {
-                customContainer.style.display = 'flex';
+                if (customContainer) customContainer.style.display = 'flex';
+                // Leave singleDateInput as is or clear
             } else {
-                customContainer.style.display = 'none';
+                if (customContainer) customContainer.style.display = 'none';
+                // Sync single-date picker to start date of this quick range
+                if (singleDateInput) {
+                    const today = new Date();
+                    if (filter === 'today') {
+                        singleDateInput.value = formatDateLocal(today);
+                    } else if (filter === 'yesterday') {
+                        const y = new Date(today);
+                        y.setDate(y.getDate() - 1);
+                        singleDateInput.value = formatDateLocal(y);
+                    } else {
+                        singleDateInput.value = '';
+                    }
+                }
                 generateOnScreenReports();
             }
         }
 
-        function searchGlobalReportCustomer(query) {
-            query = query.toLowerCase().trim();
-            const resultsDropdown = document.getElementById('globalReportCustomerResults');
-            if (query.length < 2) {
-                resultsDropdown.style.display = 'none';
-                return;
-            }
+        function handleGlobalSingleDateChange(dateVal) {
+            if (!dateVal) return;
+            const filterSelect = document.getElementById('globalReportDateFilter');
+            const customContainer = document.getElementById('globalReportCustomDateContainer');
+            if (customContainer) customContainer.style.display = 'none';
+            
+            // Check if selected date is today or yesterday to sync dropdown nicely
+            const todayStr = formatDateLocal(new Date());
+            const yDate = new Date();
+            yDate.setDate(yDate.getDate() - 1);
+            const yesterdayStr = formatDateLocal(yDate);
 
-            const matched = [];
-            if ("walk-in customer".includes(query) || "walk in".includes(query)) {
-                matched.push({ id: 'walk-in', name: 'Walk-in Customer', phone: '-', gstin: '-' });
-            }
-
-            customers.forEach(c => {
-                if ((c.name && c.name.toLowerCase().includes(query)) ||
-                    (c.phone && c.phone.includes(query)) ||
-                    (c.gstin && c.gstin.toLowerCase().includes(query))) {
-                    matched.push(c);
+            if (filterSelect) {
+                if (dateVal === todayStr) {
+                    filterSelect.value = 'today';
+                } else if (dateVal === yesterdayStr) {
+                    filterSelect.value = 'yesterday';
+                } else {
+                    // Custom single date
+                    filterSelect.value = 'custom';
                 }
-            });
-
-            if (matched.length === 0) {
-                resultsDropdown.innerHTML = `<div style="padding: 10px; color: #666;">No customer found.</div>`;
-            } else {
-                resultsDropdown.innerHTML = matched.map(c => `
-                    <div class="combobox-option" onclick="selectGlobalReportCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
-                        <div style="font-weight: bold;">${c.name}</div>
-                        <div style="font-size: 12px; color: #666;">📞 ${c.phone || '-'} | 🏢 ${c.gstin || '-'}</div>
-                    </div>
-                `).join('');
             }
-            resultsDropdown.style.display = 'block';
+            
+            // Also populate custom start/end date inputs with this single date
+            const sInput = document.getElementById('globalReportStartDate');
+            const eInput = document.getElementById('globalReportEndDate');
+            if (sInput) sInput.value = dateVal;
+            if (eInput) eInput.value = dateVal;
+
+            generateOnScreenReports();
+        }
+
+        function handleGlobalSalesSearchInput(val) {
+            globalReportSearchQuery = (val || '').trim();
+            const clearBtn = document.getElementById('clearGlobalReportSearchBtn');
+            if (clearBtn) {
+                clearBtn.style.display = globalReportSearchQuery ? 'block' : 'none';
+            }
+            // Keep hidden billSearchInput in sync for compatibility
+            const billInput = document.getElementById('billSearchInput');
+            if (billInput) billInput.value = globalReportSearchQuery;
+
+            generateOnScreenReports();
+        }
+
+        function clearGlobalReportSalesSearch() {
+            const input = document.getElementById('globalReportSalesSearch');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            handleGlobalSalesSearchInput('');
+        }
+        window.clearGlobalReportSalesSearch = clearGlobalReportSalesSearch;
+
+        function searchGlobalReportCustomer(query) {
+            handleGlobalSalesSearchInput(query);
         }
 
         function selectGlobalReportCustomer(id, name) {
-            document.getElementById('globalReportCustomerId').value = id;
-            document.getElementById('globalReportSelectedCustomerName').innerText = name;
-            
-            document.getElementById('globalReportCustomerSearch').style.display = 'none';
-            document.getElementById('globalReportCustomerResults').style.display = 'none';
-            document.getElementById('globalReportSelectedCustomerContainer').style.display = 'flex';
-            
-            generateOnScreenReports();
+            handleGlobalSalesSearchInput(name);
         }
 
         function clearGlobalReportCustomer() {
-            document.getElementById('globalReportCustomerId').value = '';
-            document.getElementById('globalReportCustomerSearch').value = '';
-            
-            document.getElementById('globalReportCustomerSearch').style.display = 'block';
-            document.getElementById('globalReportSelectedCustomerContainer').style.display = 'none';
-            document.getElementById('globalReportCustomerStats').style.display = 'none';
-            
-            generateOnScreenReports();
+            clearGlobalReportSalesSearch();
         }
 
         function switchReportSubTab(tabName) {
@@ -25320,7 +26139,11 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function getGlobalDateRange() {
-            const filter = document.getElementById('globalReportDateFilter').value;
+            const filterEl = document.getElementById('globalReportDateFilter');
+            const filter = filterEl ? filterEl.value : 'today';
+            const singleDateEl = document.getElementById('globalReportSingleDate');
+            const singleDateVal = singleDateEl ? singleDateEl.value : '';
+
             const now = new Date();
             let start = new Date(now);
             let end = new Date(now);
@@ -25328,48 +26151,97 @@ input:focus, select:focus, textarea:focus, button:focus {
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
 
-            if (filter === 'yesterday') {
+            if (filter === 'today') {
+                // Default start & end is already today 00:00:00 to 23:59:59.999
+            } else if (filter === 'yesterday') {
                 start.setDate(start.getDate() - 1);
                 end.setDate(end.getDate() - 1);
             } else if (filter === 'this_week') {
-                const day = start.getDay();
-                const diff = start.getDate() - day + (day == 0 ? -6 : 1);
+                // Monday as start of week
+                const day = start.getDay(); // 0 is Sun, 1 is Mon...
+                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
                 start.setDate(diff);
+            } else if (filter === 'last_week') {
+                const day = start.getDay();
+                const diffToThisMon = start.getDate() - day + (day === 0 ? -6 : 1);
+                const lastMon = diffToThisMon - 7;
+                start.setDate(lastMon);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
             } else if (filter === 'this_month') {
                 start.setDate(1);
             } else if (filter === 'last_month') {
                 start.setMonth(start.getMonth() - 1);
                 start.setDate(1);
-                end.setDate(0);
+                end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+            } else if (filter === 'this_year') {
+                start.setMonth(0, 1);
             } else if (filter === 'custom') {
-                const s = document.getElementById('globalReportStartDate').value;
-                const e = document.getElementById('globalReportEndDate').value;
-                if (s) start = new Date(s + 'T00:00:00');
-                if (e) {
-                    end = new Date(e + 'T23:59:59');
-                } else {
-                    end = new Date(start);
-                    end.setHours(23,59,59,999);
+                const s = document.getElementById('globalReportStartDate') ? document.getElementById('globalReportStartDate').value : '';
+                const e = document.getElementById('globalReportEndDate') ? document.getElementById('globalReportEndDate').value : '';
+                
+                if (s || e) {
+                    if (s) {
+                        const [sY, sM, sD] = s.split('-').map(Number);
+                        start = new Date(sY, sM - 1, sD, 0, 0, 0, 0);
+                    }
+                    if (e) {
+                        const [eY, eM, eD] = e.split('-').map(Number);
+                        end = new Date(eY, eM - 1, eD, 23, 59, 59, 999);
+                    } else {
+                        end = new Date(start);
+                        end.setHours(23, 59, 59, 999);
+                    }
+                } else if (singleDateVal) {
+                    const [y, m, d] = singleDateVal.split('-').map(Number);
+                    start = new Date(y, m - 1, d, 0, 0, 0, 0);
+                    end = new Date(y, m - 1, d, 23, 59, 59, 999);
                 }
             }
+
             return { start, end };
         }
 
         async function generateOnScreenReports() {
             await loadReportSalesFromSQLite();
+            
+            // Set single date picker default to today if currently empty
+            const singleDateInput = document.getElementById('globalReportSingleDate');
+            if (singleDateInput && !singleDateInput.value) {
+                singleDateInput.value = formatDateLocal(new Date());
+            }
+
             const { start, end } = getGlobalDateRange();
-            const customerId = document.getElementById('globalReportCustomerId').value;
+            const searchQ = (globalReportSearchQuery || '').toLowerCase().trim();
+            const cleanSearchQ = searchQ.replace(/^₹/, '').trim();
 
             globalFilteredSales = sales.filter(sale => {
                 const saleDate = new Date(sale.date);
                 if (saleDate < start || saleDate > end) return false;
                 
-                if (customerId) {
-                    if (customerId === 'walk-in') {
-                        if (sale.customerId && sale.customerId.trim() !== '') return false;
-                    } else {
-                        if (sale.customerId !== customerId) return false;
-                    }
+                if (searchQ) {
+                    const custName = (sale.customerName || '').toLowerCase();
+                    const billNo = (sale.receiptNumber || '').toLowerCase();
+                    const gstin = (sale.customerGSTIN || '').toLowerCase();
+                    const phone = (sale.customerPhone || '').toLowerCase();
+                    
+                    const billTotalStr = (sale.billTotal !== undefined && sale.billTotal !== null ? String(sale.billTotal) : String(sale.total || '')).toLowerCase();
+                    const itemTotalStr = String(sale.total || '').toLowerCase();
+                    const priceStr = String(sale.price || '').toLowerCase();
+
+                    const matchesText = custName.includes(searchQ) ||
+                                        billNo.includes(searchQ) ||
+                                        gstin.includes(searchQ) ||
+                                        phone.includes(searchQ);
+                    
+                    const matchesAmount = cleanSearchQ && (
+                        billTotalStr.includes(cleanSearchQ) ||
+                        itemTotalStr.includes(cleanSearchQ) ||
+                        priceStr.includes(cleanSearchQ)
+                    );
+
+                    if (!matchesText && !matchesAmount) return false;
                 }
                 return true;
             });
@@ -25378,8 +26250,13 @@ input:focus, select:focus, textarea:focus, button:focus {
             renderItemWiseReport();
             renderSalesSummaryReport();
             
-            if (customerId) {
-                renderCustomerStats(globalFilteredSales);
+            const statsDiv = document.getElementById('globalReportCustomerStats');
+            if (statsDiv) {
+                if (searchQ && globalFilteredSales.length > 0) {
+                    renderCustomerStats(globalFilteredSales);
+                } else {
+                    statsDiv.style.display = 'none';
+                }
             }
         }
 
@@ -25427,8 +26304,11 @@ input:focus, select:focus, textarea:focus, button:focus {
             globalFilteredSales.forEach(sale => {
                 if (!billMap[sale.receiptNumber]) {
                     billMap[sale.receiptNumber] = {
+                        id: sale.id || sale.saleId,
+                        saleId: sale.saleId || sale.id,
+                        status: sale.saleStatus || sale.status || 'ACTIVE',
                         date: sale.date,
-                        createdAt: sale.createdAt,
+                        createdAt: sale.createdAt || sale.created_at,
                         billNo: sale.receiptNumber,
                         counterCode: sale.counterCode || '-',
                         customer: sale.customerName || 'Walk-in Customer',
@@ -25468,7 +26348,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const bills = Object.values(billMap).sort((a,b) => b.rawDate - a.rawDate);
             
             if (bills.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" class="text-center">No bills found for the selected criteria.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="text-center">No bills found for the selected criteria.</td></tr>`;
                 document.getElementById('billWiseTotals').innerHTML = '';
                 return;
             }
@@ -25479,11 +26359,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 totBills++;
                 totSub += b.subtotal;
                 totDisc += b.discount;
+                const isCancelled = String(b.status).toUpperCase() === 'CANCELLED';
                 
-                return `<tr>
+                return `<tr style="${isCancelled ? 'background-color: #fff5f5; color: #991b1b;' : ''}">
                     <td>${new Date(b.date).toLocaleDateString('en-GB')}</td>
                     <td>${b.createdAt ? new Date(b.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
-                    <td>${b.billNo}</td>
+                    <td style="font-weight: 600;${isCancelled ? ' text-decoration: line-through;' : ''}">${b.billNo}</td>
                     <td>${b.counterCode}</td>
                     <td>${b.customer}</td>
                     <td>${b.gstin}</td>
@@ -25493,9 +26374,24 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <td>₹${b.cgst.toFixed(2)}</td>
                     <td>₹${b.sgst.toFixed(2)}</td>
                     <td>₹${b.igst.toFixed(2)}</td>
-                    <td>₹${b.total.toFixed(2)}</td>
-                    <td>${b.payment}</td>
-                    <td><button class="btn btn-sm btn-info" onclick="document.getElementById('billSearchInput').value='${b.billNo}'; searchBill(); document.getElementById('billSearchInput').scrollIntoView();">👁️ View</button></td>
+                    <td style="font-weight: 600;${isCancelled ? ' text-decoration: line-through;' : ''}">₹${b.total.toFixed(2)}</td>
+                    <td>${b.payment}${isCancelled ? ' <span style="font-size: 10px; color: #dc2626; font-weight: bold;">(CANCELLED)</span>' : ''}</td>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <div class="report-actions-btn-group">
+                            <button type="button" class="report-btn-action report-btn-receipt" onclick="viewReceiptFromReport('${b.id}', '${b.billNo}')" title="View Receipt">
+                                🧾 View Receipt
+                            </button>
+                            <button type="button" class="report-btn-action report-btn-invoice" onclick="viewInvoiceFromReport('${b.id}', '${b.billNo}')" title="View Tax Invoice">
+                                📄 View Invoice
+                            </button>
+                            ${!isCancelled ? `
+                            <button type="button" class="report-btn-action report-btn-cancel" onclick="cancelSaleFromReport('${b.id}', '${b.billNo}')" title="Cancel this sale">
+                                ❌ Cancel
+                            </button>` : `
+                            <span style="font-size: 11px; color: #dc2626; font-weight: 600; padding: 2px 6px; background: #fee2e2; border-radius: 4px;">Cancelled</span>
+                            `}
+                        </div>
+                    </td>
                 </tr>`;
             }).join('');
 
@@ -25515,6 +26411,76 @@ input:focus, select:focus, textarea:focus, button:focus {
                 <div>IGST: ₹${totIGST.toFixed(2)}</div>
                 <div style="color:green; font-size:1.1em;">Total Sales: ₹${totTotal.toFixed(2)}</div>
             `;
+        }
+
+        async function viewReceiptFromReport(saleId, billNo) {
+            try {
+                if (saleId && saleId !== 'undefined' && saleId !== 'null') {
+                    await viewBill(saleId);
+                } else if (billNo) {
+                    const foundSale = sales.find(s => s.receiptNumber === billNo);
+                    if (foundSale) {
+                        await viewBill(foundSale.id || foundSale.saleId);
+                    }
+                }
+            } catch (err) {
+                console.error("Error viewing receipt from report:", err);
+                showAlert('Error opening receipt: ' + (err.message || err), 'error');
+            }
+        }
+
+        async function viewInvoiceFromReport(saleId, billNo) {
+            try {
+                if (saleId && saleId !== 'undefined' && saleId !== 'null') {
+                    await viewSearchedBill(saleId);
+                } else if (billNo) {
+                    document.getElementById('billSearchInput').value = billNo;
+                    await searchBill();
+                }
+                const container = document.getElementById('billDetailsContainer');
+                if (container && container.style.display !== 'none') {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (err) {
+                console.error("Error viewing invoice from report:", err);
+                showAlert('Error opening invoice: ' + (err.message || err), 'error');
+            }
+        }
+
+        async function cancelSaleFromReport(saleId, billNo) {
+            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can cancel sales.', 'error');
+
+            showConfirm(`⚠️ Are you sure you want to CANCEL bill ${billNo || ''}?<br><br>Stock will be restored. This action cannot be undone!`,
+                async function () {
+                    try {
+                        const targetId = (saleId && saleId !== 'undefined' && saleId !== 'null') ? saleId : null;
+                        if (!targetId) {
+                            const found = sales.find(s => s.receiptNumber === billNo);
+                            if (found) saleId = found.id || found.saleId;
+                        }
+
+                        const cancelRes = await window.electronAPI.sqlite.sales.cancel(saleId || billNo);
+                        if (cancelRes && cancelRes.success === false) {
+                            throw new Error(cancelRes.error ? (cancelRes.error.message || cancelRes.error) : "Failed to cancel sale in SQLite");
+                        }
+                        
+                        sales = sales.filter(sale => String(sale.saleId) !== String(saleId) && String(sale.id) !== String(saleId) && String(sale.receiptNumber) !== String(billNo));
+                        saveData();
+                        
+                        updateTodaysSales();
+                        updateDashboard();
+                        updateInventoryTable();
+                        if (typeof generateOnScreenReports === 'function') {
+                            await generateOnScreenReports();
+                        }
+                        
+                        showAlert(`✅ Sale cancelled successfully! Stock restored.`, '❌');
+                    } catch (e) {
+                        console.error(e);
+                        showAlert('❌ Error cancelling sale: ' + (e.message || e), 'error');
+                    }
+                }
+            );
         }
 
         function sortItemWiseReport(col) {
