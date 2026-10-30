@@ -39,7 +39,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
         system: {
             getStatus: () => ipcRenderer.invoke('sqlite:system:getStatus'),
-            selectAndConnect: () => ipcRenderer.invoke('sqlite:system:selectAndConnect')
+            selectAndConnect: () => ipcRenderer.invoke('sqlite:system:selectAndConnect'),
+            getDatabaseDetails: () => ipcRenderer.invoke('sqlite:system:getDatabaseDetails'),
+            getDefaultDbFolder: () => ipcRenderer.invoke('sqlite:system:getDefaultDbFolder'),
+            selectFolder: (options) => ipcRenderer.invoke('sqlite:system:selectFolder', options),
+            openDatabaseFolder: () => ipcRenderer.invoke('sqlite:system:openDatabaseFolder'),
+            initializeDatabaseLocation: (args) => ipcRenderer.invoke('sqlite:system:initializeDatabaseLocation', args),
+            changeDatabaseLocation: (args) => ipcRenderer.invoke('sqlite:system:changeDatabaseLocation', args)
         },
         users: {
             login: (username, password) => ipcRenderer.invoke('sqlite:users:login', { username, password }),
@@ -178,7 +184,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         
         backup: {
             createLocal: (args) => ipcRenderer.invoke('sqlite:backup:createLocal', args),
-            listLocal: () => ipcRenderer.invoke('sqlite:backup:listLocal')
+            listLocal: () => ipcRenderer.invoke('sqlite:backup:listLocal'),
+            getLastBackup: () => ipcRenderer.invoke('sqlite:backup:getLastBackup'),
+            getScheduleSettings: () => ipcRenderer.invoke('sqlite:backup:getScheduleSettings'),
+            saveScheduleSettings: (settings) => ipcRenderer.invoke('sqlite:backup:saveScheduleSettings', settings),
+            selectBackupFolder: () => ipcRenderer.invoke('sqlite:backup:selectBackupFolder'),
+            openBackupFolder: (folderPath) => ipcRenderer.invoke('sqlite:backup:openBackupFolder', folderPath),
+            restoreBackup: (args) => ipcRenderer.invoke('sqlite:backup:restoreBackup', args)
         },
         gdrive: {
             getStatus: () => ipcRenderer.invoke('sqlite:gdrive:getStatus'),

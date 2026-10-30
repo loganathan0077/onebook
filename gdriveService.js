@@ -75,7 +75,7 @@ class GoogleDriveService {
         const isConn = this.isConnected();
         
         let lastBackupInfo = null;
-        const metaPath = path.join(backupService.backupDir, 'gdrive_last_backup.json');
+        const metaPath = path.join(backupService.getEffectiveBackupDir(), 'gdrive_last_backup.json');
         if (fs.existsSync(metaPath)) {
             try { lastBackupInfo = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch(e){}
         }
@@ -309,7 +309,7 @@ class GoogleDriveService {
             timestamp: new Date().toISOString(),
             status: 'success'
         };
-        const metaPath = path.join(backupService.backupDir, 'gdrive_last_backup.json');
+        const metaPath = path.join(backupService.getEffectiveBackupDir(), 'gdrive_last_backup.json');
         fs.writeFileSync(metaPath, JSON.stringify(cloudMeta, null, 2), 'utf8');
 
         console.log('[GDrive] Cloud backup successful. File ID:', uploadRes.id);

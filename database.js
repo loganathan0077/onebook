@@ -557,6 +557,11 @@ function createSchema() {
     if (!salesCols.includes('outstanding_amount')) db.exec('ALTER TABLE sales ADD COLUMN outstanding_amount REAL DEFAULT 0');
     if (!salesCols.includes('due_date')) db.exec('ALTER TABLE sales ADD COLUMN due_date DATETIME');
     if (!salesCols.includes('customer_name')) db.exec("ALTER TABLE sales ADD COLUMN customer_name TEXT DEFAULT 'Walk-in Customer'");
+    if (!salesCols.includes('customer_gstin')) db.exec('ALTER TABLE sales ADD COLUMN customer_gstin TEXT');
+    if (!salesCols.includes('customer_address')) db.exec('ALTER TABLE sales ADD COLUMN customer_address TEXT');
+    if (!salesCols.includes('customer_state')) db.exec('ALTER TABLE sales ADD COLUMN customer_state TEXT');
+    if (!salesCols.includes('tax_type')) db.exec("ALTER TABLE sales ADD COLUMN tax_type TEXT DEFAULT 'intra'");
+    if (!salesCols.includes('place_of_supply')) db.exec('ALTER TABLE sales ADD COLUMN place_of_supply TEXT');
 
     // Runtime column migration for cash_transactions & bank_transactions (Phase 4E.11)
     const cashCols = db.prepare('PRAGMA table_info(cash_transactions)').all().map(c => c.name);
@@ -805,8 +810,20 @@ async function backupDatabase(backupDirPath, prefix = 'OneBook') {
 
 function closeDatabase() {
     if (db) {
-        db.close();
+        try {
+            if (db.open) {
+                db.pragma('wal_checkpoint(TRUNCATE)');
+            }
+        } catch (e) {
+            console.warn('[Database] WAL checkpoint before close warning:', e.message);
+        }
+        try {
+            db.close();
+        } catch (e) {
+            console.warn('[Database] db.close() warning:', e.message);
+        }
         db = null;
+        currentDbPath = null;
     }
 }
 

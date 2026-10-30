@@ -61,14 +61,20 @@ class SalesService {
             const total_tax = saleData.totalTax || 0;
             
             const customer_name = saleData.customer_name || 'Walk-in Customer';
+            const customer_gstin = saleData.customer_gstin || null;
+            const customer_address = saleData.customer_address || null;
+            const customer_state = saleData.customer_state || null;
+            const tax_type = saleData.tax_type || (igst > 0 ? 'inter' : 'intra');
+            const place_of_supply = saleData.place_of_supply || null;
 
             const insertSale = db.prepare(`
                 INSERT INTO sales (
                     receipt_number, date, customer_id, customer_type, subtotal, discount, payment_method, total,
                     courier, cash_amount, other_payment_amount, customer_amount, change_amount, gst_applied,
                     payment_status, amount_paid, outstanding_amount, due_date,
-                    taxable_value, cgst, sgst, igst, total_tax, customer_name
-                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    taxable_value, cgst, sgst, igst, total_tax, customer_name,
+                    customer_gstin, customer_address, customer_state, tax_type, place_of_supply
+                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
             const saleInfo = insertSale.run(
@@ -76,7 +82,8 @@ class SalesService {
                 saleData.subtotal, saleData.discount, saleData.payment_method, saleData.total,
                 courier, cash_amount, other_payment_amount, customer_amount, change_amount, gst_applied,
                 payment_status, amount_paid, outstanding_amount, due_date,
-                taxable_value, cgst, sgst, igst, total_tax, customer_name
+                taxable_value, cgst, sgst, igst, total_tax, customer_name,
+                customer_gstin, customer_address, customer_state, tax_type, place_of_supply
             );
             
             const saleId = saleInfo.lastInsertRowid;

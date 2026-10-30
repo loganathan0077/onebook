@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell } = require('electron');
 
 const path = require('path');
 
@@ -768,6 +768,20 @@ function initSqliteAtStartup() {
 
 app.whenReady().then(() => {
     initSqliteAtStartup();
+    backupService.init(
+        path.join(app.getPath('documents'), 'OneBook', 'Database'),
+        () => {
+            const p = getConfigPath();
+            return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+        },
+        (updates) => {
+            const p = getConfigPath();
+            let data = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+            Object.assign(data, updates);
+            fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
+            return data;
+        }
+    );
     backupService.startAutoBackupScheduler();
 
     createWindow();
@@ -916,6 +930,297 @@ ipcMain.handle('sqlite:users:changePassword', (e, args) => handleAuthorizedSqlit
     }
     return userService.changePassword(args?.userId, args?.newPassword);
 }));
+
+// Helper to get database details (path, filename, size, status)
+function getDatabaseDetailsHelper() {
+    const configuredPath = resolveSqlitePath();
+    const isConn = dbManager.isDatabaseOpen();
+    const activePath = isConn ? dbManager.getDatabasePath() : configuredPath;
+
+    let exists = false;
+    let sizeBytes = 0;
+    let folder = null;
+    let filename = 'onebook.db';
+
+    if (activePath) {
+        filename = path.basename(activePath);
+        folder = path.dirname(activePath);
+        try {
+            if (fs.existsSync(activePath)) {
+                exists = true;
+                const stats = fs.statSync(activePath);
+                sizeBytes = stats.size;
+            }
+        } catch (e) {
+            console.warn('[SQLite Details Error]:', e.message);
+        }
+    }
+
+    return {
+        configured: !!configuredPath,
+        connected: isConn,
+        path: activePath,
+        folder: folder,
+        filename: filename,
+        exists: exists,
+        sizeBytes: sizeBytes,
+        sizeFormatted: exists ? (sizeBytes > 1048576 ? (sizeBytes / (1024 * 1024)).toFixed(2) + ' MB' : (sizeBytes / 1024).toFixed(1) + ' KB') : '0 KB',
+        error: sqliteStatus.error,
+        message: sqliteStatus.message
+    };
+}
+
+ipcMain.handle('sqlite:system:getDatabaseDetails', () => {
+    return getDatabaseDetailsHelper();
+});
+
+ipcMain.handle('sqlite:system:getDefaultDbFolder', () => {
+    return path.join(app.getPath('documents'), 'OneBook', 'Database');
+});
+
+ipcMain.handle('sqlite:system:selectFolder', async (event, options = {}) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: options.title || 'Select Database Folder',
+        defaultPath: options.defaultPath || path.join(app.getPath('documents'), 'OneBook', 'Database'),
+        properties: ['openDirectory', 'createDirectory']
+    });
+
+    if (canceled || !filePaths || filePaths.length === 0) {
+        return { success: false, error: 'SELECTION_CANCELLED' };
+    }
+    return { success: true, folderPath: filePaths[0] };
+});
+
+ipcMain.handle('sqlite:system:openDatabaseFolder', async () => {
+    try {
+        const details = getDatabaseDetailsHelper();
+        if (details.folder && fs.existsSync(details.folder)) {
+            shell.openPath(details.folder);
+            return { success: true };
+        } else {
+            return { success: false, error: 'FOLDER_NOT_FOUND', message: 'Database folder does not exist: ' + (details.folder || 'None') };
+        }
+    } catch (e) {
+        return { success: false, error: 'OPEN_FAILED', message: e.message };
+    }
+});
+
+ipcMain.handle('sqlite:system:initializeDatabaseLocation', async (event, args) => {
+    const targetFolder = args?.folderPath;
+    if (!targetFolder || typeof targetFolder !== 'string') {
+        return { success: false, error: 'INVALID_FOLDER', message: 'Target folder must be specified.' };
+    }
+
+    try {
+        if (!fs.existsSync(targetFolder)) {
+            fs.mkdirSync(targetFolder, { recursive: true });
+        }
+
+        const targetDbPath = path.join(targetFolder, 'onebook.db');
+        const dbExists = fs.existsSync(targetDbPath);
+
+        // Close any currently open database first
+        if (dbManager.isDatabaseOpen()) {
+            dbManager.closeDatabase();
+        }
+
+        // Initialize (allow creation if brand new setup)
+        dbManager.initializeDatabase(targetDbPath, { allowCreate: true });
+
+        // Save persistent config
+        const p = getConfigPath();
+        let data = {};
+        if (fs.existsSync(p)) {
+            try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
+        }
+        data.databaseFolder = targetFolder;
+        data.sqliteDatabasePath = targetDbPath;
+        fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+
+        sqliteStatus = {
+            initialized: true,
+            path: targetDbPath,
+            error: null,
+            message: null
+        };
+
+        console.log('[SQLite Setup] Database successfully initialized at:', targetDbPath);
+        return {
+            success: true,
+            dbPath: targetDbPath,
+            isNew: !dbExists,
+            details: getDatabaseDetailsHelper()
+        };
+    } catch (e) {
+        console.error('[SQLite Setup Error]:', e);
+        sqliteStatus = {
+            initialized: false,
+            path: targetFolder ? path.join(targetFolder, 'onebook.db') : null,
+            error: e.code || 'INIT_FAILED',
+            message: e.message
+        };
+        return { success: false, error: e.code || 'INIT_FAILED', message: e.message };
+    }
+});
+
+ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
+    const newFolder = args?.folderPath;
+    const forceOverwrite = !!args?.forceOverwrite;
+
+    if (!newFolder || typeof newFolder !== 'string') {
+        return { success: false, error: 'INVALID_DESTINATION', message: 'Destination folder must be specified.' };
+    }
+
+    const currentDetails = getDatabaseDetailsHelper();
+    const oldDbPath = currentDetails.path;
+
+    if (!oldDbPath || !fs.existsSync(oldDbPath)) {
+        return { success: false, error: 'NO_SOURCE_DATABASE', message: 'No current SQLite database found to migrate.' };
+    }
+
+    const targetDbPath = path.join(newFolder, 'onebook.db');
+    if (path.resolve(oldDbPath) === path.resolve(targetDbPath)) {
+        return { success: false, error: 'SAME_LOCATION', message: 'The selected folder is already the current database location.' };
+    }
+
+    // Check if target database already exists and forceOverwrite is not confirmed
+    if (fs.existsSync(targetDbPath) && !forceOverwrite) {
+        return {
+            success: false,
+            error: 'TARGET_EXISTS',
+            targetPath: targetDbPath,
+            message: 'A database file (onebook.db) already exists in the selected destination folder. Explicit confirmation is required to proceed.'
+        };
+    }
+
+    try {
+        if (!fs.existsSync(newFolder)) {
+            fs.mkdirSync(newFolder, { recursive: true });
+        }
+    } catch (err) {
+        return { success: false, error: 'DEST_DIR_CREATE_FAILED', message: 'Could not create destination directory: ' + err.message };
+    }
+
+    console.log('[Database Migration] Starting migration from:', oldDbPath, 'to:', targetDbPath);
+
+    // Step 1: Create a safety backup of current database
+    let safetyBackupFile = null;
+    try {
+        const backupRes = await backupService.createBackup('pre_migration_safety', 'PreMigration_SafetyBackup');
+        if (backupRes && backupRes.success) {
+            safetyBackupFile = backupRes.metadata?.filePath;
+            console.log('[Database Migration] Safety backup created at:', safetyBackupFile);
+        } else {
+            console.warn('[Database Migration] Safety backup returned unsuccessful:', backupRes?.error);
+        }
+    } catch (bErr) {
+        console.warn('[Database Migration] Safety backup warning:', bErr.message);
+    }
+
+    // Step 2: Checkpoint WAL and copy to target using better-sqlite3 backup API or safe copy
+    const tempCopyPath = targetDbPath + '.migrating_' + Date.now();
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            const activeDb = dbManager.getDatabase();
+            try {
+                activeDb.pragma('wal_checkpoint(TRUNCATE)');
+            } catch (walErr) {
+                console.warn('[Database Migration] WAL checkpoint warning:', walErr.message);
+            }
+            // Use SQLite backup API for zero-corruption copy
+            await activeDb.backup(tempCopyPath);
+        } else {
+            // Direct file copy
+            fs.copyFileSync(oldDbPath, tempCopyPath);
+        }
+
+        // Step 3: Validate the copied database using integrity checks
+        const Database = require('better-sqlite3');
+        const vDb = new Database(tempCopyPath, { readonly: true });
+        const integrity = vDb.pragma('integrity_check');
+        const fkCheck = vDb.pragma('foreign_key_check');
+        const countRow = vDb.prepare('SELECT count(*) as c FROM sales').get();
+        vDb.close();
+
+        const integrityOk = integrity && integrity.length > 0 && integrity[0].integrity_check === 'ok';
+        if (!integrityOk) {
+            if (fs.existsSync(tempCopyPath)) fs.unlinkSync(tempCopyPath);
+            throw new Error('Integrity check failed on copied database: ' + JSON.stringify(integrity));
+        }
+        console.log('[Database Migration] Destination database verified ok. Verified sales records count:', countRow?.c);
+
+        // Step 4: Safely close active connection
+        if (dbManager.isDatabaseOpen()) {
+            dbManager.closeDatabase();
+        }
+
+        // Atomically move temp copy to targetDbPath
+        if (fs.existsSync(targetDbPath)) {
+            const existingBackupPath = targetDbPath + '.replaced_' + Date.now();
+            fs.renameSync(targetDbPath, existingBackupPath);
+        }
+        fs.renameSync(tempCopyPath, targetDbPath);
+
+        // Step 5: Update persistent config
+        const p = getConfigPath();
+        let data = {};
+        if (fs.existsSync(p)) {
+            try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
+        }
+        data.databaseFolder = newFolder;
+        data.sqliteDatabasePath = targetDbPath;
+        fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+
+        // Step 6: Reopen database from new location
+        dbManager.initializeDatabase(targetDbPath, { allowCreate: false });
+
+        sqliteStatus = {
+            initialized: true,
+            path: targetDbPath,
+            error: null,
+            message: null
+        };
+
+        console.log('[Database Migration] Successfully migrated and reopened database at:', targetDbPath);
+        return {
+            success: true,
+            newPath: targetDbPath,
+            oldPath: oldDbPath,
+            safetyBackup: safetyBackupFile,
+            details: getDatabaseDetailsHelper()
+        };
+
+    } catch (migrationErr) {
+        console.error('[Database Migration Failed]:', migrationErr);
+        // Clean up temp copy
+        if (fs.existsSync(tempCopyPath)) {
+            try { fs.unlinkSync(tempCopyPath); } catch(e){}
+        }
+
+        // Rollback: Reopen old database to ensure app remains functional
+        try {
+            if (!dbManager.isDatabaseOpen() && fs.existsSync(oldDbPath)) {
+                dbManager.initializeDatabase(oldDbPath, { allowCreate: false });
+                sqliteStatus = {
+                    initialized: true,
+                    path: oldDbPath,
+                    error: null,
+                    message: null
+                };
+                console.log('[Database Migration Rollback] Successfully rolled back to:', oldDbPath);
+            }
+        } catch (rollbackErr) {
+            console.error('[Database Migration Rollback Error]:', rollbackErr);
+        }
+
+        return {
+            success: false,
+            error: 'MIGRATION_FAILED',
+            message: migrationErr.message,
+            originalPath: oldDbPath
+        };
+    }
+});
 
 ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -1163,11 +1468,51 @@ ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlit
 
 // --- Backup & Google Drive IPC Handlers ---
 ipcMain.handle('sqlite:backup:createLocal', async (e, args) => {
-    return await backupService.createBackup(args?.reason || 'manual');
+    return await backupService.createBackup(args?.reason || 'manual', 'OneBook_Backup', args?.customDest || null);
 });
 
 ipcMain.handle('sqlite:backup:listLocal', async () => {
     return backupService.listBackups();
+});
+
+ipcMain.handle('sqlite:backup:getLastBackup', async () => {
+    return backupService.getLastBackupInfo();
+});
+
+ipcMain.handle('sqlite:backup:getScheduleSettings', async () => {
+    return backupService.getScheduleSettings();
+});
+
+ipcMain.handle('sqlite:backup:saveScheduleSettings', async (e, settings) => {
+    return backupService.saveScheduleSettings(settings);
+});
+
+ipcMain.handle('sqlite:backup:selectBackupFolder', async () => {
+    const res = await dialog.showOpenDialog({
+        title: 'Select Backup Destination Folder',
+        properties: ['openDirectory', 'createDirectory']
+    });
+    if (res.canceled || !res.filePaths || res.filePaths.length === 0) {
+        return { success: false, canceled: true };
+    }
+    return { success: true, folderPath: res.filePaths[0] };
+});
+
+ipcMain.handle('sqlite:backup:openBackupFolder', async (e, folderPath) => {
+    const target = folderPath || backupService.getEffectiveBackupDir();
+    try {
+        if (!fs.existsSync(target)) {
+            fs.mkdirSync(target, { recursive: true });
+        }
+        await shell.openPath(target);
+        return { success: true, path: target };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('sqlite:backup:restoreBackup', async (e, args) => {
+    return await backupService.restoreBackup(args?.filePath);
 });
 
 ipcMain.handle('sqlite:gdrive:getStatus', async () => {

@@ -216,50 +216,17 @@ window.searchProductsUnified = function(query, allProducts) {
     return validResults.map(r => r.product);
 };
 
-        (function initOfflineDatabase() {
-            if (window.electronAPI) {
-                // Ensure a database folder is selected from persistent main process config
-                let folder = null;
-                if (window.electronAPI && typeof window.electronAPI.getDbConfigSync === 'function') {
-                    try {
-                        const savedFolder = window.electronAPI.getDbConfigSync();
-                        if (savedFolder && typeof savedFolder === 'string' && savedFolder.trim()) {
-                            folder = savedFolder.trim();
-                            localStorage.setItem('database_folder', folder);
-                        }
-                    } catch (e) {
-                        console.warn('Failed to retrieve persistent db config:', e);
+        (function checkSqliteDatabaseStatus() {
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                window.electronAPI.sqlite.system.getDatabaseDetails().then(details => {
+                    console.log("[OneBook Storage]: SQLite architecture active. Current database:", details.path);
+                    if (!details.connected || !details.exists) {
+                        console.warn("[OneBook Storage]: Database not connected or missing, showing connection banner.");
+                        showDriveUnavailableBanner(details);
                     }
-                }
-                if (!folder) {
-                    folder = localStorage.getItem('database_folder');
-                }
-                if (!folder && window.electronAPI && typeof window.electronAPI.getDbConfigSync === 'function') {
-                    try {
-                        const savedFolder = window.electronAPI.getDbConfigSync();
-                        if (savedFolder && typeof savedFolder === 'string' && savedFolder.trim()) {
-                            folder = savedFolder.trim();
-                            localStorage.setItem('database_folder', folder);
-                        }
-                    } catch (e) {
-                        console.warn('Failed to retrieve persistent db config:', e);
-                    }
-                }
-                if (!folder) {
-                    folder = window.electronAPI.selectDirectorySync();
-                    if (folder) {
-                        localStorage.setItem('database_folder', folder);
-                        if (typeof window.electronAPI.setDbConfigSync === 'function') {
-                            try { window.electronAPI.setDbConfigSync(folder); } catch(e){}
-                        }
-                    } else {
-                        alert('CRITICAL ERROR: You must select a folder to save your database! Please restart the application.');
-                    }
-                }
-
-                // Phase 4A: SQLite-Only Business Architecture
-                // Automatic JSON file sync disabled. All business operations route exclusively to onebook.db.
-                console.log("[OneBook Storage]: SQLite-Only architecture active. JSON file sync disabled.");
+                }).catch(err => {
+                    console.error("[OneBook Storage]: Error checking database details:", err);
+                });
             }
         })();
     </script>
@@ -1069,6 +1036,136 @@ window.searchProductsUnified = function(query, allProducts) {
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Label & Barcode Center Compact & Full-Height Optimization */
+        .label-center-container {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 10px;
+        }
+
+        #productsListContainer.label-center-scroll {
+            height: calc(100vh - 215px) !important;
+            max-height: calc(100vh - 215px) !important;
+            min-height: 480px;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            position: relative;
+        }
+
+        .label-center-table {
+            margin: 0;
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        .label-center-table thead {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 15 !important;
+        }
+
+        .label-center-table thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 15 !important;
+            background: #f1f5f9 !important;
+            color: #334155 !important;
+            padding: 7px 8px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            vertical-align: middle;
+            line-height: 1.2;
+        }
+
+        .label-center-table tbody tr {
+            height: 33px !important;
+            max-height: 33px !important;
+            transition: background 0.15s ease;
+        }
+
+        .label-center-table tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        .label-center-table tbody td {
+            padding: 3px 8px !important;
+            font-size: 12.5px !important;
+            line-height: 1.2 !important;
+            vertical-align: middle !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .label-center-table .main-label-qty {
+            width: 52px !important;
+            height: 24px !important;
+            font-size: 12px !important;
+            padding: 1px 4px !important;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .label-center-table .btn-action-compact {
+            padding: 2px 5px !important;
+            font-size: 11px !important;
+            line-height: 1 !important;
+            height: 24px !important;
+            min-width: 26px !important;
+            margin: 0 1px !important;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .label-center-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .label-center-toolbar-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .label-center-toolbar-controls input[type="text"],
+        .label-center-toolbar-controls select {
+            height: 34px !important;
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+        }
+
+        .label-center-toolbar-controls .btn {
+            height: 34px !important;
+            padding: 4px 10px !important;
+            font-size: 12.5px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
         
         .inventory-table .btn {
             padding: 3px 6px !important;
@@ -1751,10 +1848,10 @@ window.searchProductsUnified = function(query, allProducts) {
         /* Switch styles for Barcode Scan Mode */
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #28a745; }
-        input:checked + .slider:before { transform: translateX(26px); }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #16a34a !important; }
+        input:checked + .slider:before { transform: translateX(22px); }
         .slider.round { border-radius: 24px; }
         .slider.round:before { border-radius: 50%; }
         .quick-sale-card {
@@ -3851,26 +3948,24 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 
 
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-                    <h3 class="section-title" style="margin: 0;">🏷️ Label & Barcode Center</h3>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="label-center-toolbar">
+                    <h3 class="section-title" style="margin: 0; font-size: 18px; font-weight: 700; border-bottom: none; padding-bottom: 0;">🏷️ Label & Barcode Center</h3>
+                    <div class="label-center-toolbar-controls">
                         <input type="text" id="productSearchLabelCenter"
-                            placeholder="🔍 Search products (Name, Barcode, Category)..."
+                            placeholder="🔍 Search products..."
                             onkeyup="handleLabelCenterSearch()"
-                            style="padding: 10px; border: 1px solid #ced4da; border-radius: 4px; flex: 1; font-size: 16px;">
-                        <select id="filterLabelCenter" onchange="updateProductsTable()" onfocus="populateLabelCenterFilterCategories()" onclick="populateLabelCenterFilterCategories()" style="padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 16px; background: white; cursor: pointer; min-width: 150px;">
+                            style="width: 230px;">
+                        <select id="filterLabelCenter" onchange="updateProductsTable()" onfocus="populateLabelCenterFilterCategories()" onclick="populateLabelCenterFilterCategories()" style="min-width: 135px; background: white; cursor: pointer;">
                             <option value="all">All Products</option>
                             <option value="selected">Selected Products</option>
                             <option value="instock">In Stock</option>
                             <option value="outstock">Out of Stock</option>
                         </select>
-                        <button class="btn btn-secondary btn-sm" onclick="setMainLabelQuantitiesToStock()">📦 Use Stock</button>
-                        <button class="btn btn-secondary btn-sm" onclick="openCustomQtyModal()">✏️ Custom Qty</button>
-                        <button class="btn btn-secondary" onclick="togglePriceManager()" id="togglePriceManagerBtn">💰
-                            Price Manager</button>
-                        <button class="btn btn-info" onclick="document.getElementById('labelSettingsModal').style.display='flex'">🏷️ Label Settings</button>
-                        <button class="btn btn-warning" onclick="printSelectedLabels()">🖨️ Print Selected</button>
+                        <button class="btn btn-secondary" onclick="setMainLabelQuantitiesToStock()" title="Set quantities to current stock">📦 Use Stock</button>
+                        <button class="btn btn-secondary" onclick="openCustomQtyModal()" title="Set custom quantity for selected">✏️ Custom Qty</button>
+                        <button class="btn btn-secondary" onclick="togglePriceManager()" id="togglePriceManagerBtn" title="Bulk Price Manager">💰 Price Manager</button>
+                        <button class="btn btn-info" onclick="openLabelSettingsFromCenter()" title="Configure label sizes & layout">🏷️ Label Settings</button>
+                        <button class="btn btn-warning" onclick="printSelectedLabels()" title="Print labels for selected items" style="font-weight: 600;">🖨️ Print Selected</button>
                     </div>
                 </div>
 
@@ -3914,20 +4009,20 @@ input:focus, select:focus, textarea:focus, button:focus {
                     </div>
                 </div>
 
-                <div class="inventory-table-container" style="border: 1px solid #dee2e6; border-radius: 4px; display: block; overflow: hidden; background: white;">
-                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;" id="productsListContainer">
-                        <table class="inventory-table" style="margin: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
-                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
+                <div class="label-center-container">
+                    <div class="table-responsive label-center-scroll" id="productsListContainer">
+                        <table class="inventory-table label-center-table">
+                            <thead>
                                 <tr>
-                                    <th style="width: 4%; text-align: center;"><input type="checkbox" id="selectAllProducts" onchange="toggleSelectAllProducts(this)"></th>
-                                    <th style="width: 12%; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('barcode')">Barcode <span id="labelSort-barcode"></span></th>
-                                    <th style="width: 26%; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('name')">Product Name <span id="labelSort-name"></span></th>
-                                    <th style="width: 15%; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('category')">Category <span id="labelSort-category"></span></th>
-                                    <th id="labelCenterExpDaysHeader" style="width: 9%; text-align: right;">Exp. Days</th>
-                                    <th style="width: 7%; text-align: right; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('stock')">Stock <span id="labelSort-stock"></span></th>
-                                    <th style="width: 9%; text-align: right; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('price')">Price <span id="labelSort-price"></span></th>
-                                    <th style="width: 8%; text-align: center; cursor: pointer; color: #007bff; user-select: none;" onclick="sortLabelCenter('_labelQty')">Labels Qty <span id="labelSort-_labelQty"></span></th>
-                                    <th style="width: 10%; text-align: center;">Actions</th>
+                                    <th style="width: 4%; text-align: center;"><input type="checkbox" id="selectAllProducts" onchange="toggleSelectAllProducts(this)" style="cursor: pointer; width: 15px; height: 15px;"></th>
+                                    <th style="width: 12%; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('barcode')">Barcode <span id="labelSort-barcode"></span></th>
+                                    <th style="width: 27%; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('name')">Product Name <span id="labelSort-name"></span></th>
+                                    <th style="width: 15%; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('category')">Category <span id="labelSort-category"></span></th>
+                                    <th id="labelCenterExpDaysHeader" style="width: 8%; text-align: right;">Exp. Days</th>
+                                    <th style="width: 7%; text-align: right; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('stock')">Stock <span id="labelSort-stock"></span></th>
+                                    <th style="width: 8%; text-align: right; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('price')">Price <span id="labelSort-price"></span></th>
+                                    <th style="width: 8%; text-align: center; cursor: pointer; color: #0284c7; user-select: none;" onclick="sortLabelCenter('_labelQty')">Labels Qty <span id="labelSort-_labelQty"></span></th>
+                                    <th style="width: 11%; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="productsTableBody"></tbody>
@@ -4605,9 +4700,9 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-invoice', this)">🔢 Sales Bill / Invoice <span class="shortcut-letter">N</span>umbering</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-receipt', this)">🧻 <span class="shortcut-letter">R</span>eceipt Settings</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-printer', this)">🖨️ <span class="shortcut-letter">P</span>rinter Settings</button>
-                        <button class="settings-nav-item" id="btnOpenLabelSettings" onclick="document.getElementById('labelSettingsModal').style.display='flex'; setTimeout(() => document.getElementById('labelPreset').focus(), 50);">🏷️ <span class="shortcut-letter">L</span>abel Settings</button>
+                        <button class="settings-nav-item" id="btnOpenLabelSettings" onclick="switchSettingsTab('settings-pane-labels', this)">🏷️ <span class="shortcut-letter">L</span>abel Settings</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-general', this)">⚙️ <span class="shortcut-letter">G</span>eneral Settings</button>
-                        <button class="settings-nav-item" onclick="document.getElementById('shortcutsModal').style.display='block'">⌨️ <span class="shortcut-letter">K</span>eyboard Shortcuts</button>
+                        <button class="settings-nav-item" id="btnOpenShortcutsSettings" onclick="switchSettingsTab('settings-pane-shortcuts', this)">⌨️ <span class="shortcut-letter">K</span>eyboard Shortcuts</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-account', this)">🔐 <span class="shortcut-letter">A</span>ccount / Security</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-locations', this)">📍 Stock <span class="shortcut-letter">L</span>ocations</button>
                         <button class="settings-nav-item" onclick="switchSettingsTab('settings-pane-product', this)">🛠️ Product <span class="shortcut-letter">C</span>onfiguration</button>
@@ -4683,42 +4778,45 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <label>Business State (for Auto-GST)</label>
                                     <select id="settingsBusinessState" class="form-control" onchange="saveSettings()">
                                         <option value="">Select State...</option>
-                                        <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                        <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                                        <option value="Assam">Assam</option>
-                                        <option value="Bihar">Bihar</option>
-                                        <option value="Chhattisgarh">Chhattisgarh</option>
-                                        <option value="Goa">Goa</option>
-                                        <option value="Gujarat">Gujarat</option>
-                                        <option value="Haryana">Haryana</option>
-                                        <option value="Himachal Pradesh">Himachal Pradesh</option>
-                                        <option value="Jharkhand">Jharkhand</option>
-                                        <option value="Karnataka">Karnataka</option>
-                                        <option value="Kerala">Kerala</option>
-                                        <option value="Madhya Pradesh">Madhya Pradesh</option>
-                                        <option value="Maharashtra">Maharashtra</option>
-                                        <option value="Manipur">Manipur</option>
-                                        <option value="Meghalaya">Meghalaya</option>
-                                        <option value="Mizoram">Mizoram</option>
-                                        <option value="Nagaland">Nagaland</option>
-                                        <option value="Odisha">Odisha</option>
-                                        <option value="Punjab">Punjab</option>
-                                        <option value="Rajasthan">Rajasthan</option>
-                                        <option value="Sikkim">Sikkim</option>
-                                        <option value="Tamil Nadu">Tamil Nadu</option>
-                                        <option value="Telangana">Telangana</option>
-                                        <option value="Tripura">Tripura</option>
-                                        <option value="Uttar Pradesh">Uttar Pradesh</option>
-                                        <option value="Uttarakhand">Uttarakhand</option>
-                                        <option value="West Bengal">West Bengal</option>
-                                        <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                                        <option value="Chandigarh">Chandigarh</option>
-                                        <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                                        <option value="Delhi">Delhi</option>
-                                        <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                                        <option value="Ladakh">Ladakh</option>
-                                        <option value="Lakshadweep">Lakshadweep</option>
-                                        <option value="Puducherry">Puducherry</option>
+                                        <option value="01 – Jammu and Kashmir">01 – Jammu and Kashmir</option>
+                                        <option value="02 – Himachal Pradesh">02 – Himachal Pradesh</option>
+                                        <option value="03 – Punjab">03 – Punjab</option>
+                                        <option value="04 – Chandigarh">04 – Chandigarh</option>
+                                        <option value="05 – Uttarakhand">05 – Uttarakhand</option>
+                                        <option value="06 – Haryana">06 – Haryana</option>
+                                        <option value="07 – Delhi">07 – Delhi</option>
+                                        <option value="08 – Rajasthan">08 – Rajasthan</option>
+                                        <option value="09 – Uttar Pradesh">09 – Uttar Pradesh</option>
+                                        <option value="10 – Bihar">10 – Bihar</option>
+                                        <option value="11 – Sikkim">11 – Sikkim</option>
+                                        <option value="12 – Arunachal Pradesh">12 – Arunachal Pradesh</option>
+                                        <option value="13 – Nagaland">13 – Nagaland</option>
+                                        <option value="14 – Manipur">14 – Manipur</option>
+                                        <option value="15 – Mizoram">15 – Mizoram</option>
+                                        <option value="16 – Tripura">16 – Tripura</option>
+                                        <option value="17 – Meghalaya">17 – Meghalaya</option>
+                                        <option value="18 – Assam">18 – Assam</option>
+                                        <option value="19 – West Bengal">19 – West Bengal</option>
+                                        <option value="20 – Jharkhand">20 – Jharkhand</option>
+                                        <option value="21 – Odisha">21 – Odisha</option>
+                                        <option value="22 – Chhattisgarh">22 – Chhattisgarh</option>
+                                        <option value="23 – Madhya Pradesh">23 – Madhya Pradesh</option>
+                                        <option value="24 – Gujarat">24 – Gujarat</option>
+                                        <option value="25 – Daman and Diu">25 – Daman and Diu (legacy code)</option>
+                                        <option value="26 – Dadra and Nagar Haveli and Daman and Diu">26 – Dadra and Nagar Haveli and Daman and Diu</option>
+                                        <option value="27 – Maharashtra">27 – Maharashtra</option>
+                                        <option value="28 – Andhra Pradesh (legacy code)">28 – Andhra Pradesh (legacy code)</option>
+                                        <option value="29 – Karnataka">29 – Karnataka</option>
+                                        <option value="30 – Goa">30 – Goa</option>
+                                        <option value="31 – Lakshadweep">31 – Lakshadweep</option>
+                                        <option value="32 – Kerala">32 – Kerala</option>
+                                        <option value="33 – Tamil Nadu">33 – Tamil Nadu</option>
+                                        <option value="34 – Puducherry">34 – Puducherry</option>
+                                        <option value="35 – Andaman and Nicobar Islands">35 – Andaman and Nicobar Islands</option>
+                                        <option value="36 – Telangana">36 – Telangana</option>
+                                        <option value="37 – Andhra Pradesh">37 – Andhra Pradesh</option>
+                                        <option value="38 – Ladakh">38 – Ladakh</option>
+                                        <option value="97 – Other Territory">97 – Other Territory</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -4886,6 +4984,236 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <button class="btn btn-primary" onclick="saveInvoiceSettings()" style="width: 100%;">💾 Save Numbering Settings</button>
                         </div>
                         
+                        <!-- Label Settings Pane (Inline) -->
+                        <div id="settings-pane-labels" class="settings-pane">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #dee2e6; padding-bottom: 10px;">
+                                <h3 style="margin: 0; color: #333;">🏷️ Label & Barcode Settings</h3>
+                                <span style="font-size: 13px; color: #6c757d;">Configure label sizes, margins, content & barcode formatting</span>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="font-weight: 600;">Label Preset</label>
+                                <select id="labelPreset" class="form-control" onchange="applyLabelPreset()">
+                                    <option value="custom">Custom</option>
+                                    <option value="pen">Pen Label (50x30mm)</option>
+                                    <option value="standard">Standard Barcode (38x25mm)</option>
+                                    <option value="large">Large Shipping (100x150mm)</option>
+                                </select>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-bottom: 16px;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Custom Size (mm) [W x H]</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="number" id="labelWidth" class="form-control" placeholder="Width" onchange="saveLabelSettings()">
+                                        <input type="number" id="labelHeight" class="form-control" placeholder="Height" onchange="saveLabelSettings()">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-weight: 600;">Spacing / Gap (mm) [X x Y]</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="number" id="labelGapX" class="form-control" placeholder="Horizontal" onchange="saveLabelSettings()">
+                                        <input type="number" id="labelGapY" class="form-control" placeholder="Vertical" onchange="saveLabelSettings()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label style="font-weight: 600;">Margins (mm) [Top, Right, Bottom, Left]</label>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                                    <div><small style="color: #6c757d;">Top</small><input type="number" id="labelMarginTop" class="form-control" placeholder="Top" onchange="saveLabelSettings()"></div>
+                                    <div><small style="color: #6c757d;">Right</small><input type="number" id="labelMarginRight" class="form-control" placeholder="Right" onchange="saveLabelSettings()"></div>
+                                    <div><small style="color: #6c757d;">Bottom</small><input type="number" id="labelMarginBottom" class="form-control" placeholder="Bottom" onchange="saveLabelSettings()"></div>
+                                    <div><small style="color: #6c757d;">Left</small><input type="number" id="labelMarginLeft" class="form-control" placeholder="Left" onchange="saveLabelSettings()"></div>
+                                </div>
+                            </div>
+
+                            <h4 style="margin: 20px 0 12px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; color: #495057;">Label Content</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowBusinessName" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowBusinessName">Business Name</label>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowMonthCode" onchange="toggleMonthCodesUI(); saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowMonthCode">Month Code</label>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowMRP" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowMRP">MRP / Price</label>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowExpiry" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowExpiry">Expiry Date</label>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowMfgDate" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowMfgDate">Mfg. Date</label>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                    <input type="checkbox" id="labelShowBarcode" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    <label style="margin: 0; font-weight: 500; cursor: pointer;" for="labelShowBarcode">Barcode Code</label>
+                                </div>
+                            </div>
+
+                            <div id="monthCodesContainer" style="display: none; background: #fff; padding: 14px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 18px;">
+                                <label style="font-weight: 600; margin-bottom: 10px; display: block;">Month Codes Configuration</label>
+                                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;">
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Jan</small><input type="text" id="labelMc0" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Feb</small><input type="text" id="labelMc1" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Mar</small><input type="text" id="labelMc2" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Apr</small><input type="text" id="labelMc3" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">May</small><input type="text" id="labelMc4" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Jun</small><input type="text" id="labelMc5" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Jul</small><input type="text" id="labelMc6" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Aug</small><input type="text" id="labelMc7" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Sep</small><input type="text" id="labelMc8" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Oct</small><input type="text" id="labelMc9" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Nov</small><input type="text" id="labelMc10" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                    <div style="display: flex; flex-direction: column;"><small style="line-height:1.2; margin-bottom: 2px;">Dec</small><input type="text" id="labelMc11" class="form-control" onchange="saveLabelSettings()" maxlength="3" style="padding: 3px 6px;"></div>
+                                </div>
+                            </div>
+
+                            <h4 style="margin: 20px 0 12px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; color: #495057;">Typography & Formatting</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                                <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px; margin: 0;">
+                                    <div style="flex: 1;">
+                                        <label style="font-weight: 600;">Font Size (px)</label>
+                                        <input type="number" id="labelFontSize" class="form-control" onchange="saveLabelSettings()">
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 8px;">
+                                        <label style="margin-bottom: 4px; font-weight: 600; font-size: 12px;">Bold</label>
+                                        <input type="checkbox" id="labelFontBold" onchange="saveLabelSettings()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="font-weight: 600;">Text Alignment</label>
+                                    <select id="labelAlignment" class="form-control" onchange="saveLabelSettings()">
+                                        <option value="center">Center</option>
+                                        <option value="left">Left</option>
+                                        <option value="right">Right</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="font-weight: 600;">Barcode Size</label>
+                                    <select id="labelBarcodeSize" class="form-control" onchange="saveLabelSettings()">
+                                        <option value="small">Small</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="large">Large</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
+
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;">
+                                <button class="btn btn-danger" id="btnLabelReset" onclick="resetLabelSettings()" style="height: 38px; padding: 6px 16px; font-size: 13px;">↩ Reset Defaults</button>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-secondary" id="btnLabelPreview" onclick="previewLabelSettings()" style="height: 38px; padding: 6px 16px; font-size: 13px;">👁️ Preview</button>
+                                    <button class="btn btn-primary" id="btnLabelSave" onclick="saveLabelSettings()" style="height: 38px; padding: 6px 20px; font-size: 13px; font-weight: 600;">💾 Save Label Settings</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Keyboard Shortcuts Pane (Inline) -->
+                        <div id="settings-pane-shortcuts" class="settings-pane">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #dee2e6; padding-bottom: 10px;">
+                                <h3 style="margin: 0; color: #333;">⌨️ Keyboard Shortcuts Reference</h3>
+                                <span style="font-size: 13px; color: #6c757d;">Fast navigation and quick actions throughout OneBook</span>
+                            </div>
+
+                            <!-- Global Actions Section -->
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #3b82f6;">🌐</span> Global Actions
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Save Record</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">S</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Search / Focus</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">F</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Delete Editing Record</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Del</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Clear / Reset Form</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Alt</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">X</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Cancel / Close Modal</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Esc</kbd></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Record Sale Section -->
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #10b981;">💰</span> Record Sale
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Product Search</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">F3</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Barcode Scan</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">B</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Hold Sale</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">H</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Clear Cart</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">C</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Add New Inventory</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">I</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Edit Record</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">E</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Add New Customer</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">N</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Add Variant to Product</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Ctrl</kbd> + <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">V</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; grid-column: 1 / -1;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Move to next logical field / Select Match</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Enter</kbd></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calculator & Denomination Section -->
+                            <div>
+                                <h4 style="margin: 0 0 12px 0; color: #0f172a; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #f59e0b;">🧮</span> Calculator & Denomination
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Type numbers naturally</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">NumPad / 0-9</kbd></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px;">
+                                        <span style="font-size: 13px; color: #334155; font-weight: 500;">Calculate / Move to next field</span>
+                                        <div><kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1;">Enter</kbd></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Backup & Restore -->
                         <div id="settings-pane-backup" class="settings-pane">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -4896,15 +5224,152 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </div>
                             </div>
 
-                            <!-- Production SQLite Database Status -->
-                            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px;">
-                                <h4 style="margin: 0 0 10px 0;">🗄️ Production SQLite Database</h4>
-                                <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Database File:</strong> <span style="color: #28a745;">onebook.db</span></p>
-                                <p style="margin: 0 0 15px 0; font-size: 12px; color: #666; word-break: break-all;"><strong>Path:</strong> /Users/log/Documents/OneBook/Database/onebook.db</p>
-                                <div style="display: flex; gap: 10px;">
-                                    <button class="btn btn-primary" onclick="triggerLocalBackup()" style="flex: 1;">💾 Back Up Local SQLite Database Now</button>
+                            <!-- Database Storage Location (Permanent Management) -->
+                            <div style="background: #fff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 22px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                                    <h4 style="margin: 0; font-size: 16px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                        <span>🗄️</span> Database Storage Location
+                                    </h4>
+                                    <span id="dbLocationStatusBadge" style="font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #dcfce7; color: #166534; display: inline-flex; align-items: center; gap: 4px;">
+                                        ● Connected
+                                    </span>
                                 </div>
-                                <p id="localBackupStatusText" style="font-size: 12px; color: #666; margin-top: 10px;">Last local backup: Loading...</p>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #edf2f7;">
+                                    <div>
+                                        <small style="color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 2px;">Database File</small>
+                                        <span id="dbDetailFilename" style="font-weight: 700; color: #0f172a; font-size: 13px;">onebook.db</span>
+                                    </div>
+                                    <div>
+                                        <small style="color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 2px;">File Size</small>
+                                        <span id="dbDetailSize" style="font-weight: 600; color: #0f172a; font-size: 13px;">Calculating...</span>
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <small style="color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 2px;">Current Location (Absolute Path)</small>
+                                        <span id="dbDetailPath" style="font-family: monospace; font-size: 12px; color: #334155; word-break: break-all; background: #fff; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0; display: block;">/Users/log/Documents/OneBook/Database/onebook.db</span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                                    <button class="btn btn-primary" onclick="handleChangeDatabaseLocation()" style="height: 36px; padding: 0 16px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                        📁 Change Database Location
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="handleOpenDatabaseFolder()" style="height: 36px; padding: 0 16px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                                        📂 Open Database Folder
+                                    </button>
+                                    <button id="btnBackupDatabase" class="btn btn-success" onclick="triggerLocalBackup()" style="height: 36px; padding: 0 16px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; margin-left: auto;">
+                                        💾 Backup Database
+                                    </button>
+                                </div>
+                                <p id="localBackupStatusText" style="font-size: 12px; color: #64748b; margin: 10px 0 0 0;">Last local backup: Loading...</p>
+                            </div>
+
+                            <!-- Automatic Database Backup -->
+                            <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <div>
+                                        <h4 style="margin: 0; font-size: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                            <span>⏰ Automatic Database Backup</span>
+                                        </h4>
+                                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">Schedule background backups safely in SQLite without interrupting your workflow.</p>
+                                    </div>
+                                    <label class="switch" style="position: relative; display: inline-block; width: 48px; height: 26px; margin: 0; flex-shrink: 0;">
+                                        <input type="checkbox" id="autoBackupToggle" onchange="handleToggleAutoBackup(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                                        <span id="autoBackupSliderSpan" class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .3s; border-radius: 26px;"></span>
+                                    </label>
+                                </div>
+
+                                <div id="autoBackupSummaryDisplay" style="margin-top: 8px; font-size: 13px; font-weight: 500; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <span style="color: #64748b;">Automatic Backup is currently <strong>OFF</strong></span>
+                                </div>
+                                <div id="autoBackupOptionsContainer" style="display: none; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 14px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                                        <div>
+                                            <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Backup Frequency</label>
+                                            <select id="autoBackupFrequency" class="form-control" onchange="handleAutoBackupFrequencyChange()" style="width: 100%; height: 36px; font-size: 13px; border-radius: 6px;">
+                                                <option value="daily">Daily</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Backup Time (24-Hour)</label>
+                                            <input type="time" id="autoBackupTime" class="form-control" value="22:00" style="width: 100%; height: 36px; font-size: 13px; border-radius: 6px;">
+                                        </div>
+
+                                        <div id="autoBackupWeeklyGroup" style="display: none;">
+                                            <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Backup Day (Weekly)</label>
+                                            <select id="autoBackupDayOfWeek" class="form-control" style="width: 100%; height: 36px; font-size: 13px; border-radius: 6px;">
+                                                <option value="1">Monday</option>
+                                                <option value="2">Tuesday</option>
+                                                <option value="3">Wednesday</option>
+                                                <option value="4">Thursday</option>
+                                                <option value="5">Friday</option>
+                                                <option value="6">Saturday</option>
+                                                <option value="0">Sunday</option>
+                                            </select>
+                                        </div>
+
+                                        <div id="autoBackupMonthlyGroup" style="display: none;">
+                                            <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Backup Day (Monthly: 1-28)</label>
+                                            <input type="number" id="autoBackupDayOfMonth" class="form-control" min="1" max="28" value="1" style="width: 100%; height: 36px; font-size: 13px; border-radius: 6px;">
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Backup Destination Folder</label>
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <input type="text" id="autoBackupDestInput" readonly style="flex: 1; height: 36px; font-size: 12px; font-family: monospace; background: #fff; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px; color: #334155;" placeholder="Default: [Database Folder]/OneBook_Backups">
+                                            <button type="button" class="btn btn-secondary" onclick="handleSelectBackupFolder()" style="height: 36px; padding: 0 14px; font-size: 12px; white-space: nowrap;">
+                                                📁 Change Folder
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                                        <span id="autoBackupSaveNotice" style="font-size: 12px; color: #16a34a; font-weight: 500; display: none;">Saved successfully!</span>
+                                        <button type="button" class="btn btn-primary" onclick="handleSaveBackupSchedule()" style="height: 36px; padding: 0 20px; font-size: 13px; font-weight: 600;">
+                                            💾 Save Backup Schedule
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Backup History -->
+                            <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <h4 style="margin: 0; font-size: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                        <span>📜 Backup History</span>
+                                    </h4>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button type="button" class="btn btn-secondary" onclick="handleOpenBackupsFolder()" style="height: 30px; padding: 0 12px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                                            📂 Open Backups Folder
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="loadBackupHistoryUI()" style="height: 30px; padding: 0 10px; font-size: 12px;">
+                                            🔄 Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                                        <thead>
+                                            <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; position: sticky; top: 0;">
+                                                <th style="padding: 8px 12px; font-weight: 600;">Date & Time</th>
+                                                <th style="padding: 8px 12px; font-weight: 600;">Filename</th>
+                                                <th style="padding: 8px 12px; font-weight: 600;">Size</th>
+                                                <th style="padding: 8px 12px; font-weight: 600;">Type</th>
+                                                <th style="padding: 8px 12px; font-weight: 600;">Status</th>
+                                                <th style="padding: 8px 12px; font-weight: 600; text-align: right;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="backupHistoryTableBody">
+                                            <tr>
+                                                <td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8;">Loading backup history...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             
                             <!-- Google Drive Cloud Backup (Phase 3B) -->
@@ -7315,28 +7780,254 @@ input:focus, select:focus, textarea:focus, button:focus {
     <!-- Toast Notification -->
     <div id="toast"></div>
 
-    <!-- Add this just before <script>
-        // --- Phase 3A & 3B: SQLite & Google Drive Backup UI Handlers ---
-        async function updateBackupStatusUI() {
+    <script>
+        // --- Permanent Custom Database Location Management UI Handlers ---
+        function showDriveUnavailableBanner(details) {
+            const banner = document.getElementById('driveUnavailableBanner');
+            const pathSpan = document.getElementById('bannerDbPath');
+            if (banner && pathSpan) {
+                pathSpan.textContent = details?.path || 'Configured path';
+                banner.style.display = 'flex';
+            }
+        }
+
+        async function reconnectDatabase() {
             try {
-                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
-                    const backups = await window.electronAPI.sqlite.backup.listLocal();
-                    const localLabel = document.getElementById('localBackupStatusText');
-                    if (localLabel) {
-                        if (backups && backups.length > 0) {
-                            localLabel.textContent = 'Last local backup: ' + new Date(backups[0].timestamp).toLocaleString() + ' (' + backups[0].fileName + ')';
-                        } else {
-                            localLabel.textContent = 'Last local backup: None recorded yet';
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                    const details = await window.electronAPI.sqlite.system.getDatabaseDetails();
+                    if (details.connected && details.exists) {
+                        const banner = document.getElementById('driveUnavailableBanner');
+                        if (banner) banner.style.display = 'none';
+                        showAlert('Database reconnected successfully!', '✅');
+                        updateDatabaseLocationUI();
+                        if (typeof refreshUI === 'function') refreshUI();
+                        return;
+                    }
+                    // Try re-initializing with current folder
+                    if (details.folder) {
+                        const res = await window.electronAPI.sqlite.system.initializeDatabaseLocation({ folderPath: details.folder });
+                        if (res && res.success) {
+                            const banner = document.getElementById('driveUnavailableBanner');
+                            if (banner) banner.style.display = 'none';
+                            showAlert('Database reconnected successfully!', '✅');
+                            updateDatabaseLocationUI();
+                            if (typeof refreshUI === 'function') refreshUI();
+                            return;
                         }
                     }
+                    alert('Database location is still unavailable. Please ensure your external drive is plugged in or click "Relocate Database".');
                 }
+            } catch (err) {
+                alert('Reconnect error: ' + err.message);
+            }
+        }
+
+        async function updateDatabaseLocationUI() {
+            try {
+                if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.system) {
+                    const sizeSpan = document.getElementById('dbDetailSize');
+                    if (sizeSpan) sizeSpan.textContent = 'Desktop API Unavailable';
+                    return;
+                }
+
+                const details = await window.electronAPI.sqlite.system.getDatabaseDetails();
+                const badge = document.getElementById('dbLocationStatusBadge');
+                const fileSpan = document.getElementById('dbDetailFilename');
+                const sizeSpan = document.getElementById('dbDetailSize');
+                const pathSpan = document.getElementById('dbDetailPath');
+
+                if (fileSpan) fileSpan.textContent = details?.filename || 'onebook.db';
+                if (sizeSpan) sizeSpan.textContent = details?.sizeFormatted || '0 KB';
+                if (pathSpan) pathSpan.textContent = details?.path || 'Not configured';
+
+                if (badge) {
+                    if (details?.connected && details?.exists) {
+                        badge.textContent = '● Connected';
+                        badge.style.background = '#dcfce7';
+                        badge.style.color = '#166534';
+                        const banner = document.getElementById('driveUnavailableBanner');
+                        if (banner) banner.style.display = 'none';
+                    } else {
+                        badge.textContent = '● Disconnected';
+                        badge.style.background = '#fee2e2';
+                        badge.style.color = '#991b1b';
+                    }
+                }
+            } catch (e) {
+                console.warn('Error updating database location UI:', e);
+                const sizeSpan = document.getElementById('dbDetailSize');
+                if (sizeSpan) sizeSpan.textContent = 'Error: ' + (e.message || 'Failed to calculate');
+            }
+        }
+
+        async function handleOpenDatabaseFolder() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                    const res = await window.electronAPI.sqlite.system.openDatabaseFolder();
+                    if (!res.success) {
+                        alert('Could not open folder: ' + (res.message || res.error));
+                    }
+                }
+            } catch (err) {
+                alert('Error opening folder: ' + err.message);
+            }
+        }
+
+        async function handleChangeDatabaseLocation() {
+            try {
+                if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.system) return;
+
+                const curDetails = await window.electronAPI.sqlite.system.getDatabaseDetails();
+                const selectRes = await window.electronAPI.sqlite.system.selectFolder({
+                    title: 'Select New Destination Folder for OneBook Database',
+                    defaultPath: curDetails.folder || undefined
+                });
+
+                if (!selectRes || !selectRes.success || !selectRes.folderPath) {
+                    return; // User cancelled folder picker
+                }
+
+                const newFolder = selectRes.folderPath;
+                if (curDetails.folder && curDetails.folder === newFolder) {
+                    alert('ℹ️ The selected folder is already the current database location.');
+                    return;
+                }
+
+                // Step 4: Ask confirmation before migrating
+                const confirmMsg = 'Are you sure you want to change the database storage location?\n\n' +
+                                   'Current Location:\n' + (curDetails.path || 'None') + '\n\n' +
+                                   'New Destination Folder:\n' + newFolder + '\n\n' +
+                                   'A safety backup will be created and all records will be verified during migration.';
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+
+                // Show in-progress overlay
+                const overlay = document.getElementById('migrationOverlay');
+                if (overlay) overlay.style.display = 'flex';
+
+                let forceOverwrite = false;
+                let migrationRes = await window.electronAPI.sqlite.system.changeDatabaseLocation({
+                    folderPath: newFolder,
+                    forceOverwrite: false
+                });
+
+                if (migrationRes && !migrationRes.success && migrationRes.error === 'TARGET_EXISTS') {
+                    if (overlay) overlay.style.display = 'none';
+                    const overwriteConfirmed = confirm(
+                        '⚠️ Warning: A database file (onebook.db) already exists in the selected destination folder:\n\n' +
+                        migrationRes.targetPath + '\n\n' +
+                        'Do you want to replace it with your current active database?\n(Your existing target file will be safely preserved as a backup).'
+                    );
+                    if (!overwriteConfirmed) {
+                        showAlert('Migration cancelled.', 'ℹ️');
+                        return;
+                    }
+                    if (overlay) overlay.style.display = 'flex';
+                    forceOverwrite = true;
+                    migrationRes = await window.electronAPI.sqlite.system.changeDatabaseLocation({
+                        folderPath: newFolder,
+                        forceOverwrite: true
+                    });
+                }
+
+                if (overlay) overlay.style.display = 'none';
+
+                if (migrationRes && migrationRes.success) {
+                    alert(
+                        '✅ Database Successfully Migrated!\n\n' +
+                        'New Database Location:\n' + migrationRes.newPath + '\n\n' +
+                        (migrationRes.safetyBackup ? 'Safety Backup created at:\n' + migrationRes.safetyBackup : '')
+                    );
+                    updateDatabaseLocationUI();
+                    updateBackupStatusUI();
+
+                    // Refresh application state
+                    if (typeof refreshUI === 'function') {
+                        await refreshUI();
+                    }
+                    if (typeof updateTodaysSales === 'function') {
+                        updateTodaysSales();
+                    }
+                    if (typeof updateDashboard === 'function') {
+                        updateDashboard();
+                    }
+                } else {
+                    alert('❌ Database Migration Failed: ' + (migrationRes?.message || migrationRes?.error) + '\n\nYour original database at:\n' + (migrationRes?.originalPath || curDetails.path) + '\nremains untouched and active.');
+                    updateDatabaseLocationUI();
+                }
+            } catch (err) {
+                const overlay = document.getElementById('migrationOverlay');
+                if (overlay) overlay.style.display = 'none';
+                alert('Migration error: ' + err.message);
+            }
+        }
+
+        // --- SQLite Backup & Restore UI & Scheduler Handlers ---
+        function formatBackupDate(dateStr) {
+            if (!dateStr) return 'No backup created yet';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const day = d.getDate();
+                const month = months[d.getMonth()];
+                const year = d.getFullYear();
+                let hours = d.getHours();
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes <= 0) return '0 KB';
+            if (bytes > 1048576) {
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+            return (bytes / 1024).toFixed(1) + ' KB';
+        }
+
+        async function updateBackupStatusUI() {
+            // 1. Update Last Local Backup
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
+                    const lastBackup = await window.electronAPI.sqlite.backup.getLastBackup();
+                    const localLabel = document.getElementById('localBackupStatusText');
+                    if (localLabel) {
+                        if (lastBackup && lastBackup.timestamp) {
+                            localLabel.textContent = 'Last local backup: ' + formatBackupDate(lastBackup.timestamp) + ' (' + lastBackup.fileName + ')';
+                        } else {
+                            localLabel.textContent = 'Last local backup: No backup created yet';
+                        }
+                    }
+
+                    // Load schedule settings & history table
+                    await loadScheduleSettingsUI();
+                    await loadBackupHistoryUI();
+                } else {
+                    const localLabel = document.getElementById('localBackupStatusText');
+                    if (localLabel) localLabel.textContent = 'Last local backup: No backup created yet';
+                }
+            } catch(e) {
+                console.warn('Error updating local backup UI status:', e);
+                const localLabel = document.getElementById('localBackupStatusText');
+                if (localLabel) localLabel.textContent = 'Last local backup: No backup created yet';
+            }
+
+            // 2. Update Google Drive Status
+            try {
+                const badge = document.getElementById('gdriveStatusBadge');
+                const configSec = document.getElementById('gdriveConfigSection');
+                const connSec = document.getElementById('gdriveConnectedSection');
+                const lastText = document.getElementById('gdriveLastBackupText');
 
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.gdrive) {
                     const status = await window.electronAPI.sqlite.gdrive.getStatus();
-                    const badge = document.getElementById('gdriveStatusBadge');
-                    const configSec = document.getElementById('gdriveConfigSection');
-                    const connSec = document.getElementById('gdriveConnectedSection');
-                    const lastText = document.getElementById('gdriveLastBackupText');
 
                     if (badge) {
                         if (status.connected) {
@@ -7345,38 +8036,325 @@ input:focus, select:focus, textarea:focus, button:focus {
                             badge.style.color = '#15803d';
                             if (configSec) configSec.style.display = 'none';
                             if (connSec) connSec.style.display = 'block';
-                            if (lastText && status.lastBackup) {
-                                lastText.textContent = 'Last cloud upload: ' + new Date(status.lastBackup.timestamp).toLocaleString() + ' (' + status.lastBackup.fileName + ')';
+                            if (lastText) {
+                                if (status.lastBackup && status.lastBackup.timestamp) {
+                                    lastText.textContent = 'Last cloud upload: ' + formatBackupDate(status.lastBackup.timestamp) + ' (' + status.lastBackup.fileName + ')';
+                                } else {
+                                    lastText.textContent = 'Last cloud upload: None';
+                                }
                             }
+                        } else if (status.configured) {
+                            badge.textContent = 'Not Connected';
+                            badge.style.background = '#fee2e2';
+                            badge.style.color = '#991b1b';
+                            if (configSec) configSec.style.display = 'block';
+                            if (connSec) connSec.style.display = 'none';
                         } else {
-                            badge.textContent = status.configured ? 'Not Connected (Configured)' : 'Setup Required';
-                            badge.style.background = '#fef3c7';
-                            badge.style.color = '#b45309';
+                            badge.textContent = 'Not Configured';
+                            badge.style.background = '#f1f5f9';
+                            badge.style.color = '#64748b';
                             if (configSec) configSec.style.display = 'block';
                             if (connSec) connSec.style.display = 'none';
                         }
                     }
+                } else {
+                    if (badge) {
+                        badge.textContent = 'Not Configured';
+                        badge.style.background = '#f1f5f9';
+                        badge.style.color = '#64748b';
+                    }
                 }
-            } catch(e) {
-                console.warn('Error updating backup UI status:', e);
+            } catch(gErr) {
+                console.warn('Error checking Google Drive status:', gErr);
+                const badge = document.getElementById('gdriveStatusBadge');
+                if (badge) {
+                    badge.textContent = 'Not Configured';
+                    badge.style.background = '#f1f5f9';
+                    badge.style.color = '#64748b';
+                }
             }
         }
 
         async function triggerLocalBackup() {
+            const btn = document.getElementById('btnBackupDatabase');
+            const originalHtml = btn ? btn.innerHTML : '💾 Backup Database';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Backing up...';
+            }
+
+            const overlay = document.getElementById('migrationOverlay');
+            const oTitle = document.getElementById('migrationOverlayTitle');
+            const oSub = document.getElementById('migrationOverlaySubtitle');
+
+            if (overlay) {
+                if (oTitle) oTitle.innerText = 'Creating Database Backup...';
+                if (oSub) oSub.innerText = 'Safely taking verified SQLite snapshot with WAL checkpoint...';
+                overlay.style.display = 'flex';
+            }
+
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
-                    const res = await window.electronAPI.sqlite.backup.createLocal({ reason: 'manual_ui' });
-                    if (res.success) {
-                        alert('✅ Local SQLite backup created and verified successfully!\nFile: ' + res.metadata.fileName);
-                        updateBackupStatusUI();
-                    } else {
-                        alert('❌ Backup failed: ' + (res.error || res.message));
+                    const res = await window.electronAPI.sqlite.backup.createLocal({ reason: 'manual' });
+                    if (overlay) overlay.style.display = 'none';
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
                     }
+
+                    if (res && res.success) {
+                        alert('✅ SQLite Database Backup Created Successfully!\n\nFilename: ' + res.metadata.fileName + '\nSize: ' + formatBytes(res.metadata.fileSize) + '\nVerified: PRAGMA integrity_check OK');
+                        await updateBackupStatusUI();
+                        await updateDatabaseLocationUI();
+                    } else {
+                        alert('❌ Backup failed: ' + (res?.error || res?.message || 'Unknown error occurred'));
+                    }
+                } else {
+                    if (overlay) overlay.style.display = 'none';
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                    alert('❌ Backup API is not available.');
                 }
             } catch(e) {
+                if (overlay) overlay.style.display = 'none';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
                 alert('Backup error: ' + e.message);
             }
         }
+
+        function updateScheduleSummaryDisplay(sched) {
+            const summaryDiv = document.getElementById('autoBackupSummaryDisplay');
+            if (!summaryDiv) return;
+
+            if (!sched || !sched.enabled) {
+                summaryDiv.innerHTML = '<span style="color: #64748b;">Automatic Backup is currently <strong>OFF</strong></span>';
+                return;
+            }
+
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const freqCap = sched.frequency ? (sched.frequency.charAt(0).toUpperCase() + sched.frequency.slice(1)) : 'Daily';
+            let dayText = '';
+            if (sched.frequency === 'weekly') {
+                const dayName = days[sched.dayOfWeek !== undefined ? sched.dayOfWeek : 1] || 'Monday';
+                dayText = ` • Day: <strong>${dayName}</strong>`;
+            } else if (sched.frequency === 'monthly') {
+                dayText = ` • Day: <strong>Day ${sched.dayOfMonth || 1}</strong>`;
+            }
+
+            summaryDiv.innerHTML = `<span style="color: #166534;">
+                Automatic Backup: <strong style="color: #16a34a;">ON</strong> • 
+                Frequency: <strong>${freqCap}</strong>${dayText} • 
+                Time: <strong>${sched.time || '22:00'}</strong>
+            </span>`;
+        }
+
+        async function loadScheduleSettingsUI() {
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.backup) return;
+            try {
+                const sched = await window.electronAPI.sqlite.backup.getScheduleSettings();
+                const toggle = document.getElementById('autoBackupToggle');
+                const optContainer = document.getElementById('autoBackupOptionsContainer');
+                const freqSelect = document.getElementById('autoBackupFrequency');
+                const timeInput = document.getElementById('autoBackupTime');
+                const dayOfWeekSelect = document.getElementById('autoBackupDayOfWeek');
+                const dayOfMonthInput = document.getElementById('autoBackupDayOfMonth');
+                const destInput = document.getElementById('autoBackupDestInput');
+
+                const isEnabled = sched && sched.enabled === true;
+                if (toggle) toggle.checked = isEnabled;
+                if (optContainer) optContainer.style.display = isEnabled ? 'block' : 'none';
+                if (freqSelect) freqSelect.value = (sched && sched.frequency) || 'daily';
+                if (timeInput) timeInput.value = (sched && sched.time) || '22:00';
+                if (dayOfWeekSelect) dayOfWeekSelect.value = (sched && sched.dayOfWeek !== undefined) ? sched.dayOfWeek : 1;
+                if (dayOfMonthInput) dayOfMonthInput.value = (sched && sched.dayOfMonth !== undefined) ? sched.dayOfMonth : 1;
+                if (destInput) destInput.value = (sched && sched.destinationFolder) || '';
+
+                handleAutoBackupFrequencyChange();
+                updateScheduleSummaryDisplay(sched);
+            } catch (err) {
+                console.warn('Error loading schedule settings:', err);
+            }
+        }
+
+        function handleToggleAutoBackup(enabled) {
+            const optContainer = document.getElementById('autoBackupOptionsContainer');
+            if (optContainer) {
+                optContainer.style.display = enabled ? 'block' : 'none';
+            }
+            if (enabled) {
+                handleAutoBackupFrequencyChange();
+            }
+            // Immediately update summary to give instant feedback
+            const frequency = document.getElementById('autoBackupFrequency')?.value || 'daily';
+            const time = document.getElementById('autoBackupTime')?.value || '22:00';
+            const dayOfWeek = parseInt(document.getElementById('autoBackupDayOfWeek')?.value || '1', 10);
+            const dayOfMonth = parseInt(document.getElementById('autoBackupDayOfMonth')?.value || '1', 10);
+            updateScheduleSummaryDisplay({
+                enabled: !!enabled,
+                frequency,
+                time,
+                dayOfWeek,
+                dayOfMonth
+            });
+            // Auto-save toggle state immediately so it persists even if user toggles without clicking save
+            handleSaveBackupSchedule(false);
+        }
+
+        function handleAutoBackupFrequencyChange() {
+            const freq = document.getElementById('autoBackupFrequency')?.value || 'daily';
+            const weeklyGrp = document.getElementById('autoBackupWeeklyGroup');
+            const monthlyGrp = document.getElementById('autoBackupMonthlyGroup');
+
+            if (weeklyGrp) weeklyGrp.style.display = (freq === 'weekly') ? 'block' : 'none';
+            if (monthlyGrp) monthlyGrp.style.display = (freq === 'monthly') ? 'block' : 'none';
+        }
+
+        async function handleSelectBackupFolder() {
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.backup) return;
+            const res = await window.electronAPI.sqlite.backup.selectBackupFolder();
+            if (res && res.success && res.folderPath) {
+                const destInput = document.getElementById('autoBackupDestInput');
+                if (destInput) destInput.value = res.folderPath;
+            }
+        }
+
+        async function handleSaveBackupSchedule(showAlertMsg = true) {
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.backup) return;
+            const enabled = document.getElementById('autoBackupToggle')?.checked === true;
+            const frequency = document.getElementById('autoBackupFrequency')?.value || 'daily';
+            const time = document.getElementById('autoBackupTime')?.value || '22:00';
+            const dayOfWeek = parseInt(document.getElementById('autoBackupDayOfWeek')?.value || '1', 10);
+            const dayOfMonth = parseInt(document.getElementById('autoBackupDayOfMonth')?.value || '1', 10);
+            const destinationFolder = document.getElementById('autoBackupDestInput')?.value || '';
+
+            const settings = {
+                enabled,
+                frequency,
+                time,
+                dayOfWeek,
+                dayOfMonth,
+                destinationFolder
+            };
+
+            try {
+                const saved = await window.electronAPI.sqlite.backup.saveScheduleSettings(settings);
+                updateScheduleSummaryDisplay(saved || settings);
+                const notice = document.getElementById('autoBackupSaveNotice');
+                if (notice) {
+                    notice.style.display = 'inline';
+                    setTimeout(() => { notice.style.display = 'none'; }, 3000);
+                }
+                if (showAlertMsg) {
+                    alert('✅ Automatic Backup Schedule saved successfully!');
+                }
+            } catch (err) {
+                if (showAlertMsg) {
+                    alert('Failed to save schedule: ' + err.message);
+                }
+            }
+        }
+
+        async function loadBackupHistoryUI() {
+            const tbody = document.getElementById('backupHistoryTableBody');
+            if (!tbody) return;
+
+            try {
+                if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.backup) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: #94a3b8;">Backup API unavailable</td></tr>';
+                    return;
+                }
+
+                const list = await window.electronAPI.sqlite.backup.listLocal();
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8;">No backups available. Click "Backup Database" above to create one.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = list.map(b => {
+                    const formattedDate = formatBackupDate(b.timestamp);
+                    const sizeStr = formatBytes(b.fileSize);
+                    const isAuto = (b.reason && b.reason.includes('auto')) || (b.fileName && b.fileName.includes('Auto'));
+                    const typeBadge = isAuto 
+                        ? '<span style="background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 11px;">Automatic</span>'
+                        : '<span style="background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 11px;">Manual</span>';
+                    const statusBadge = b.verified 
+                        ? '<span style="color: #16a34a; font-weight: 600; font-size: 11px;">● Verified</span>'
+                        : '<span style="color: #ca8a04; font-weight: 600; font-size: 11px;">● Valid</span>';
+
+                    const safePath = (b.filePath || '').replace(/'/g, "\\'");
+
+                    return `<tr style="border-bottom: 1px solid #f1f5f9; height: 36px;">
+                        <td style="padding: 6px 12px; color: #334155;">${formattedDate}</td>
+                        <td style="padding: 6px 12px; font-family: monospace; color: #0f172a; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${b.fileName}">${b.fileName}</td>
+                        <td style="padding: 6px 12px; color: #64748b;">${sizeStr}</td>
+                        <td style="padding: 6px 12px;">${typeBadge}</td>
+                        <td style="padding: 6px 12px;">${statusBadge}</td>
+                        <td style="padding: 6px 12px; text-align: right; white-space: nowrap;">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="handleOpenBackupsFolder('${safePath}')" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;" title="Reveal in Finder / Explorer">
+                                📂 Open
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="handleRestoreDatabaseBackup('${safePath}', '${b.fileName}')" style="padding: 2px 8px; font-size: 11px;" title="Restore this backup to production">
+                                ↺ Restore
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (err) {
+                console.warn('Error loading backup history table:', err);
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: #ef4444;">Error loading backup history: ' + err.message + '</td></tr>';
+            }
+        }
+
+        async function handleOpenBackupsFolder(filePath) {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.backup) {
+                    await window.electronAPI.sqlite.backup.openBackupFolder(filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : null);
+                }
+            } catch (err) {
+                alert('Error opening folder: ' + err.message);
+            }
+        }
+
+        async function handleRestoreDatabaseBackup(filePath, fileName) {
+            const confirmMsg = '⚠️ RESTORE DATABASE CONFIRMATION\n\n' +
+                'Are you sure you want to restore database from backup:\n' + fileName + '\n\n' +
+                'This will replace your current production SQLite database with this backup file.\n' +
+                'A pre-restore safety snapshot of your current database will be automatically created before restoring.\n\n' +
+                'Do you wish to proceed?';
+
+            if (!confirm(confirmMsg)) return;
+
+            const overlay = document.getElementById('migrationOverlay');
+            const oTitle = document.getElementById('migrationOverlayTitle');
+            const oSub = document.getElementById('migrationOverlaySubtitle');
+
+            if (overlay) {
+                if (oTitle) oTitle.innerText = 'Restoring Database Backup...';
+                if (oSub) oSub.innerText = 'Safely snapshotting current DB and replacing with selected verified backup...';
+                overlay.style.display = 'flex';
+            }
+
+            try {
+                const res = await window.electronAPI.sqlite.backup.restoreBackup({ filePath });
+                if (overlay) overlay.style.display = 'none';
+
+                if (res && res.success) {
+                    alert('✅ Database Restored Successfully!\n\nApplication will now reload to apply restored data.');
+                    window.location.reload();
+                } else {
+                    alert('❌ Restore failed: ' + (res?.error || res?.message || 'Unknown error'));
+                }
+            } catch (err) {
+                if (overlay) overlay.style.display = 'none';
+                alert('Restore error: ' + err.message);
+            }
+        }
+
 
         async function handleConnectGDrive() {
             const clientId = document.getElementById('gdriveClientIdInput').value.trim();
@@ -7424,6 +8402,29 @@ input:focus, select:focus, textarea:focus, button:focus {
                 alert('Error: ' + e.message);
             }
         }
+
+        // --- Explicit Window Scope Assignments ---
+        window.showDriveUnavailableBanner = showDriveUnavailableBanner;
+        window.reconnectDatabase = reconnectDatabase;
+        window.updateDatabaseLocationUI = updateDatabaseLocationUI;
+        window.handleOpenDatabaseFolder = handleOpenDatabaseFolder;
+        window.handleChangeDatabaseLocation = handleChangeDatabaseLocation;
+        window.formatBackupDate = formatBackupDate;
+        window.formatBytes = formatBytes;
+        window.updateBackupStatusUI = updateBackupStatusUI;
+        window.triggerLocalBackup = triggerLocalBackup;
+        window.updateScheduleSummaryDisplay = updateScheduleSummaryDisplay;
+        window.loadScheduleSettingsUI = loadScheduleSettingsUI;
+        window.handleToggleAutoBackup = handleToggleAutoBackup;
+        window.handleAutoBackupFrequencyChange = handleAutoBackupFrequencyChange;
+        window.handleSelectBackupFolder = handleSelectBackupFolder;
+        window.handleSaveBackupSchedule = handleSaveBackupSchedule;
+        window.loadBackupHistoryUI = loadBackupHistoryUI;
+        window.handleOpenBackupsFolder = handleOpenBackupsFolder;
+        window.handleRestoreDatabaseBackup = handleRestoreDatabaseBackup;
+        window.handleConnectGDrive = handleConnectGDrive;
+        window.handleDisconnectGDrive = handleDisconnectGDrive;
+        window.handleGDriveBackupNow = handleGDriveBackupNow;
 </script>
 
     <!-- Stock Location Management Client Script (Phase 1) -->
@@ -8497,6 +9498,132 @@ input:focus, select:focus, textarea:focus, button:focus {
             // SQLite is source of truth
         }
 
+        // --- GST States Master Reference & Helper Functions ---
+        const GST_STATES = [
+            { code: '01', name: 'Jammu and Kashmir' },
+            { code: '02', name: 'Himachal Pradesh' },
+            { code: '03', name: 'Punjab' },
+            { code: '04', name: 'Chandigarh' },
+            { code: '05', name: 'Uttarakhand' },
+            { code: '06', name: 'Haryana' },
+            { code: '07', name: 'Delhi' },
+            { code: '08', name: 'Rajasthan' },
+            { code: '09', name: 'Uttar Pradesh' },
+            { code: '10', name: 'Bihar' },
+            { code: '11', name: 'Sikkim' },
+            { code: '12', name: 'Arunachal Pradesh' },
+            { code: '13', name: 'Nagaland' },
+            { code: '14', name: 'Manipur' },
+            { code: '15', name: 'Mizoram' },
+            { code: '16', name: 'Tripura' },
+            { code: '17', name: 'Meghalaya' },
+            { code: '18', name: 'Assam' },
+            { code: '19', name: 'West Bengal' },
+            { code: '20', name: 'Jharkhand' },
+            { code: '21', name: 'Odisha' },
+            { code: '22', name: 'Chhattisgarh' },
+            { code: '23', name: 'Madhya Pradesh' },
+            { code: '24', name: 'Gujarat' },
+            { code: '25', name: 'Daman and Diu' },
+            { code: '26', name: 'Dadra and Nagar Haveli and Daman and Diu' },
+            { code: '27', name: 'Maharashtra' },
+            { code: '28', name: 'Andhra Pradesh (legacy code)' },
+            { code: '29', name: 'Karnataka' },
+            { code: '30', name: 'Goa' },
+            { code: '31', name: 'Lakshadweep' },
+            { code: '32', name: 'Kerala' },
+            { code: '33', name: 'Tamil Nadu' },
+            { code: '34', name: 'Puducherry' },
+            { code: '35', name: 'Andaman and Nicobar Islands' },
+            { code: '36', name: 'Telangana' },
+            { code: '37', name: 'Andhra Pradesh' },
+            { code: '38', name: 'Ladakh' },
+            { code: '97', name: 'Other Territory' }
+        ];
+        window.GST_STATES = GST_STATES;
+
+        window.normalizeGSTState = function(input) {
+            if (!input) return null;
+            const str = String(input).trim();
+            if (!str) return null;
+
+            // Direct match on code (e.g. "33")
+            if (/^\d{2}$/.test(str)) {
+                const found = GST_STATES.find(s => s.code === str);
+                if (found) return { code: found.code, name: found.name, display: `${found.code} – ${found.name}` };
+            }
+
+            // Match formatted "33 – Tamil Nadu" or "33 - Tamil Nadu"
+            const codePrefixMatch = str.match(/^(\d{2})\s*[-–—]\s*(.*)$/);
+            if (codePrefixMatch) {
+                const c = codePrefixMatch[1];
+                const found = GST_STATES.find(s => s.code === c);
+                if (found) return { code: found.code, name: found.name, display: `${found.code} – ${found.name}` };
+            }
+
+            // Match by state name case-insensitively
+            const lower = str.toLowerCase();
+            const foundByName = GST_STATES.find(s => s.name.toLowerCase() === lower || lower.includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(lower));
+            if (foundByName) {
+                return { code: foundByName.code, name: foundByName.name, display: `${foundByName.code} – ${foundByName.name}` };
+            }
+
+            return null;
+        };
+
+        window.detectCustomerGSTState = function(options = {}) {
+            const { gstin, state, address, isWalkIn, businessState } = options;
+            const bStateObj = window.normalizeGSTState(businessState) || { code: '33', name: 'Tamil Nadu', display: '33 – Tamil Nadu' };
+
+            // 1. If Walk-in Customer (and no explicit GSTIN/state), use Business State automatically
+            if (isWalkIn && !gstin && !state) {
+                return bStateObj;
+            }
+
+            // 2. If valid GSTIN (first 2 digits)
+            if (gstin && String(gstin).trim().length >= 2) {
+                const cleanGstin = String(gstin).trim().toUpperCase();
+                const prefix = cleanGstin.substring(0, 2);
+                if (/^\d{2}$/.test(prefix)) {
+                    const match = GST_STATES.find(s => s.code === prefix);
+                    if (match) {
+                        return { code: match.code, name: match.name, display: `${match.code} – ${match.name}` };
+                    }
+                }
+            }
+
+            // 3. If customer's saved state/address
+            if (state) {
+                const matched = window.normalizeGSTState(state);
+                if (matched) return matched;
+            }
+            if (address) {
+                const matched = window.normalizeGSTState(address);
+                if (matched) return matched;
+            }
+
+            // 4. Fallback for walk-in or undefined
+            if (isWalkIn) {
+                return bStateObj;
+            }
+
+            return null;
+        };
+
+        window.determineTaxType = function(businessStateInput, customerStateObj, overrideTaxType = 'auto') {
+            if (overrideTaxType && overrideTaxType !== 'auto') {
+                return overrideTaxType; // explicit intra or inter
+            }
+
+            const bStateObj = window.normalizeGSTState(businessStateInput) || { code: '33', name: 'Tamil Nadu' };
+            const cStateObj = customerStateObj || bStateObj;
+
+            if (bStateObj.code && cStateObj.code) {
+                return (bStateObj.code === cStateObj.code) ? 'intra' : 'inter';
+            }
+            return 'intra';
+        };
+
         // --- Product Variant Helper Functions ---
         window.hasRealVariants = function(product) {
             if (!product || !Array.isArray(product.variants) || product.variants.length === 0) return false;
@@ -8524,6 +9651,47 @@ input:focus, select:focus, textarea:focus, button:focus {
             return null;
         };
         
+        window.getCartQuantityForProduct = function(productId, variantId = null) {
+            if (!Array.isArray(window.cart) && typeof cart === 'undefined') return 0;
+            const currentCart = Array.isArray(window.cart) ? window.cart : (typeof cart !== 'undefined' ? cart : []);
+            const pIdStr = String(productId);
+            
+            return currentCart
+                .filter(item => {
+                    if (String(item.productId) !== pIdStr) return false;
+                    if (variantId !== null && variantId !== undefined && variantId !== '' && variantId !== 'null' && variantId !== 'undefined') {
+                        return String(item.variantId) === String(variantId);
+                    }
+                    return true;
+                })
+                .reduce((sum, item) => sum + ((parseFloat(item.quantity) || 0) * (parseFloat(item.baseQuantity) || 1)), 0);
+        };
+
+        window.getAvailableStock = function(product, variant = null) {
+            if (!product) return 0;
+            let actualStock = 0;
+            let targetVarId = null;
+
+            if (variant) {
+                actualStock = parseFloat(variant.stock !== undefined ? variant.stock : 0) || 0;
+                targetVarId = variant.id;
+            } else if (window.hasVariants && window.hasVariants(product) && Array.isArray(product.variants) && product.variants.length > 0) {
+                // If checking parent for product that has a single default variant
+                if (product.variants.length === 1) {
+                    actualStock = parseFloat(product.variants[0].stock !== undefined ? product.variants[0].stock : (product.stock || 0)) || 0;
+                    targetVarId = product.variants[0].id;
+                } else {
+                    actualStock = parseFloat(product.stock !== undefined ? product.stock : 0) || 0;
+                }
+            } else {
+                actualStock = parseFloat(product.stock !== undefined ? product.stock : 0) || 0;
+            }
+
+            const inCart = window.getCartQuantityForProduct(product.id, targetVarId);
+            const avail = actualStock - inCart;
+            return parseFloat(avail.toFixed(3));
+        };
+
         window.getVariantDisplayName = function(product, variant) {
             if (!product) return 'Unknown Product';
             let name = product.name || 'Unknown Product';
@@ -10152,19 +11320,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function deriveCustomerStateFromGSTIN(gstin) {
             if (!gstin || gstin.length < 2) return;
-            const stateCodes = {
-                '01': 'Jammu and Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab', '04': 'Chandigarh',
-                '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi', '08': 'Rajasthan', '09': 'Uttar Pradesh',
-                '10': 'Bihar', '11': 'Sikkim', '12': 'Arunachal Pradesh', '13': 'Nagaland', '14': 'Manipur',
-                '15': 'Mizoram', '16': 'Tripura', '17': 'Meghalaya', '18': 'Assam', '19': 'West Bengal',
-                '20': 'Jharkhand', '21': 'Odisha', '22': 'Chhattisgarh', '23': 'Madhya Pradesh', '24': 'Gujarat',
-                '26': 'Dadra and Nagar Haveli and Daman and Diu', '27': 'Maharashtra', '29': 'Karnataka',
-                '30': 'Goa', '31': 'Lakshadweep', '32': 'Kerala', '33': 'Tamil Nadu', '34': 'Puducherry',
-                '35': 'Andaman and Nicobar Islands', '36': 'Telangana', '37': 'Andhra Pradesh', '38': 'Ladakh'
-            };
             const code = gstin.substring(0, 2);
-            if (stateCodes[code]) {
-                document.getElementById('newCustomerState').value = stateCodes[code];
+            const found = GST_STATES.find(s => s.code === code);
+            if (found) {
+                document.getElementById('newCustomerState').value = `${found.code} – ${found.name}`;
             }
         }
 
@@ -10360,6 +11519,11 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             document.getElementById('existingCustomerSection').style.display = 'block';
 
+            // Update Cart calculations immediately with new Customer State & Tax Type
+            if (typeof updateCartDisplay === 'function') {
+                updateCartDisplay();
+            }
+
             // Auto advance focus to Discount
             const discInput = document.getElementById('discountAmount');
             if (discInput) {
@@ -10441,6 +11605,13 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('saleCustomerSearch').value = '';
             document.getElementById('saleCustomerSearch').style.display = 'block';
             document.getElementById('selectedCustomerDetails').style.display = 'none';
+            if (document.getElementById('displayCustomerName')) document.getElementById('displayCustomerName').innerText = '';
+            if (document.getElementById('displayCustomerGSTIN')) document.getElementById('displayCustomerGSTIN').innerText = '';
+            if (document.getElementById('displayCustomerState')) document.getElementById('displayCustomerState').innerText = '';
+            if (document.getElementById('displayCustomerPhone')) document.getElementById('displayCustomerPhone').innerText = '';
+            if (typeof updateCartDisplay === 'function') {
+                updateCartDisplay();
+            }
             document.getElementById('saleCustomerSearch').focus();
         }
         
@@ -11682,6 +12853,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 if (tabName === 'reports' && typeof generateSalesChart === 'function') generateSalesChart();
                 if (tabName === 'products' && typeof updateProductsTable === 'function') updateProductsTable();
+                if (tabName === 'settings') {
+                    if (typeof updateDatabaseLocationUI === 'function') updateDatabaseLocationUI();
+                    if (typeof updateBackupStatusUI === 'function') updateBackupStatusUI();
+                }
                 if (tabName === 'receivables' && typeof renderReceivablesTable === 'function') renderReceivablesTable();
                 if (tabName === 'payables' && typeof renderPayablesTable === 'function') renderPayablesTable();
                 if (tabName === 'pettycash' && typeof initPettyCash === 'function') initPettyCash();
@@ -13150,12 +14325,14 @@ input:focus, select:focus, textarea:focus, button:focus {
             products.forEach(p => {
                 // Only add parent item if it doesn't have variants
                 if (!window.hasVariants(p)) {
+                    const availStock = window.getAvailableStock ? window.getAvailableStock(p, null) : (p.stock !== undefined ? p.stock : 0);
                     candidateItems.push({
                         parent: p,
                         variant: null,
                         displayName: (p.name || 'Unnamed Product') + (p.variant ? ' ' + p.variant.trim() : ''),
                         barcode: p.barcode || '',
-                        stock: p.stock !== undefined ? p.stock : 0,
+                        stock: availStock,
+                        actualStock: p.stock !== undefined ? p.stock : 0,
                         price: p.price !== undefined ? p.price : (p.sellingPrice !== undefined ? p.sellingPrice : 0),
                         category: p.category || '',
                         brand: p.brand || '',
@@ -13167,12 +14344,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 // Variant items
                 if (window.hasVariants(p) && Array.isArray(p.variants)) {
                     p.variants.forEach(v => {
+                        const availStock = window.getAvailableStock ? window.getAvailableStock(p, v) : (v.stock !== undefined ? v.stock : 0);
                         candidateItems.push({
                             parent: p,
                             variant: v,
                             displayName: window.getVariantDisplayName(p, v),
                             barcode: v.barcode || '',
-                            stock: v.stock !== undefined ? v.stock : 0,
+                            stock: availStock,
+                            actualStock: v.stock !== undefined ? v.stock : 0,
                             price: v.sellingPrice !== undefined ? v.sellingPrice : (v.price !== undefined ? v.price : 0),
                             category: v.category || p.category || '',
                             brand: v.brand || p.brand || '',
@@ -13305,7 +14484,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <div class="product-dropdown-barcode-loc" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:12px;">
                                 <span>${barcodeText}</span>
                             </div>
-                            <span class="product-dropdown-stock-price" style="white-space:nowrap; flex-shrink:0;">Stock: <strong class="product-dropdown-stock" style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong class="product-dropdown-price" style="color:#0d6efd;">₹${priceFormatted}</strong></span>
+                            <span class="product-dropdown-stock-price" style="white-space:nowrap; flex-shrink:0;">Available Stock: <strong class="product-dropdown-stock" style="color:${stockColor};">${stockVal}</strong> &nbsp; | &nbsp; <strong class="product-dropdown-price" style="color:#0d6efd;">₹${priceFormatted}</strong></span>
                         </div>
                     </div>
                 `;
@@ -14007,7 +15186,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                 }
 
-                const effStock = variant ? (variant.stock || 0) : (product.stock || 0);
+                const effStock = window.getAvailableStock ? window.getAvailableStock(product, variant) : (variant ? (variant.stock || 0) : (product.stock || 0));
                 if (effStock <= 0) {
                     if (prompt) prompt.style.display = 'block';
                 }
@@ -14166,10 +15345,11 @@ input:focus, select:focus, textarea:focus, button:focus {
 
 
 
-            const targetVariantId = window.selectedSaleVariant ? window.selectedSaleVariant.id : undefined;
-            const effStock = window.selectedSaleVariant ? (window.selectedSaleVariant.stock || 0) : (product.stock || 0);
+            const targetVariantId = window.selectedSaleVariant ? window.selectedSaleVariant.id : ((product.variants && product.variants.length > 0) ? product.variants[0].id : undefined);
+            const actualTotalStock = window.selectedSaleVariant ? (window.selectedSaleVariant.stock || 0) : ((product.variants && product.variants.length === 1) ? (product.variants[0].stock || 0) : (product.stock || 0));
+            const effStockAvail = window.getAvailableStock ? window.getAvailableStock(product, window.selectedSaleVariant) : actualTotalStock;
 
-            if (effStock <= 0) {
+            if (effStockAvail <= 0) {
                 window.popupCloseCallback = () => {
                     const sps = document.getElementById('saleProductSearch');
                     if (sps) {
@@ -14177,7 +15357,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         if (typeof sps.select === 'function') sps.select();
                     }
                 };
-                showAlert('Inventory is 0 — unable to add item to cart', '⚠️');
+                showAlert('Insufficient stock! Available stock is 0 — unable to add item to cart', '⚠️');
                 return;
             }
 
@@ -14195,12 +15375,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                 .filter(item => item.productId === productId && String(item.variantId) === String(targetVariantId))
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
-            if (currentStockInCart + totalBaseQuantityNeeded > effStock) {
+            if (currentStockInCart + totalBaseQuantityNeeded > actualTotalStock) {
                 window.popupCloseCallback = () => {
                     const sq = document.getElementById('saleQuantity');
                     if (sq) { sq.focus(); sq.select(); }
                 };
-                showAlert(`Insufficient stock! Available: ${effStock} ${effectiveUnitName}. You are trying to sell ${currentStockInCart + totalBaseQuantityNeeded}.`, '⚠️');
+                showAlert(`Insufficient stock! Remaining available: ${effStockAvail} ${effectiveUnitName}. You are trying to add ${totalBaseQuantityNeeded}.`, '⚠️');
                 return;
             }
 
@@ -14453,14 +15633,21 @@ input:focus, select:focus, textarea:focus, button:focus {
             const prec = (product.quantityType === 'decimal') ? (product.decimalPrecision || 0.01) : 1;
             const newQty = parseFloat((item.quantity + prec).toFixed(3));
             
-            // Check if we can increase quantity (stock availability)
-            // Consider baseQuantity multiplier
+            let variant = null;
+            if (item.variantId) {
+                variant = window.getVariantById ? window.getVariantById(product, item.variantId) : (product.variants && product.variants.find(v => String(v.id) === String(item.variantId)));
+            }
+            const actualTotalStock = variant ? (variant.stock || 0) : ((product.variants && product.variants.length === 1) ? (product.variants[0].stock || 0) : (product.stock || 0));
+            const effUnit = variant ? (variant.unit || product.unit || 'units') : (product.unit || 'units');
+
+            // Calculate stock in cart excluding this item
             const currentStockInCart = cart
-                .filter(cItem => cItem.productId === product.id && cItem !== item)
+                .filter((cItem, cIdx) => cItem.productId === product.id && String(cItem.variantId) === String(item.variantId) && cIdx !== index)
                 .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
                 
-            if (currentStockInCart + (newQty * item.baseQuantity) > product.stock) {
-                showAlert(`Cannot increase quantity! Available stock: ${product.stock} ${product.unit || 'units'}`, '⚠️');
+            if (currentStockInCart + (newQty * item.baseQuantity) > actualTotalStock) {
+                const availNow = Math.max(0, actualTotalStock - (currentStockInCart + (item.quantity * item.baseQuantity)));
+                showAlert(`Cannot increase quantity! Only ${availNow} ${effUnit} remaining in available stock.`, '⚠️');
                 return;
             }
 
@@ -14518,12 +15705,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             }
 
+            const actualTotalStock = variant ? (variant.stock || 0) : ((product.variants && product.variants.length === 1) ? (product.variants[0].stock || 0) : (product.stock || 0));
             const currentStockInCart = cart
-                .filter((cItem, idx) => cItem.productId === product.id && cItem.variantId === item.variantId && idx !== index)
+                .filter((cItem, idx) => cItem.productId === product.id && String(cItem.variantId) === String(item.variantId) && idx !== index)
                 .reduce((sum, cItem) => sum + (cItem.quantity * cItem.baseQuantity), 0);
                 
-            if (currentStockInCart + (parsedQty * item.baseQuantity) > effStock) {
-                showAlert(`Cannot update quantity! Available stock: ${effStock} ${effUnit}`, '⚠️');
+            if (currentStockInCart + (parsedQty * item.baseQuantity) > actualTotalStock) {
+                const availNow = Math.max(0, actualTotalStock - currentStockInCart);
+                showAlert(`Cannot update quantity! Maximum available stock is ${availNow} ${effUnit}.`, '⚠️');
                 window.popupCloseCallback = () => {
                     setTimeout(() => {
                         const el = document.getElementById(`cart-qty-${index}`);
@@ -14599,21 +15788,27 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Tax Settings
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
             const gstEnabled = settings.gstEnabled === true;
-            const businessState = settings.businessState || '';
-            const customerStateEl = document.getElementById('customerState');
-            const customerState = customerStateEl ? customerStateEl.value : '';
+            const businessState = settings.businessState || '33 – Tamil Nadu';
+
+            // Automatic Customer State Detection
+            const activeCustId = document.getElementById('activeCustomerId') ? document.getElementById('activeCustomerId').value : '';
+            const dispName = document.getElementById('displayCustomerName') ? document.getElementById('displayCustomerName').innerText.trim() : '';
+            const dispGSTIN = document.getElementById('displayCustomerGSTIN') ? document.getElementById('displayCustomerGSTIN').innerText.trim() : '';
+            const dispState = document.getElementById('displayCustomerState') ? document.getElementById('displayCustomerState').innerText.trim() : '';
+            const isWalkIn = (!activeCustId || dispName === 'Walk-in Customer' || dispName === '');
+
+            const customerStateObj = window.detectCustomerGSTState({
+                gstin: (dispGSTIN && dispGSTIN !== 'No GSTIN') ? dispGSTIN : '',
+                state: (dispState && dispState !== 'No State') ? dispState : '',
+                isWalkIn: isWalkIn,
+                businessState: businessState
+            });
+
             const taxTypeEl = document.getElementById('saleTaxType');
             let taxTypeInput = taxTypeEl ? taxTypeEl.value : (settings.defaultTaxType || 'auto');
             const pricingMode = settings.taxPricingMode || 'exclusive';
             
-            let taxType = taxTypeInput;
-            if (taxType === 'auto') {
-                if (businessState && customerState && businessState !== customerState) {
-                    taxType = 'inter';
-                } else {
-                    taxType = 'intra';
-                }
-            }
+            let taxType = window.determineTaxType(businessState, customerStateObj, taxTypeInput);
 
             let totalGross = 0;
             let totalItemDiscount = 0;
@@ -15052,6 +16247,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                     negativeChangeInfo.style.display = 'none';
                 }
             }
+
+            // Real-Time Available Stock Synchronization across Record Sale
+            const searchInput = document.getElementById('saleProductSearch');
+            const searchDropdown = document.getElementById('saleProductDropdown');
+            if (searchInput && searchDropdown && searchDropdown.style.display !== 'none' && searchInput.value) {
+                if (typeof populateSaleProductSelect === 'function') {
+                    populateSaleProductSelect(searchInput.value);
+                }
+            }
+            if (typeof renderFavoritesPanel === 'function') {
+                renderFavoritesPanel();
+            }
         }
 
         function generateReceiptNumber() {
@@ -15238,18 +16445,22 @@ input:focus, select:focus, textarea:focus, button:focus {
                 customerState = customerStateEl ? customerStateEl.value : '';
             }
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
+            const businessState = settings.businessState || '33 – Tamil Nadu';
+
+            const detectedCustState = window.detectCustomerGSTState({
+                gstin: customerGSTIN,
+                state: customerState,
+                address: customerAddress,
+                isWalkIn: (!customerId || customerName === 'Walk-in Customer'),
+                businessState: businessState
+            });
+            if (detectedCustState) {
+                customerState = detectedCustState.display;
+            }
+
             const taxTypeEl = document.getElementById('saleTaxType');
             let taxTypeInput = taxTypeEl ? taxTypeEl.value : (settings.defaultTaxType || 'auto');
-            
-            let taxType = taxTypeInput;
-            if (taxType === 'auto') {
-                const businessState = settings.businessState || '';
-                if (businessState && customerState && businessState !== customerState) {
-                    taxType = 'inter';
-                } else {
-                    taxType = 'intra';
-                }
-            }
+            let taxType = window.determineTaxType(businessState, detectedCustState, taxTypeInput);
             
             const paymentMethod = document.getElementById('paymentMethod').value;
             const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
@@ -15409,6 +16620,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                     customer_id: customerId || null,
                     customer_type: customerType,
                     customer_name: customerName,
+                    customer_gstin: customerGSTIN || null,
+                    customer_address: customerAddress || null,
+                    customer_state: customerState || null,
+                    tax_type: taxType,
+                    place_of_supply: detectedCustState ? detectedCustState.code : null,
                     subtotal: subtotal,
                     discount: discount,
                     payment_method: paymentMethod,
@@ -15537,6 +16753,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                     counterCode: currentUserObj.userCode || '-',
                     items: saleItems, 
                     customerName: customerName,
+                    customerGSTIN: customerGSTIN,
+                    customerAddress: customerAddress,
+                    customerState: customerState,
+                    taxType: taxType,
+                    placeOfSupply: detectedCustState ? detectedCustState.code : null,
                     paymentMethod: paymentMethod,
                     subtotal: subtotal,
                     discount: discount,
@@ -15702,9 +16923,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const totalCGST = lastSaleData.items.reduce((sum, item) => sum + (item.cgst || 0), 0);
                 const totalSGST = lastSaleData.items.reduce((sum, item) => sum + (item.sgst || 0), 0);
                 const totalIGST = lastSaleData.items.reduce((sum, item) => sum + (item.igst || 0), 0);
-                const hasInterState = lastSaleData.items.some(item => item.taxType === 'inter');
+                
+                // Determine whether this bill was INTER-STATE or INTRA-STATE
+                const isInterState = (lastSaleData.taxType === 'inter') || (totalIGST > 0) || lastSaleData.items.some(item => item.taxType === 'inter');
 
-                if (hasInterState) {
+                if (isInterState) {
                     gstRowsHTML += `
                         <tr>
                             <td colspan="4" style="text-align: right;">IGST:</td>
@@ -15720,10 +16943,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                         <tr>
                             <td colspan="4" style="text-align: right;">SGST:</td>
                             <td style="text-align: right;">₹${totalSGST.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" style="text-align: right;">IGST:</td>
-                            <td style="text-align: right;">₹0.00</td>
                         </tr>
                     `;
                 }
@@ -16042,7 +17261,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const cGstin = saleData.customerGSTIN && saleData.customerGSTIN !== '-' ? saleData.customerGSTIN.toUpperCase() : 'Not Provided';
             const cAddress = saleData.customerAddress && saleData.customerAddress !== '-' ? saleData.customerAddress.replace(/\n/g, '<br>') : '-';
             const cState = saleData.customerState && saleData.customerState !== '-' ? saleData.customerState : '-';
-            const taxTypeStr = saleData.taxType === 'intra' ? 'Intra-State (CGST + SGST)' : (saleData.taxType === 'inter' ? 'Inter-State (IGST)' : '-');
+            const isInterInvoice = (saleData.taxType === 'inter') || (saleData.items && saleData.items.some(i => (i.igst > 0 || i.taxType === 'inter')));
+            const taxTypeStr = isInterInvoice ? 'Inter-State (IGST)' : (saleData.taxType === 'intra' || (saleData.items && saleData.items.some(i => (i.cgst > 0 || i.sgst > 0))) ? 'Intra-State (CGST + SGST)' : '-');
 
             let paymentStr = saleData.paymentMethod ? saleData.paymentMethod.toUpperCase() : '-';
             if (saleData.paymentMethod === 'mixed') paymentStr = `CASH + UPI`;
@@ -16091,9 +17311,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             <td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">${discPerc}</td>
                             <td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${amount.toFixed(2)}</td>
                             ${invoiceGstApplied ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${taxable.toFixed(2)}</td>` : ''}
-                            ${invoiceGstApplied ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${cgst.toFixed(2)}</td>` : ''}
-                            ${invoiceGstApplied ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${sgst.toFixed(2)}</td>` : ''}
-                            ${invoiceGstApplied ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${igst.toFixed(2)}</td>` : ''}
+                            ${invoiceGstApplied && !isInterInvoice ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${cgst.toFixed(2)}</td><td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${sgst.toFixed(2)}</td>` : ''}
+                            ${invoiceGstApplied && isInterInvoice ? `<td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px;">₹${igst.toFixed(2)}</td>` : ''}
                             <td style="padding: 4px; border: 1px solid #ddd; text-align: right; font-size: 11px; font-weight: bold;">₹${total.toFixed(2)}</td>
                         </tr>
                     `;
@@ -16159,9 +17378,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Discount</th>
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Amount</th>
                                     ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Subtotal</th>` : ''}
-                                    ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">CGST</th>` : ''}
-                                    ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">SGST</th>` : ''}
-                                    ${invoiceGstApplied ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">IGST</th>` : ''}
+                                    ${invoiceGstApplied && !isInterInvoice ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">CGST</th><th style="padding: 4px; border: 1px solid #333; font-size: 10px;">SGST</th>` : ''}
+                                    ${invoiceGstApplied && isInterInvoice ? `<th style="padding: 4px; border: 1px solid #333; font-size: 10px;">IGST</th>` : ''}
                                     <th style="padding: 4px; border: 1px solid #333; font-size: 10px;">Total</th>
                                 </tr>
                             </thead>
@@ -16180,9 +17398,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <tr><td>Gross Amount:</td><td style="text-align: right;">₹${grandGross.toFixed(2)}</td></tr>
                                     <tr><td>Total Item Discount:</td><td style="text-align: right;">₹${grandDisc.toFixed(2)}</td></tr>
                                     <tr><td>Taxable Value:</td><td style="text-align: right;">₹${grandTaxable.toFixed(2)}</td></tr>
+                                    ${!isInterInvoice ? `
                                     <tr><td>CGST:</td><td style="text-align: right;">₹${grandCGST.toFixed(2)}</td></tr>
-                                    <tr><td>SGST:</td><td style="text-align: right;">₹${grandSGST.toFixed(2)}</td></tr>
-                                    <tr><td>IGST:</td><td style="text-align: right;">₹${grandIGST.toFixed(2)}</td></tr>
+                                    <tr><td>SGST:</td><td style="text-align: right;">₹${grandSGST.toFixed(2)}</td></tr>` : `
+                                    <tr><td>IGST:</td><td style="text-align: right;">₹${grandIGST.toFixed(2)}</td></tr>`}
                                     <tr><td colspan="2"><hr style="border: 0; border-top: 1px solid #ccc; margin: 3px 0;"></td></tr>
                                     <tr><td><strong>Subtotal / Taxable Total:</strong></td><td style="text-align: right;"><strong>₹${grandTaxable.toFixed(2)}</strong></td></tr>
                                     <tr><td><strong>Invoice Total:</strong></td><td style="text-align: right;"><strong>₹${grandTotal.toFixed(2)}</strong></td></tr>
@@ -16196,9 +17415,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <table style="width: 100%; font-size: 11px; line-height: 1.3;">
                                         ${invoiceGstApplied ? `
                                         <tr><td>Total Taxable Value:</td><td style="text-align: right;">₹${grandTaxable.toFixed(2)}</td></tr>
+                                        ${!isInterInvoice ? `
                                         <tr><td>Total CGST:</td><td style="text-align: right;">₹${grandCGST.toFixed(2)}</td></tr>
-                                        <tr><td>Total SGST:</td><td style="text-align: right;">₹${grandSGST.toFixed(2)}</td></tr>
-                                        <tr><td>Total IGST:</td><td style="text-align: right;">₹${grandIGST.toFixed(2)}</td></tr>
+                                        <tr><td>Total SGST:</td><td style="text-align: right;">₹${grandSGST.toFixed(2)}</td></tr>` : `
+                                        <tr><td>Total IGST:</td><td style="text-align: right;">₹${grandIGST.toFixed(2)}</td></tr>`}
                                         <tr><td colspan="2"><hr style="border: 0; border-top: 1px solid #333; margin: 3px 0;"></td></tr>
                                         ` : ''}
                                         <tr style="font-size: 13px; font-weight: bold;">
@@ -16541,6 +17761,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                             customerGSTIN: saleDataSql.customer_gstin || '',
                             customerAddress: saleDataSql.customer_address || '',
                             customerState: saleDataSql.customer_state || '',
+                            taxType: saleDataSql.tax_type || ((saleDataSql.igst > 0 || (saleDataSql.items && saleDataSql.items.some(i => i.igst > 0))) ? 'inter' : 'intra'),
+                            placeOfSupply: saleDataSql.place_of_supply || null,
                             subtotal: saleDataSql.subtotal || 0,
                             discount: saleDataSql.discount || 0,
                             total: saleDataSql.total,
@@ -17446,6 +18668,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
             );
         }
+
+        window.viewReceiptFromReport = viewReceiptFromReport;
+        window.viewInvoiceFromReport = viewInvoiceFromReport;
+        window.cancelSaleFromReport = cancelSaleFromReport;
 
         function generateDailySalesChart(startDate, endDate) {
             const chartContainer = document.getElementById('dailySalesChart');
@@ -18784,31 +20010,34 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             tbody.innerHTML = sortedProducts.map(product => `
                 <tr>
-                    <td style="text-align: center;">
+                    <td style="text-align: center; vertical-align: middle;">
                         <input type="checkbox" class="product-select-checkbox" 
                                data-id="${product.id}" 
                                ${selectedLabelProductIds.has(product.id) ? 'checked' : ''}
                                onchange="toggleProductSelection('${product.id}', this.checked)"
-                               onkeydown="handleLabelCheckboxKeydown(event, this)">
+                               onkeydown="handleLabelCheckboxKeydown(event, this)"
+                               style="cursor: pointer; width: 14px; height: 14px;">
                     </td>
-                    <td>${product.barcode || 'N/A'}</td>
+                    <td style="font-family: monospace; font-size: 12px; color: #1e293b;">${product.barcode || 'N/A'}</td>
                     <td>
-                        <span onclick="toggleFavourite('${product.id}')" style="cursor: pointer; font-size: 1.2em; margin-right: 5px; user-select: none;" title="Toggle Favourite">
+                        <span onclick="toggleFavourite('${product.id}')" style="cursor: pointer; font-size: 1.1em; margin-right: 4px; user-select: none;" title="Toggle Favourite">
                             ${product.isFavourite ? '⭐' : '☆'}
                         </span>
-                        ${product.name}
+                        <span style="font-weight: 500;">${product.name}</span>
                     </td>
-                    <td>${product.category}</td>
-                    ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control form-control-sm" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 60px; height: 26px; font-size: 13px; text-align: right; margin: 0 0 0 auto; padding: 2px 5px;" placeholder="—"></td>` : ''}
-                    <td style="text-align: right;">${product.stock} ${product.unit || ''}</td>
-                    <td style="text-align: right;">₹${(Number(product.price) || 0).toFixed(2)}</td>
-                    <td style="text-align: center;">
-                        <input type="number" class="form-control form-control-sm main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" style="width: 60px; height: 26px; font-size: 13px; margin: 0 auto; padding: 2px 5px;" onchange="updateMainLabelQty('${product.id}', this.value)" onkeydown="handleLabelQtyKeydown(event, this)">
+                    <td style="color: #475569;">${product.category}</td>
+                    ${showExpDays ? `<td style="text-align: right;"><input type="number" class="form-control form-control-sm" value="${product.expiryDays || ''}" onchange="updateProductExpiryDays('${product.id}', this.value)" onfocus="this.select()" min="0" style="width: 52px; height: 24px; font-size: 12px; text-align: right; margin: 0 0 0 auto; padding: 1px 4px;" placeholder="—"></td>` : ''}
+                    <td style="text-align: right; font-weight: 500;">${product.stock} <span style="font-size: 11px; color: #64748b; font-weight: normal;">${product.unit || ''}</span></td>
+                    <td style="text-align: right; font-weight: 600;">₹${(Number(product.price) || 0).toFixed(2)}</td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <input type="number" class="main-label-qty" data-id="${product.id}" value="${product._labelQty !== undefined ? product._labelQty : 1}" min="0" onfocus="this.select()" onchange="updateMainLabelQty('${product.id}', this.value)" onkeydown="handleLabelQtyKeydown(event, this)">
                     </td>
-                    <td>
-                        <button class="btn btn-info btn-sm" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
-                        ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-sm" onclick="editProduct('${product.id}')" title="Edit">✏️</button>` : ''}
-                        ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')" title="Delete">🗑️</button>` : ''}
+                    <td style="text-align: center; vertical-align: middle;">
+                        <div style="display: inline-flex; gap: 2px; align-items: center; justify-content: center;">
+                            <button class="btn btn-info btn-action-compact" onclick="printSingleLabel('${product.id}')" title="Print Label">🖨️</button>
+                            ${window.hasPermission('product_add_edit') ? `<button class="btn btn-warning btn-action-compact" onclick="editProduct('${product.id}')" title="Edit">✏️</button>` : ''}
+                            ${window.hasPermission('delete') ? `<button class="btn btn-danger btn-action-compact" onclick="deleteProduct('${product.id}')" title="Delete">🗑️</button>` : ''}
+                        </div>
                     </td>
                 </tr>
             `).join('');
@@ -22734,6 +23963,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         // Initialize on load
         document.addEventListener('DOMContentLoaded', async () => {
             await checkSqliteSystemStatus();
+            if (typeof updateDatabaseLocationUI === 'function') updateDatabaseLocationUI();
+            if (typeof updateBackupStatusUI === 'function') updateBackupStatusUI();
             initDenominationForm();
             if (typeof loadPurchaseOrdersFromSQLite === 'function') await loadPurchaseOrdersFromSQLite();
             if (typeof loadCalculatorHistoryFromSQLite === 'function') await loadCalculatorHistoryFromSQLite();
@@ -22761,148 +23992,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-    <!-- Label Settings Modal -->
-    <div id="labelSettingsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2050; padding: 20px; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 8px; width: 100%; max-width: 600px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: auto;">
-            
-            <div style="padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="margin: 0; color: #333;">🏷️ Label Settings</h4>
-                <span onclick="document.getElementById('labelSettingsModal').style.display='none'" style="cursor:pointer; font-size: 20px; font-weight: bold; color: #dc3545;">&times;</span>
-            </div>
-            
-            <div style="padding: 15px; overflow-y: auto; flex: 1;">
-                <style>
-                    #labelSettingsModal .form-group { margin-bottom: 8px; }
-                    #labelSettingsModal label { margin-bottom: 2px; font-size: 13px; font-weight: bold; color: #495057; display: block; }
-                    #labelSettingsModal input, #labelSettingsModal select { padding: 4px 8px; height: 32px; font-size: 13px; width: 100%; box-sizing: border-box; }
-                    #labelSettingsModal .btn { padding: 4px 12px; font-size: 13px; height: 32px; }
-                    #labelSettingsModal .compact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: start; margin-bottom: 10px; }
-                </style>
 
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Label Preset</label>
-                    <select id="labelPreset" onchange="applyLabelPreset()">
-                        <option value="custom">Custom</option>
-                        <option value="pen">Pen Label (50x30mm)</option>
-                        <option value="standard">Standard Barcode (38x25mm)</option>
-                        <option value="large">Large Shipping (100x150mm)</option>
-                    </select>
-                </div>
-
-                <div class="compact-grid">
-                    <div class="form-group">
-                        <label>Custom Size (mm) [W x H]</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="number" id="labelWidth" placeholder="Width" onchange="saveLabelSettings()">
-                            <input type="number" id="labelHeight" placeholder="Height" onchange="saveLabelSettings()">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Spacing / Gap (mm) [X x Y]</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="number" id="labelGapX" placeholder="Horizontal" onchange="saveLabelSettings()">
-                            <input type="number" id="labelGapY" placeholder="Vertical" onchange="saveLabelSettings()">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Margins (mm) [Top, Right, Bottom, Left]</label>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
-                        <input type="number" id="labelMarginTop" placeholder="Top" onchange="saveLabelSettings()">
-                        <input type="number" id="labelMarginRight" placeholder="Right" onchange="saveLabelSettings()">
-                        <input type="number" id="labelMarginBottom" placeholder="Bottom" onchange="saveLabelSettings()">
-                        <input type="number" id="labelMarginLeft" placeholder="Left" onchange="saveLabelSettings()">
-                    </div>
-                </div>
-
-                <h5 style="margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #495057;">Label Content</h5>
-                <div class="compact-grid" style="grid-template-columns: repeat(3, 1fr);">
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowBusinessName" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">Business Name</label>
-                    </div>
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowMonthCode" onchange="toggleMonthCodesUI(); saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">Month Code</label>
-                    </div>
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowMRP" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">MRP / Price</label>
-                    </div>
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowExpiry" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">Expiry Date</label>
-                    </div>
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowMfgDate" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">Mfg. Date</label>
-                    </div>
-                    <div class="form-group" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="labelShowBarcode" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        <label style="margin: 0; display: inline;">Barcode Code</label>
-                    </div>
-                </div>
-
-                <div id="monthCodesContainer" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom: 12px;">
-                    <label style="margin-bottom: 8px;">Month Codes</label>
-                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;">
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jan</small><input type="text" id="labelMc0" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Feb</small><input type="text" id="labelMc1" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Mar</small><input type="text" id="labelMc2" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Apr</small><input type="text" id="labelMc3" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">May</small><input type="text" id="labelMc4" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jun</small><input type="text" id="labelMc5" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Jul</small><input type="text" id="labelMc6" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Aug</small><input type="text" id="labelMc7" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Sep</small><input type="text" id="labelMc8" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Oct</small><input type="text" id="labelMc9" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Nov</small><input type="text" id="labelMc10" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                        <div style="display: flex; flex-direction: column;"><small style="line-height:1;">Dec</small><input type="text" id="labelMc11" onchange="saveLabelSettings()" maxlength="3" style="padding: 2px 4px;"></div>
-                    </div>
-                </div>
-
-                <h5 style="margin: 15px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #495057;">Format</h5>
-
-                <div class="compact-grid">
-                    <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1;">
-                            <label>Font Size (px)</label>
-                            <input type="number" id="labelFontSize" onchange="saveLabelSettings()">
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <label style="margin-bottom: 2px;">Bold</label>
-                            <input type="checkbox" id="labelFontBold" onchange="saveLabelSettings()" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Alignment</label>
-                        <select id="labelAlignment" onchange="saveLabelSettings()">
-                            <option value="center">Center</option>
-                            <option value="left">Left</option>
-                            <option value="right">Right</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Barcode Size</label>
-                        <select id="labelBarcodeSize" onchange="saveLabelSettings()">
-                            <option value="small">Small</option>
-                            <option value="medium">Medium</option>
-                            <option value="large">Large</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="padding: 10px 15px; border-top: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; background: #f8f9fa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-                <button class="btn btn-danger" id="btnLabelReset" onclick="resetLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">↩ Reset Defaults</button>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary" id="btnLabelPreview" onclick="previewLabelSettings()" style="height: 32px; padding: 4px 12px; font-size: 13px;">👁️ Preview</button>
-                    <button class="btn btn-primary" id="btnLabelSave" onclick="saveLabelSettings(); document.getElementById('labelSettingsModal').style.display='none';" style="height: 32px; padding: 4px 12px; font-size: 13px;">💾 Save & Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Entity Details Modal -->
     <div id="entityDetailsModal" class="modal">
@@ -23032,50 +24122,17 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 
 
-        <!-- Shortcuts Modal -->
-    <div id="shortcutsModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2>⌨️ Keyboard Shortcuts</h2>
-                <button class="modal-close" onclick="document.getElementById('shortcutsModal').style.display='none'">&times;</button>
-            </div>
-            <div style="margin-top: 15px; font-size: 15px;">
-                <h4 style="margin-bottom: 5px;">Global Actions</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div><kbd>Ctrl</kbd> + <kbd>S</kbd> : Save Record</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>F</kbd> : Search / Focus</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>Del</kbd> : Delete Editing Record</div>
-                    <div><kbd>Alt</kbd> + <kbd>X</kbd> : Clear / Reset Form</div>
-                    <div><kbd>Esc</kbd> : Cancel / Close Modal</div>
-                </div>
-                
-                <h4 style="margin-bottom: 5px;">Record Sale</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div><kbd>F3</kbd> : Product Search</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>F</kbd> : Search / Focus</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>B</kbd> : Barcode Scan</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>H</kbd> : Hold Sale</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>C</kbd> : Clear Cart</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>I</kbd> : Add New Inventory</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>E</kbd> : Edit</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>N</kbd> : Add New Customer</div>
-                    <div><kbd>Ctrl</kbd> + <kbd>V</kbd> : Add Variant to Product</div>
-                    <div style="grid-column: 1 / -1;"><kbd>Enter</kbd> : Move to next logical field / Select Match</div>
-                </div>
-                
-                <h4 style="margin-bottom: 5px;">Calculator & Denomination</h4>
-                <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div>NumPad / Numbers : Type naturally</div>
-                    <div><kbd>Enter</kbd> : Calculate / Move to next field</div>
-                </div>
-            </div>
-            <div style="text-align: right; margin-top: 15px;">
-                <button class="btn btn-secondary" onclick="document.getElementById('shortcutsModal').style.display='none'">Close</button>
-            </div>
-        </div>
-    </div>
+
     <script>
         // Settings UI logic
+
+        function openLabelSettingsFromCenter() {
+            if (typeof switchTab === 'function') {
+                switchTab('settings');
+            }
+            const labelBtn = document.getElementById('btnOpenLabelSettings');
+            switchSettingsTab('settings-pane-labels', labelBtn);
+        }
 
         function switchSettingsTab(paneId, btnElement) {
             // Hide all panes
@@ -23114,6 +24171,21 @@ input:focus, select:focus, textarea:focus, button:focus {
             if(paneId === 'settings-pane-theme') {
                 if(typeof renderThemeGrid === 'function') {
                     renderThemeGrid();
+                }
+            }
+
+            if(paneId === 'settings-pane-backup') {
+                if(typeof updateDatabaseLocationUI === 'function') {
+                    updateDatabaseLocationUI();
+                }
+                if(typeof updateBackupStatusUI === 'function') {
+                    updateBackupStatusUI();
+                }
+            }
+
+            if(paneId === 'settings-pane-labels') {
+                if(typeof loadLabelSettings === 'function') {
+                    loadLabelSettings();
                 }
             }
 
@@ -23210,7 +24282,17 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (gstEnabledInput) gstEnabledInput.checked = settings.gstEnabled;
 
             const businessStateInput = document.getElementById('settingsBusinessState');
-            if (businessStateInput) businessStateInput.value = settings.businessState || '';
+            if (businessStateInput) {
+                let savedBState = settings.businessState || '33 – Tamil Nadu';
+                const norm = window.normalizeGSTState(savedBState);
+                if (norm) {
+                    businessStateInput.value = norm.display;
+                    settings.businessState = norm.display;
+                } else {
+                    businessStateInput.value = '33 – Tamil Nadu';
+                    settings.businessState = '33 – Tamil Nadu';
+                }
+            }
 
             const taxPricingModeInput = document.getElementById('settingsTaxPricingMode');
             if (taxPricingModeInput) taxPricingModeInput.value = settings.taxPricingMode || 'exclusive';
@@ -24815,13 +25897,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return;
             }
 
-            // Calculate total stock used by this product in cart
+            const defaultVarObj = (product.variants && product.variants.length > 0) ? product.variants[0] : null;
+            const actualTotalStock = defaultVarObj ? (defaultVarObj.stock || 0) : (product.stock || 0);
             const currentStockInCart = cart
-                .filter(item => item.productId === product.id)
+                .filter(item => item.productId === product.id && (!defaultVarObj || String(item.variantId) === String(defaultVarObj.id)))
                 .reduce((sum, item) => sum + (item.quantity * item.baseQuantity), 0);
 
             // Assuming default add is 1 base unit
-            if (currentStockInCart + 1 > product.stock) {
+            if (currentStockInCart + 1 > actualTotalStock) {
                 setContinuousScannerStatus('⚠️ Insufficient Stock', 'error');
                 return;
             }
@@ -25138,7 +26221,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             grid.innerHTML = filtered.map(prod => {
                 const hasVariants = window.hasRealVariants ? window.hasRealVariants(prod) : (prod.variants && prod.variants.length > 1);
                 const price = parseFloat(prod.price || prod.sellingPrice || 0).toFixed(2);
-                const outOfStock = (prod.stock !== undefined && prod.stock <= 0);
+                const availStock = window.getAvailableStock ? window.getAvailableStock(prod, null) : (prod.stock !== undefined ? prod.stock : 0);
+                const outOfStock = (availStock <= 0);
                 
                 let imageHtml = "";
                 if (prod.image) {
@@ -25188,12 +26272,12 @@ input:focus, select:focus, textarea:focus, button:focus {
             body.innerHTML = (product.variants || []).map(v => {
                 const vName = v.variantName || v.name || "Default";
                 const vPrice = parseFloat(v.sellingPrice !== undefined ? v.sellingPrice : (v.price || 0)).toFixed(2);
-                const vStock = v.stock !== undefined ? v.stock : 0;
-                const outOfStock = vStock <= 0;
+                const availStock = window.getAvailableStock ? window.getAvailableStock(product, v) : (v.stock !== undefined ? v.stock : 0);
+                const outOfStock = availStock <= 0;
 
                 return '<button type="button" class="btn btn-outline-primary" onclick="selectFavVariantAndAdd(\'' + product.id + '\', \'' + v.id + '\')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; text-align: left; font-size: 14px; ' + (outOfStock ? 'border-color: #fca5a5; background: #fff5f5; color: #dc2626;' : '') + '">' +
                        '<div><strong>' + vName + '</strong>' + (v.barcode ? '<div style="font-size: 11px; color: #64748b;">Barcode: ' + v.barcode + '</div>' : '') + '</div>' +
-                       '<div style="text-align: right;"><span style="font-weight: 700; color: #0284c7;">₹' + vPrice + '</span><div style="font-size: 11px; ' + (outOfStock ? 'color: #dc2626; font-weight: bold;' : 'color: #16a34a;') + '">Stock: ' + vStock + '</div></div>' +
+                       '<div style="text-align: right;"><span style="font-weight: 700; color: #0284c7;">₹' + vPrice + '</span><div style="font-size: 11px; ' + (outOfStock ? 'color: #dc2626; font-weight: bold;' : 'color: #16a34a;') + '">Available Stock: ' + availStock + '</div></div>' +
                        '</button>';
             }).join("");
 
@@ -25217,12 +26301,13 @@ input:focus, select:focus, textarea:focus, button:focus {
         window.selectFavVariantAndAdd = selectFavVariantAndAdd;
 
         function addFavoriteProductToCart(product, variant) {
-            const targetVariantId = variant ? variant.id : undefined;
-            const effStock = variant ? (variant.stock !== undefined ? variant.stock : 0) : (product.stock !== undefined ? product.stock : 0);
+            const targetVariantId = variant ? variant.id : ((product.variants && product.variants.length > 0) ? product.variants[0].id : undefined);
+            const actualTotalStock = variant ? (variant.stock !== undefined ? variant.stock : 0) : ((product.variants && product.variants.length === 1) ? (product.variants[0].stock || 0) : (product.stock !== undefined ? product.stock : 0));
+            const availStock = window.getAvailableStock ? window.getAvailableStock(product, variant) : actualTotalStock;
             const effUnit = (variant && variant.unit) ? variant.unit : (product.unit || "Piece");
 
-            if (effStock <= 0) {
-                showAlert("Inventory is 0 — unable to add item to cart", "⚠️");
+            if (availStock <= 0) {
+                showAlert("Insufficient stock! Available stock is 0 — unable to add item to cart", "⚠️");
                 return;
             }
 
@@ -25235,8 +26320,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 .filter(item => String(item.productId) === String(product.id) && String(item.variantId) === String(targetVariantId))
                 .reduce((sum, item) => sum + (item.quantity * (item.baseQuantity || 1)), 0);
 
-            if (currentStockInCart + quantityToAdd > effStock) {
-                showAlert("Insufficient stock! Available: " + effStock + " " + effUnit + ". You are trying to sell " + (currentStockInCart + quantityToAdd) + ".", "⚠️");
+            if (currentStockInCart + quantityToAdd > actualTotalStock) {
+                showAlert("Insufficient stock! Remaining available: " + availStock + " " + effUnit + ". You are trying to add " + quantityToAdd + ".", "⚠️");
                 return;
             }
 
@@ -26415,13 +27500,26 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         async function viewReceiptFromReport(saleId, billNo) {
             try {
-                if (saleId && saleId !== 'undefined' && saleId !== 'null') {
-                    await viewBill(saleId);
-                } else if (billNo) {
+                let targetId = (saleId && saleId !== 'undefined' && saleId !== 'null') ? saleId : null;
+                if (!targetId && billNo) {
                     const foundSale = sales.find(s => s.receiptNumber === billNo);
-                    if (foundSale) {
-                        await viewBill(foundSale.id || foundSale.saleId);
+                    if (foundSale) targetId = foundSale.id || foundSale.saleId;
+                }
+                if (!targetId && billNo && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales) {
+                    try {
+                        const sRes = await window.electronAPI.sqlite.sales.getByReceipt(billNo);
+                        const sData = (sRes && sRes.success !== undefined) ? sRes.data : sRes;
+                        if (sData && sData.id) targetId = sData.id;
+                    } catch (e) {
+                        console.warn("Could not find sale by receipt for receipt viewer:", e);
                     }
+                }
+                if (targetId) {
+                    await viewBill(targetId);
+                } else if (billNo) {
+                    await viewBill(billNo);
+                } else {
+                    showAlert('Unable to load receipt: missing sale ID or bill number', 'error');
                 }
             } catch (err) {
                 console.error("Error viewing receipt from report:", err);
@@ -30719,4 +31817,31 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <!-- END PAYMENT ENTER HANDLER -->
 
+
+    <!-- Drive Unavailable Floating Banner -->
+    <div id="driveUnavailableBanner" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 12px 20px; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">⚠️</span>
+            <div>
+                <strong style="font-size: 14px;">Database Location Unavailable:</strong>
+                <span id="bannerDbPath" style="font-family: monospace; font-size: 13px; opacity: 0.95; margin-left: 5px;"></span>
+                <span style="font-size: 12px; margin-left: 10px; opacity: 0.85;">(Drive may be disconnected or file moved)</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-sm" onclick="reconnectDatabase()" style="background: white; color: #dc2626; font-weight: 700; border: none; padding: 4px 12px; font-size: 12px; border-radius: 4px; cursor: pointer;">
+                🔄 Reconnect / Retry
+            </button>
+            <button class="btn btn-sm" onclick="handleChangeDatabaseLocation()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 4px 12px; font-size: 12px; border-radius: 4px; cursor: pointer;">
+                📁 Relocate Database
+            </button>
+        </div>
+    </div>
+
+    <!-- Migration In-Progress Overlay -->
+    <div id="migrationOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); z-index: 100000; align-items: center; justify-content: center; flex-direction: column; color: white;">
+        <div class="spinner" style="width: 48px; height: 48px; border-width: 4px; margin-bottom: 20px; border-top-color: #10b981;"></div>
+        <h3 id="migrationOverlayTitle" style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700;">Migrating Database...</h3>
+        <p id="migrationOverlaySubtitle" style="margin: 0; font-size: 14px; opacity: 0.85; max-width: 400px; text-align: center;">Safely checkpointing WAL, creating backup snapshot, and verifying data integrity...</p>
+    </div>
 </body>

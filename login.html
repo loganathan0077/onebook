@@ -609,6 +609,169 @@
 
 
     </script>
+
+    <!-- First-Launch Database Setup & Unavailable Drive Modal -->
+    <div id="dbSetupModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: white; border-radius: 20px; width: 100%; max-width: 580px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; border: 1px solid #e2e8f0; animation: modalPop 0.3s ease;">
+            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 24px 28px; display: flex; align-items: center; gap: 14px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                    🗄️
+                </div>
+                <div>
+                    <h2 id="dbSetupTitle" style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">Database Storage Setup</h2>
+                    <p id="dbSetupSubtitle" style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Choose where OneBook stores your business database (onebook.db)</p>
+                </div>
+            </div>
+            
+            <div style="padding: 24px 28px;">
+                <div id="dbSetupAlertBox" style="display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 13px; line-height: 1.5;"></div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">Selected Database Folder</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="dbSetupFolderInput" readonly style="flex: 1; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: monospace; background: #f8fafc; color: #334155;" placeholder="Selecting folder...">
+                        <button type="button" id="btnBrowseDbFolder" onclick="browseDbSetupFolder()" style="padding: 0 16px; background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">
+                            📁 Browse...
+                        </button>
+                    </div>
+                    <small id="dbSetupDefaultHint" style="display: block; margin-top: 6px; color: #64748b; font-size: 12px;">
+                        Default location: Documents/OneBook/Database
+                    </small>
+                </div>
+
+                <div style="background: #f1f5f9; border-radius: 10px; padding: 14px; margin-bottom: 22px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <span>🔒</span> Safe, Local & Zero-Cloud Dependent
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.4;">
+                        Your SQLite database (<strong style="color: #0f172a;">onebook.db</strong>) will be securely stored in this directory. You can easily back it up or relocate it anytime from Settings.
+                    </p>
+                </div>
+
+                <div id="dbSetupActions" style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" id="btnConfirmDbSetup" onclick="confirmDbSetup()" style="padding: 12px 24px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
+                        <span>Continue to Application</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalPop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+
+
+    <script>
+        let currentSuggestedFolder = null;
+        let isDriveUnavailableMode = false;
+
+        async function checkDatabaseOnStartup() {
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.system) {
+                return; // Non-electron / browser mode
+            }
+
+            try {
+                const details = await window.electronAPI.sqlite.system.getDatabaseDetails();
+                console.log('[Login Startup] SQLite Details:', details);
+
+                if (details.connected && details.exists) {
+                    // Database is properly connected and exists, proceed to normal login
+                    return;
+                }
+
+                // If not configured or file doesn't exist
+                const defaultFolder = await window.electronAPI.sqlite.system.getDefaultDbFolder();
+                currentSuggestedFolder = details.folder || defaultFolder;
+
+                const modal = document.getElementById('dbSetupModal');
+                const title = document.getElementById('dbSetupTitle');
+                const subtitle = document.getElementById('dbSetupSubtitle');
+                const alertBox = document.getElementById('dbSetupAlertBox');
+                const folderInput = document.getElementById('dbSetupFolderInput');
+                const confirmBtn = document.getElementById('btnConfirmDbSetup');
+
+                folderInput.value = currentSuggestedFolder;
+
+                if (!details.configured) {
+                    // Scenario A: First launch database setup
+                    isDriveUnavailableMode = false;
+                    title.textContent = 'Welcome to OneBook — Database Setup';
+                    subtitle.textContent = 'Please choose a local folder where your database will be safely stored.';
+                    alertBox.style.display = 'none';
+                    confirmBtn.innerHTML = 'Initialize & Continue <i class="fa-solid fa-arrow-right"></i>';
+                } else if (!details.exists || !details.connected) {
+                    // Scenario F: Configured drive or folder is unavailable
+                    isDriveUnavailableMode = true;
+                    title.textContent = '⚠️ Database Location Unavailable';
+                    subtitle.textContent = 'The configured database file could not be found or opened.';
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = '#fef2f2';
+                    alertBox.style.border = '1px solid #fecaca';
+                    alertBox.style.color = '#991b1b';
+                    alertBox.innerHTML = '<strong>Configured path:</strong> <code style="word-break:break-all;">' + (details.path || 'Unknown') + '</code><br><span style="margin-top: 4px; display: block;">If your external drive is unplugged, please reconnect it, or select a new folder to connect or restore.</span>';
+                    confirmBtn.innerHTML = 'Connect / Initialize Here <i class="fa-solid fa-arrow-right"></i>';
+                }
+
+                modal.style.display = 'flex';
+            } catch (err) {
+                console.error('[Login Startup] DB Check failed:', err);
+            }
+        }
+
+        async function browseDbSetupFolder() {
+            try {
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                    const res = await window.electronAPI.sqlite.system.selectFolder({
+                        title: 'Select Folder for OneBook Database',
+                        defaultPath: currentSuggestedFolder || undefined
+                    });
+                    if (res && res.success && res.folderPath) {
+                        currentSuggestedFolder = res.folderPath;
+                        document.getElementById('dbSetupFolderInput').value = res.folderPath;
+                    }
+                }
+            } catch (err) {
+                alert('Folder selection error: ' + err.message);
+            }
+        }
+
+        async function confirmDbSetup() {
+            const folder = document.getElementById('dbSetupFolderInput').value.trim();
+            if (!folder) {
+                alert('Please select a valid folder.');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('btnConfirmDbSetup');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Initializing...';
+
+            try {
+                const res = await window.electronAPI.sqlite.system.initializeDatabaseLocation({ folderPath: folder });
+                if (res && res.success) {
+                    document.getElementById('dbSetupModal').style.display = 'none';
+                    console.log('Database initialized successfully:', res.dbPath);
+                } else {
+                    alert('Could not initialize database at selected location: ' + (res?.message || res?.error));
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = 'Try Again';
+                }
+            } catch (err) {
+                alert('Error initializing database: ' + err.message);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = 'Try Again';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkDatabaseOnStartup();
+        });
+    </script>
+
 </body>
 
 </html>
