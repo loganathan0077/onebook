@@ -9025,15 +9025,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
 
                     if (window.electronAPI.sqlite.dayClosing) {
-                        const dcList = await window.electronAPI.sqlite.dayClosing.getAll({});
-                        if (Array.isArray(dcList) && dcList.length > 0) {
+                        const dcRes = await window.electronAPI.sqlite.dayClosing.getAll({});
+                        const dcList = (dcRes && dcRes.success && Array.isArray(dcRes.data)) ? dcRes.data : (Array.isArray(dcRes) ? dcRes : []);
+                        if (dcList.length > 0) {
                             dayClosings = dcList;
                         }
                     }
 
                     if (window.electronAPI.sqlite.pettyCash) {
-                        const pcList = await window.electronAPI.sqlite.pettyCash.getTransactions({});
-                        if (Array.isArray(pcList) && pcList.length > 0) {
+                        const pcRes = await window.electronAPI.sqlite.pettyCash.getTransactions({});
+                        const pcList = (pcRes && pcRes.success && Array.isArray(pcRes.data)) ? pcRes.data : (Array.isArray(pcRes) ? pcRes : []);
+                        if (pcList.length > 0) {
                             pcTransactions = pcList;
                         }
                     }
@@ -22511,7 +22513,11 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.calculator) {
                 try {
                     const rows = await window.electronAPI.sqlite.calculator.getHistory();
-                    calculatorHistory = Array.isArray(rows) ? rows : [];
+                    if (rows && rows.success === false) {
+                        throw new Error(rows.error ? (rows.error.message || rows.error.code) : 'Failed to load calculator history');
+                    }
+                    const historyArr = (rows && rows.success && Array.isArray(rows.data)) ? rows.data : (Array.isArray(rows) ? rows : []);
+                    calculatorHistory = historyArr;
                     syncCalculatorCompatibility();
                 } catch (err) {
                     console.error('Failed to load calculator history from SQLite:', err);
@@ -22599,7 +22605,10 @@ input:focus, select:focus, textarea:focus, button:focus {
         async function saveCalcHistory(expression, result) {
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.calculator) {
-                    await window.electronAPI.sqlite.calculator.saveHistory(expression, result);
+                    const saveRes = await window.electronAPI.sqlite.calculator.saveHistory(expression, result);
+                    if (saveRes && saveRes.success === false) {
+                        throw new Error(saveRes.error ? (saveRes.error.message || saveRes.error.code) : 'Failed to save calculation');
+                    }
                     await loadCalculatorHistoryFromSQLite();
                 } else {
                     const entry = {
@@ -22654,7 +22663,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (confirm("Are you sure you want to delete this calculation?")) {
                 try {
                     if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.calculator) {
-                        await window.electronAPI.sqlite.calculator.deleteHistory(id);
+                        const delRes = await window.electronAPI.sqlite.calculator.deleteHistory(id);
+                        if (delRes && delRes.success === false) {
+                            throw new Error(delRes.error ? (delRes.error.message || delRes.error.code) : 'Failed to delete history entry');
+                        }
                         await loadCalculatorHistoryFromSQLite();
                     } else {
                         calculatorHistory = calculatorHistory.filter(c => String(c.id) !== String(id) && String(c.original_id) !== String(id));
@@ -22671,7 +22683,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (confirm("Are you sure you want to delete ALL calculation history? This cannot be undone.")) {
                 try {
                     if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.calculator) {
-                        await window.electronAPI.sqlite.calculator.clearAllHistory();
+                        const clrRes = await window.electronAPI.sqlite.calculator.clearAllHistory();
+                        if (clrRes && clrRes.success === false) {
+                            throw new Error(clrRes.error ? (clrRes.error.message || clrRes.error.code) : 'Failed to clear history');
+                        }
                         await loadCalculatorHistoryFromSQLite();
                     } else {
                         calculatorHistory = [];
@@ -22699,8 +22714,11 @@ input:focus, select:focus, textarea:focus, button:focus {
         async function loadDayClosingsFromSQLite() {
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.dayClosing) {
                 try {
-                    const closings = await window.electronAPI.sqlite.dayClosing.getAll({});
-                    dayClosings = Array.isArray(closings) ? closings : [];
+                    const closingsRes = await window.electronAPI.sqlite.dayClosing.getAll({});
+                    if (closingsRes && closingsRes.success === false) {
+                        throw new Error(closingsRes.error ? (closingsRes.error.message || closingsRes.error.code) : 'Failed to load day closings');
+                    }
+                    dayClosings = (closingsRes && closingsRes.success && Array.isArray(closingsRes.data)) ? closingsRes.data : (Array.isArray(closingsRes) ? closingsRes : []);
                     syncDayClosingCompatibility();
                 } catch (err) {
                     console.error('Failed to load dayClosings from SQLite:', err);
@@ -22708,7 +22726,44 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else {
                 dayClosings = JSON.parse(localStorage.getItem('dayClosings')) || [];
             }
+            // Auto-populate today's sales figures if not already editing a record
+            const editingId = document.getElementById('editingDayClosingId');
+            if (editingId && !editingId.value) {
+                await autoPopulateDaySales();
+            }
         }
+
+        async function autoPopulateDaySales() {
+            // Auto-fill cash/bank/online sales from actual saved sales for today
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.sales) return;
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const salesRes = await window.electronAPI.sqlite.sales.getAll(today);
+                const todaySales = (salesRes && salesRes.success && Array.isArray(salesRes.data)) ? salesRes.data : (Array.isArray(salesRes) ? salesRes : []);
+                
+                let cashSales = 0, bankSales = 0, onlineSales = 0;
+                todaySales.forEach(sale => {
+                    if (sale.status === 'CANCELLED') return;
+                    const total = parseFloat(sale.total) || 0;
+                    const method = (sale.payment_method || '').toLowerCase();
+                    if (method === 'cash') cashSales += total;
+                    else if (method === 'bank' || method === 'upi' || method === 'card' || method === 'netbanking') bankSales += total;
+                    else if (method === 'online') onlineSales += total;
+                    else cashSales += total; // Default to cash if unspecified
+                });
+
+                const cashInput = document.getElementById('dcCashSales');
+                const bankInput = document.getElementById('dcBankSales');
+                const onlineInput = document.getElementById('dcOnlineSales');
+                if (cashInput) cashInput.value = cashSales.toFixed(2);
+                if (bankInput) bankInput.value = bankSales.toFixed(2);
+                if (onlineInput) onlineInput.value = onlineSales.toFixed(2);
+                calculateDayClosing();
+            } catch (err) {
+                console.warn('Could not auto-populate day sales:', err);
+            }
+        }
+
 
         function initDenominationForm() {
             const container = document.getElementById('denominationInputs');
@@ -22836,7 +22891,10 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.dayClosing) {
-                    await window.electronAPI.sqlite.dayClosing.save(record);
+                    const saveRes = await window.electronAPI.sqlite.dayClosing.save(record);
+                    if (saveRes && saveRes.success === false) {
+                        throw new Error(saveRes.error ? (saveRes.error.message || saveRes.error.code) : 'Failed to save day closing');
+                    }
                     await loadDayClosingsFromSQLite();
                     showAlert("Day closing saved to SQLite!", "✅");
                 } else {
@@ -25130,13 +25188,19 @@ input:focus, select:focus, textarea:focus, button:focus {
         async function loadPettyCashDataFromSQLite() {
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.pettyCash) {
                 try {
-                    const [txs, openRes, catsRes] = await Promise.all([
+                    const [txsRes, openResRaw, catsResRaw] = await Promise.all([
                         window.electronAPI.sqlite.pettyCash.getTransactions({}),
                         window.electronAPI.sqlite.pettyCash.getOpeningBalances(),
                         window.electronAPI.sqlite.pettyCash.getCategories()
                     ]);
-                    pcTransactions = Array.isArray(txs) ? txs : [];
-                    if (openRes) pcOpening = openRes;
+                    // Unwrap IPC envelope { success: true, data: ... }
+                    if (txsRes && txsRes.success === false) throw new Error(txsRes.error ? (txsRes.error.message || txsRes.error.code) : 'Failed to load transactions');
+                    pcTransactions = (txsRes && txsRes.success && Array.isArray(txsRes.data)) ? txsRes.data : (Array.isArray(txsRes) ? txsRes : []);
+                    // Unwrap opening balances: IPC wraps as { success: true, data: { cash, bank } }
+                    const openRes = (openResRaw && openResRaw.success !== undefined && openResRaw.data !== undefined) ? openResRaw.data : openResRaw;
+                    if (openRes && (openRes.cash !== undefined || openRes.bank !== undefined)) pcOpening = openRes;
+                    // Unwrap categories: IPC wraps as { success: true, data: {...} }
+                    const catsRes = (catsResRaw && catsResRaw.success !== undefined && catsResRaw.data !== undefined) ? catsResRaw.data : catsResRaw;
                     if (catsRes && (catsRes.expense || catsRes.income)) {
                         pcCategories = catsRes;
                     }
@@ -25323,10 +25387,14 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.pettyCash) {
                 try {
+                    let pcSaveRes;
                     if (editId) {
-                        await window.electronAPI.sqlite.pettyCash.updateTransaction(editId, transaction);
+                        pcSaveRes = await window.electronAPI.sqlite.pettyCash.updateTransaction(editId, transaction);
                     } else {
-                        await window.electronAPI.sqlite.pettyCash.createTransaction(transaction);
+                        pcSaveRes = await window.electronAPI.sqlite.pettyCash.createTransaction(transaction);
+                    }
+                    if (pcSaveRes && pcSaveRes.success === false) {
+                        throw new Error(pcSaveRes.error ? (pcSaveRes.error.message || pcSaveRes.error.code) : 'Failed to save transaction');
                     }
                     await loadPettyCashDataFromSQLite();
                 } catch (err) {
@@ -25400,7 +25468,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (confirm('Are you sure you want to delete this transaction? This will recalculate all balances.')) {
                 try {
                     if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.pettyCash) {
-                        await window.electronAPI.sqlite.pettyCash.deleteTransaction(id);
+                        const delRes = await window.electronAPI.sqlite.pettyCash.deleteTransaction(id);
+                        if (delRes && delRes.success === false) {
+                            throw new Error(delRes.error ? (delRes.error.message || delRes.error.code) : 'Failed to delete transaction');
+                        }
                         await loadPettyCashDataFromSQLite();
                     } else {
                         pcTransactions = pcTransactions.filter(t => String(t.id) !== String(id) && String(t.original_id) !== String(id));
@@ -25564,7 +25635,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             try {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.pettyCash) {
-                    await window.electronAPI.sqlite.pettyCash.setOpeningBalances(cashVal, bankVal);
+                    const obRes = await window.electronAPI.sqlite.pettyCash.setOpeningBalances(cashVal, bankVal);
+                    if (obRes && obRes.success === false) {
+                        throw new Error(obRes.error ? (obRes.error.message || obRes.error.code) : 'Failed to set opening balances');
+                    }
                 }
                 syncPettyCashCompatibility();
                 document.getElementById('pcOpeningModal').style.display = 'none';

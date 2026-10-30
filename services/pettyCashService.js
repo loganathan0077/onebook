@@ -136,6 +136,27 @@ class PettyCashService {
     // TRANSACTIONS (CRUD, FILTER, SEARCH)
     // -------------------------------------------------------------
 
+    _formatRow(row) {
+        if (!row) return null;
+        return {
+            id: String(row.original_id || row.id),
+            sqlite_id: row.id,
+            type: row.type,
+            amount: parseFloat(row.amount) || 0,
+            category: row.category || '',
+            description: row.description || '',
+            date: row.date,
+            status: row.status,
+            account: row.account || '',
+            fromAccount: row.from_account || '',
+            toAccount: row.to_account || '',
+            voucherNo: row.voucher_no || '',
+            remarks: row.remarks || '',
+            original_id: row.original_id || '',
+            created_at: row.created_at
+        };
+    }
+
     getTransactions(filters = {}) {
         const db = dbManager.getDatabase();
         let sql = "SELECT * FROM petty_cash_transactions WHERE 1=1";
@@ -191,13 +212,15 @@ class PettyCashService {
             }
         }
 
-        return db.prepare(sql).all(...params);
+        return db.prepare(sql).all(...params).map(r => this._formatRow(r));
     }
 
     getTransaction(id) {
         const db = dbManager.getDatabase();
-        return db.prepare("SELECT * FROM petty_cash_transactions WHERE id = ? OR original_id = ?").get(id, String(id)) || null;
+        const row = db.prepare("SELECT * FROM petty_cash_transactions WHERE id = ? OR original_id = ?").get(id, String(id)) || null;
+        return this._formatRow(row);
     }
+
 
     generateVoucherNo(type) {
         const prefix = type === 'transfer' ? 'TR-' : 'PC-';
@@ -316,16 +339,16 @@ class PettyCashService {
             const date = data.date !== undefined ? data.date : tx.date;
             const description = data.description !== undefined ? data.description : tx.description;
             const remarks = data.remarks !== undefined ? data.remarks : tx.remarks;
-            const voucher_no = data.voucher_no || data.voucherNo || tx.voucher_no;
+            const voucher_no = data.voucher_no || data.voucherNo || tx.voucherNo;
 
             let account = tx.account;
             let category = tx.category;
-            let from_account = tx.from_account;
-            let to_account = tx.to_account;
+            let from_account = tx.fromAccount;
+            let to_account = tx.toAccount;
 
             if (type === 'transfer') {
-                from_account = (data.fromAccount !== undefined ? data.fromAccount : (data.from_account !== undefined ? data.from_account : tx.from_account)).toLowerCase();
-                to_account = (data.toAccount !== undefined ? data.toAccount : (data.to_account !== undefined ? data.to_account : tx.to_account)).toLowerCase();
+                from_account = (data.fromAccount !== undefined ? data.fromAccount : (data.from_account !== undefined ? data.from_account : tx.fromAccount)).toLowerCase();
+                to_account = (data.toAccount !== undefined ? data.toAccount : (data.to_account !== undefined ? data.to_account : tx.toAccount)).toLowerCase();
                 account = null;
                 category = null;
                 if ((from_account !== 'cash' && from_account !== 'bank') || (to_account !== 'cash' && to_account !== 'bank')) {
@@ -351,17 +374,17 @@ class PettyCashService {
                 WHERE id = ?
             `).run(
                 type, amount, category, description, date,
-                account, from_account, to_account, voucher_no, remarks, tx.id
+                account, from_account, to_account, voucher_no, remarks, tx.sqlite_id
             );
 
             db.prepare('INSERT INTO audit_log (action, record_type, record_id, details) VALUES (?, ?, ?, ?)').run(
                 'PETTY_CASH_TRANSACTION_UPDATED',
                 'PETTY_CASH',
-                tx.id,
+                tx.sqlite_id,
                 `Updated ${voucher_no} amount to ₹${amount}`
             );
 
-            return this.getTransaction(tx.id);
+            return this.getTransaction(tx.sqlite_id);
         });
     }
 
@@ -372,16 +395,16 @@ class PettyCashService {
             if (!tx) throw new Error('TRANSACTION_NOT_FOUND');
 
             // Hard delete as supported by existing OneBook UI deletePCTransaction()
-            db.prepare("DELETE FROM petty_cash_transactions WHERE id = ?").run(tx.id);
+            db.prepare("DELETE FROM petty_cash_transactions WHERE id = ?").run(tx.sqlite_id);
 
             db.prepare('INSERT INTO audit_log (action, record_type, record_id, details) VALUES (?, ?, ?, ?)').run(
                 'PETTY_CASH_TRANSACTION_DELETED',
                 'PETTY_CASH',
-                tx.id,
-                `Deleted ${tx.voucher_no} (₹${tx.amount})`
+                tx.sqlite_id,
+                `Deleted ${tx.voucherNo} (₹${tx.amount})`
             );
 
-            return { success: true, deletedId: tx.id, voucherNo: tx.voucher_no };
+            return { success: true, deletedId: tx.sqlite_id, voucherNo: tx.voucherNo };
         });
     }
 
@@ -392,16 +415,16 @@ class PettyCashService {
             if (!tx) throw new Error('TRANSACTION_NOT_FOUND');
             if (tx.status === 'CANCELLED') throw new Error('TRANSACTION_ALREADY_CANCELLED');
 
-            db.prepare("UPDATE petty_cash_transactions SET status = 'CANCELLED' WHERE id = ?").run(tx.id);
+            db.prepare("UPDATE petty_cash_transactions SET status = 'CANCELLED' WHERE id = ?").run(tx.sqlite_id);
 
             db.prepare('INSERT INTO audit_log (action, record_type, record_id, details) VALUES (?, ?, ?, ?)').run(
                 'PETTY_CASH_TRANSACTION_CANCELLED',
                 'PETTY_CASH',
-                tx.id,
-                `Cancelled ${tx.voucher_no} (₹${tx.amount})`
+                tx.sqlite_id,
+                `Cancelled ${tx.voucherNo} (₹${tx.amount})`
             );
 
-            return { success: true, id: tx.id, status: 'CANCELLED' };
+            return { success: true, id: tx.sqlite_id, status: 'CANCELLED' };
         });
     }
 }
