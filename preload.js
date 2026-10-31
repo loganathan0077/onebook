@@ -172,10 +172,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
             delete: (id) => ipcRenderer.invoke('sqlite:dayClosing:delete', { sessionToken: currentSessionToken, id })
         },
         calculator: {
-            getHistory: () => ipcRenderer.invoke('sqlite:calculator:getHistory', { sessionToken: currentSessionToken }),
-            saveHistory: (expression, result) => ipcRenderer.invoke('sqlite:calculator:saveHistory', { sessionToken: currentSessionToken, expression, result }),
-            deleteHistory: (id) => ipcRenderer.invoke('sqlite:calculator:deleteHistory', { sessionToken: currentSessionToken, id }),
-            clearAllHistory: () => ipcRenderer.invoke('sqlite:calculator:clearAllHistory', { sessionToken: currentSessionToken })
+            getHistory: () => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                return ipcRenderer.invoke('sqlite:calculator:getHistory', { sessionToken: token });
+            },
+            saveHistory: (expression, result) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                return ipcRenderer.invoke('sqlite:calculator:saveHistory', { sessionToken: token, expression, result });
+            },
+            deleteHistory: (id) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                return ipcRenderer.invoke('sqlite:calculator:deleteHistory', { sessionToken: token, id });
+            },
+            clearAllHistory: () => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                return ipcRenderer.invoke('sqlite:calculator:clearAllHistory', { sessionToken: token });
+            }
         },
         reports: {
             getReportSales: (filters) => ipcRenderer.invoke('sqlite:reports:getReportSales', { sessionToken: currentSessionToken, filters }),

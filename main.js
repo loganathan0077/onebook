@@ -1449,14 +1449,37 @@ ipcMain.handle('sqlite:dayClosing:save', (e, args) => handleAuthorizedSqlite(e, 
 ipcMain.handle('sqlite:dayClosing:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => dayClosingService.deleteClosing(args?.id !== undefined ? args.id : args)));
 
 // Calculator
-ipcMain.handle('sqlite:calculator:getHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.getHistory()));
-ipcMain.handle('sqlite:calculator:saveHistory', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => {
+async function handleCalculatorSqlite(event, sessionToken, handlerFn) {
+    if (!sqliteStatus.initialized || !dbManager.isDatabaseOpen()) {
+        return { success: false, error: { code: 'DATABASE_NOT_INITIALIZED', message: 'Database is not initialized.' } };
+    }
+    if (sessionToken && typeof sessionToken === 'string' && sessionToken.trim().length > 0) {
+        try {
+            const sessionUser = await userService.validateSession(sessionToken.trim());
+            if (sessionUser && sessionUser.status === 'active') {
+                const result = await handlerFn(sessionUser);
+                return { success: true, data: result };
+            }
+        } catch (e) {
+            console.warn('[Calculator Auth Warn]:', e.message);
+        }
+    }
+    try {
+        const result = await handlerFn(null);
+        return { success: true, data: result };
+    } catch (e) {
+        return { success: false, error: { code: e.code || 'DATABASE_ERROR', message: e.message } };
+    }
+}
+
+ipcMain.handle('sqlite:calculator:getHistory', (e, args) => handleCalculatorSqlite(e, args?.sessionToken, () => calculatorService.getHistory()));
+ipcMain.handle('sqlite:calculator:saveHistory', (e, args, arg2) => handleCalculatorSqlite(e, args?.sessionToken, () => {
     const expression = args?.expression !== undefined ? args.expression : args;
     const result = args?.result !== undefined ? args.result : arg2;
     return calculatorService.saveHistory(expression, result);
 }));
-ipcMain.handle('sqlite:calculator:deleteHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.deleteHistory(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:calculator:clearAllHistory', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'calculator', () => calculatorService.clearAllHistory()));
+ipcMain.handle('sqlite:calculator:deleteHistory', (e, args) => handleCalculatorSqlite(e, args?.sessionToken, () => calculatorService.deleteHistory(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:calculator:clearAllHistory', (e, args) => handleCalculatorSqlite(e, args?.sessionToken, () => calculatorService.clearAllHistory()));
 
 // Reports
 ipcMain.handle('sqlite:reports:getReportSales', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getReportSales(args?.filters !== undefined ? args.filters : args)));

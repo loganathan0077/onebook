@@ -50,6 +50,7 @@ class CalculatorService {
     }
 
     deleteHistory(id) {
+        if (!id) throw new Error('ID_REQUIRED');
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
             const row = db.prepare('SELECT * FROM calculator_history WHERE id = ? OR original_id = ?').get(id, String(id));

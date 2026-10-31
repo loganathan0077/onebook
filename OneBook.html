@@ -9039,6 +9039,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                             pcTransactions = pcList;
                         }
                     }
+
+                    if (window.electronAPI.sqlite.calculator) {
+                        if (typeof loadCalculatorHistoryFromSQLite === 'function') {
+                            await loadCalculatorHistoryFromSQLite();
+                            if (typeof renderCalcHistory === 'function') renderCalcHistory();
+                        }
+                    }
                 } catch (e) {
                     console.warn('[SQLite Hydration Error]:', e);
                 }
@@ -12868,6 +12875,15 @@ input:focus, select:focus, textarea:focus, button:focus {
                         const input500 = document.getElementById('denom_qty_500');
                         if (input500) { input500.focus(); input500.select(); }
                     }, 50);
+                }
+                if (tabName === 'calculator') {
+                    if (typeof loadCalculatorHistoryFromSQLite === 'function') {
+                        loadCalculatorHistoryFromSQLite().then(() => {
+                            if (typeof renderCalcHistory === 'function') renderCalcHistory();
+                        });
+                    } else if (typeof renderCalcHistory === 'function') {
+                        renderCalcHistory();
+                    }
                 }
                 
                 if (tabName === 'sales') {
@@ -22503,7 +22519,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         // SQLITE COMPATIBILITY — REMOVE AFTER ALL DEPENDENT MODULES ARE MIGRATED
         function syncCalculatorCompatibility() {
             try {
-                
+                // SQLite is the single source of truth
             } catch (e) {
                 console.warn('calculatorHistory compatibility sync error:', e);
             }
@@ -22514,7 +22530,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 try {
                     const rows = await window.electronAPI.sqlite.calculator.getHistory();
                     if (rows && rows.success === false) {
-                        throw new Error(rows.error ? (rows.error.message || rows.error.code) : 'Failed to load calculator history');
+                        console.error('Failed to load calculator history from SQLite:', rows.error);
+                        return;
                     }
                     const historyArr = (rows && rows.success && Array.isArray(rows.data)) ? rows.data : (Array.isArray(rows) ? rows : []);
                     calculatorHistory = historyArr;
@@ -22530,6 +22547,7 @@ input:focus, select:focus, textarea:focus, button:focus {
         function appendCalc(val) {
             const display = document.getElementById('calcDisplay');
             const expr = document.getElementById('calcExpression');
+            if (!display || !expr) return;
             
             // If the last operation was = and we start typing a number, clear first
             if (display.dataset.calculated === "true") {
@@ -22547,14 +22565,21 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function clearCalc() {
-            document.getElementById('calcDisplay').value = '';
-            document.getElementById('calcExpression').value = '';
-            document.getElementById('calcDisplay').dataset.calculated = "false";
+            const display = document.getElementById('calcDisplay');
+            const expr = document.getElementById('calcExpression');
+            if (display) {
+                display.value = '';
+                display.dataset.calculated = "false";
+            }
+            if (expr) {
+                expr.value = '';
+            }
         }
 
         function deleteCalcChar() {
             const display = document.getElementById('calcDisplay');
             const expr = document.getElementById('calcExpression');
+            if (!display || !expr) return;
             if (display.dataset.calculated === "true") {
                 clearCalc();
                 return;
@@ -22563,23 +22588,39 @@ input:focus, select:focus, textarea:focus, button:focus {
             display.value = expr.value;
         }
 
+        let isCalculating = false;
+
         async function calculateResult() {
+            if (isCalculating) return;
+
             const display = document.getElementById('calcDisplay');
             const expr = document.getElementById('calcExpression');
-            const expressionStr = expr.value;
-            
+            if (!display || !expr) return;
+
+            // If already calculated and showing result, ignore duplicate calculation
+            if (display.dataset.calculated === "true") return;
+
+            const expressionStr = expr.value.trim();
             if (!expressionStr) return;
+
+            // Must contain at least one mathematical operator
+            if (!/[+\-*/×÷−%]/.test(expressionStr)) return;
             
             try {
+                isCalculating = true;
+
                 // Replace special characters for eval
                 let safeExpr = expressionStr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/%/g, '/100');
                 
-                // Extremely basic safety check for eval (only math characters allowed)
+                // Safety check for eval (only math characters allowed)
                 if (/[^0-9+\-*/.() ]/.test(safeExpr)) {
                     throw new Error("Invalid characters");
                 }
                 
                 const result = eval(safeExpr);
+                if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+                    throw new Error("Invalid result");
+                }
                 
                 // Format to avoid long decimals
                 const formattedResult = Number.isInteger(result) ? result : parseFloat(result.toFixed(4));
@@ -22599,6 +22640,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 
             } catch (error) {
                 showAlert("Invalid Expression", "⚠️");
+            } finally {
+                isCalculating = false;
             }
         }
 
@@ -22607,6 +22650,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.calculator) {
                     const saveRes = await window.electronAPI.sqlite.calculator.saveHistory(expression, result);
                     if (saveRes && saveRes.success === false) {
+                        console.error('Failed to save calculation to SQLite:', saveRes.error);
                         throw new Error(saveRes.error ? (saveRes.error.message || saveRes.error.code) : 'Failed to save calculation');
                     }
                     await loadCalculatorHistoryFromSQLite();
@@ -22632,7 +22676,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             tbody.innerHTML = '';
             
-            if (calculatorHistory.length === 0) {
+            if (!calculatorHistory || calculatorHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">No calculations yet</td></tr>';
                 return;
             }
@@ -22640,19 +22684,20 @@ input:focus, select:focus, textarea:focus, button:focus {
             calculatorHistory.forEach(item => {
                 const tr = document.createElement('tr');
                 
-                const dateObj = new Date(item.date);
-                const dateStr = dateObj.toLocaleDateString();
-                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const rawDate = item.date || item.created_at;
+                const d = rawDate ? new Date(rawDate) : new Date();
+                const dateStr = isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+                const timeStr = isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
                 tr.innerHTML = `
                     <td>
                         <div style="font-weight: 500;">${dateStr}</div>
                         <div style="font-size: 0.85em; color: #666;">${timeStr}</div>
                     </td>
-                    <td>${item.expression}</td>
-                    <td style="font-weight: bold;">${item.result}</td>
+                    <td>${item.expression || ''}</td>
+                    <td style="font-weight: bold;">${item.result !== undefined ? item.result : ''}</td>
                     <td>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCalcHistory('${item.id}')">🗑️</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCalcHistory('${item.id || item.sqlite_id}')">🗑️</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -23578,7 +23623,8 @@ input:focus, select:focus, textarea:focus, button:focus {
             const keyMap = {
                 '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
                 '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
-                '.': '.', '+': '+', '-': '-', '*': '*', '/': '/', '%': '%'
+                '.': '.', '+': '+', '-': '-', '*': '*', '/': '/', '%': '%',
+                'x': '*', 'X': '*'
             };
             
             if (keyMap[e.key]) {
