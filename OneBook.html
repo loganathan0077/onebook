@@ -4031,139 +4031,1261 @@ input:focus, select:focus, textarea:focus, button:focus {
                 </div>
             </div>
 
-            <!-- Purchase & Parties Tab -->
+            <!-- Purchase & Parties Tab (25:75 Professional ERP Redesign) -->
             <div id="purchaseparties" class="tab-content" style="display: none;">
-                <!-- Purchase & Parties Section -->
-                <div style="margin-top: 10px; margin-bottom: 10px;">
+                <style>
+                    /* Scoped 25:75 Purchase & Parties ERP Styles */
+                    #purchaseparties {
+                        box-sizing: border-box;
+                        width: 100%;
+                        max-width: 100%;
+                    }
+                    .pp-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 14px;
+                    }
+                    .pp-title-area {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+                    .pp-title-icon {
+                        font-size: 28px;
+                        line-height: 1;
+                    }
+                    .pp-title-text h2 {
+                        margin: 0;
+                        font-size: 20px;
+                        font-weight: 700;
+                        color: #0f172a;
+                        letter-spacing: -0.3px;
+                    }
+                    .pp-title-text p {
+                        margin: 2px 0 0 0;
+                        font-size: 12px;
+                        color: #64748b;
+                    }
 
-                    <h3 class="section-title" style="margin: 0; margin-bottom: 15px;">💼 Purchase & Parties</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        
-                        <button class="btn btn-primary" onclick="openPurchaseModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">➕</span>
-                            <span>Purchase / <span class="shortcut-letter">B</span>ill Entry</span>
-                        </button>
-                        
-                        <button class="btn btn-warning" onclick="openPurchaseHistoryModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600; background-color: #ffc107; color: #212529; border-color: #ffc107;">
-                            <span style="font-size: 2em; line-height: 1;">🧾</span>
-                            <span>Purchase <span class="shortcut-letter">H</span>istory</span>
-                        </button>
-                        
-                        <button class="btn btn-secondary" onclick="openSupplierManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">👤</span>
-                            <span><span class="shortcut-letter">S</span>upplier Details</span>
-                        </button>
+                    /* 25:75 Split Main Layout */
+                    .pp-main-layout {
+                        display: grid;
+                        grid-template-columns: minmax(280px, 25%) 1fr;
+                        gap: 16px;
+                        align-items: start;
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
 
-                        <button class="btn btn-secondary" onclick="openCustomerManagementModal()" style="padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border-radius: 8px; font-weight: 600;">
-                            <span style="font-size: 2em; line-height: 1;">👥</span>
-                            <span><span class="shortcut-letter">C</span>ustomer Details</span>
-                        </button>
+                    /* Left Panel (25%) */
+                    .pp-left-panel {
+                        width: 100%;
+                        max-height: calc(100vh - 145px);
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        box-sizing: border-box;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        padding-right: 4px;
+                    }
 
-                        <button class="btn" onclick="switchTab('receivables')" style="background: var(--th-primary, #f57c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <span style="font-size: 2em; line-height: 1;">💰</span>
-                            <span>Customer <span class="shortcut-letter">R</span>eceivables</span>
-                        </button>
+                    /* Right Workspace (75%) */
+                    .pp-right-workspace {
+                        width: 100%;
+                        min-width: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 14px;
+                        max-height: calc(100vh - 145px);
+                        overflow-y: auto;
+                        overflow-x: hidden;
+                        padding-right: 4px;
+                        box-sizing: border-box;
+                    }
 
-                        <button class="btn" onclick="switchTab('payables')" style="background: var(--th-primary-start, #ef6c00); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <span style="font-size: 2em; line-height: 1;">💳</span>
-                            <span>Supplier <span class="shortcut-letter">P</span>ayables</span>
-                        </button>
+                    /* Independent Scrollbars */
+                    .pp-left-panel::-webkit-scrollbar,
+                    .pp-right-workspace::-webkit-scrollbar,
+                    .pp-table-container::-webkit-scrollbar {
+                        width: 6px;
+                        height: 6px;
+                    }
+                    .pp-left-panel::-webkit-scrollbar-track,
+                    .pp-right-workspace::-webkit-scrollbar-track,
+                    .pp-table-container::-webkit-scrollbar-track {
+                        background: #f1f5f9;
+                        border-radius: 4px;
+                    }
+                    .pp-left-panel::-webkit-scrollbar-thumb,
+                    .pp-right-workspace::-webkit-scrollbar-thumb,
+                    .pp-table-container::-webkit-scrollbar-thumb {
+                        background: #cbd5e1;
+                        border-radius: 4px;
+                    }
+                    .pp-left-panel::-webkit-scrollbar-thumb:hover,
+                    .pp-right-workspace::-webkit-scrollbar-thumb:hover,
+                    .pp-table-container::-webkit-scrollbar-thumb:hover {
+                        background: #94a3b8;
+                    }
 
-                        <button class="btn" onclick="openCashBankModal('cash')" style="background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 20px; font-size: 1.1em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <span style="font-size: 2em; line-height: 1;">🏦</span>
-                            <span>Main <span class="shortcut-letter">C</span>ash & Bank Book</span>
-                        </button>
-                    </div> <!-- CLOSING GRID -->
-                </div> <!-- CLOSING MARGIN TOP DIV -->
-            </div> <!-- CLOSING PURCHASEPARTIES TAB -->
+                    /* Left Navigation Cards */
+                    .pp-nav-item {
+                        background: #ffffff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 12px;
+                        padding: 12px 14px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        cursor: pointer;
+                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+                        user-select: none;
+                    }
+                    .pp-nav-item:hover:not(.active) {
+                        border-color: #93c5fd;
+                        background: #f8fafc;
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                    }
+                    .pp-nav-item.active {
+                        background: #1d4ed8;
+                        border-color: #1d4ed8;
+                        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.3);
+                    }
+                    .pp-nav-icon {
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 50%;
+                        background: #eff6ff;
+                        color: #2563eb;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                        transition: all 0.2s ease;
+                    }
+                    .pp-nav-item.active .pp-nav-icon {
+                        background: rgba(255, 255, 255, 0.2);
+                        color: #ffffff;
+                    }
+                    .pp-nav-icon-purple { background: #f3e8ff; color: #9333ea; }
+                    .pp-nav-icon-green { background: #dcfce7; color: #16a34a; }
+                    .pp-nav-icon-red { background: #fee2e2; color: #dc2626; }
+                    .pp-nav-icon-cyan { background: #e0f2fe; color: #0284c7; }
 
-            <!-- Receivables Tab -->
-            <div id="receivables" class="tab-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 class="section-title" style="margin-bottom: 0;">📥 Accounts Receivable (Credit Sales)</h2>
-                    <button class="btn btn-secondary" onclick="switchTab('purchaseparties')">⬅️ Back to Purchase & Parties</button>
-                </div>
-                
-                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="flex: 1; min-width: 450px; position: relative;">
-                        <input type="text" id="receivablesSearch" placeholder="🔍 Search customer / supplier by name, phone, GSTIN..." class="form-control" style="width: 100%; max-width: 450px; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding-left: 15px;" oninput="renderReceivablesTable(); handleSmartLedgerSearch(event, 'receivables', 'receivablesSmartSearchDropdown')">
-                        <div id="receivablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; max-width: 450px; background:white; border:1px solid #ddd; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; max-height:400px; overflow-y:auto; margin-top:5px;"></div>
+                    .pp-nav-text {
+                        flex: 1;
+                        min-width: 0;
+                    }
+                    .pp-nav-title {
+                        font-size: 13.5px;
+                        font-weight: 700;
+                        color: #0f172a;
+                        margin: 0 0 2px 0;
+                        line-height: 1.25;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                    .pp-nav-item.active .pp-nav-title {
+                        color: #ffffff;
+                    }
+                    .pp-nav-desc {
+                        font-size: 11px;
+                        color: #64748b;
+                        margin: 0;
+                        line-height: 1.2;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                    .pp-nav-item.active .pp-nav-desc {
+                        color: #bfdbfe;
+                    }
+                    .pp-nav-chevron {
+                        color: #94a3b8;
+                        flex-shrink: 0;
+                        margin-left: 4px;
+                        transition: transform 0.2s ease;
+                    }
+                    .pp-nav-item.active .pp-nav-chevron {
+                        color: #ffffff;
+                        transform: translateX(2px);
+                    }
+
+                    /* Top Financial Overview Card */
+                    .pp-summary-card {
+                        background: #ffffff;
+                        border-radius: 12px;
+                        border: 1px solid #e2e8f0;
+                        padding: 14px 20px;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+                        display: grid;
+                        grid-template-columns: 1fr 1fr 1fr;
+                        gap: 16px;
+                        align-items: center;
+                        box-sizing: border-box;
+                    }
+                    .pp-summary-sec {
+                        display: flex;
+                        align-items: center;
+                        gap: 14px;
+                        box-sizing: border-box;
+                    }
+                    .pp-summary-sec:not(:last-child) {
+                        border-right: 1px solid #f1f5f9;
+                        padding-right: 16px;
+                    }
+                    .pp-summary-icon-wrap {
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                    }
+                    .pp-icon-blue { background: #eff6ff; color: #2563eb; }
+                    .pp-icon-green { background: #f0fdf4; color: #16a34a; }
+                    .pp-icon-red { background: #fef2f2; color: #dc2626; }
+
+                    .pp-summary-info {
+                        flex: 1;
+                        min-width: 0;
+                    }
+                    .pp-summary-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                        margin-bottom: 2px;
+                        white-space: nowrap;
+                    }
+                    .pp-summary-val-row {
+                        display: flex;
+                        align-items: baseline;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                    }
+                    .pp-summary-value {
+                        font-size: 21px;
+                        font-weight: 800;
+                        letter-spacing: -0.5px;
+                        line-height: 1.2;
+                    }
+                    .pp-val-blue { color: #1d4ed8; }
+                    .pp-val-green { color: #16a34a; }
+                    .pp-val-red { color: #dc2626; }
+
+                    .pp-summary-badge {
+                        font-size: 11px;
+                        font-weight: 700;
+                        padding: 2px 7px;
+                        border-radius: 6px;
+                        white-space: nowrap;
+                    }
+                    .pp-badge-blue { background: #eff6ff; color: #2563eb; }
+                    .pp-badge-green { background: #dcfce7; color: #16a34a; }
+                    .pp-badge-red { background: #fee2e2; color: #dc2626; }
+
+                    /* Workspace Card Container */
+                    .pp-view-card {
+                        background: #ffffff;
+                        border-radius: 12px;
+                        border: 1px solid #e2e8f0;
+                        padding: 20px;
+                        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+                        box-sizing: border-box;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 16px;
+                    }
+                    .pp-card-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 1px solid #f1f5f9;
+                        padding-bottom: 14px;
+                    }
+                    .pp-card-title-area {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    }
+                    .pp-card-title-icon {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 8px;
+                        background: #eff6ff;
+                        color: #2563eb;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                    }
+                    .pp-card-title-text h3 {
+                        margin: 0;
+                        font-size: 17px;
+                        font-weight: 700;
+                        color: #0f172a;
+                    }
+                    .pp-card-title-text p {
+                        margin: 2px 0 0 0;
+                        font-size: 11.5px;
+                        color: #64748b;
+                    }
+
+                    /* Form inputs & grids */
+                    .pp-form-grid-4 {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 12px;
+                    }
+                    .pp-form-group {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 5px;
+                    }
+                    .pp-form-group label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #475569;
+                    }
+                    .pp-form-control {
+                        height: 38px;
+                        padding: 6px 12px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        color: #1e293b;
+                        background: #ffffff;
+                        box-sizing: border-box;
+                        outline: none;
+                        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+                    }
+                    .pp-form-control:focus {
+                        border-color: #2563eb;
+                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+                    }
+
+                    /* Add product row */
+                    .pp-add-product-row {
+                        display: flex;
+                        gap: 10px;
+                        align-items: flex-end;
+                        flex-wrap: wrap;
+                    }
+
+                    /* Table styling */
+                    .pp-table-container {
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        overflow-y: auto;
+                        overflow-x: auto;
+                        max-height: 290px;
+                        background: #ffffff;
+                    }
+                    .pp-table {
+                        width: 100%;
+                        border-collapse: separate;
+                        border-spacing: 0;
+                        font-size: 13px;
+                        margin: 0;
+                    }
+                    .pp-table thead th {
+                        position: sticky;
+                        top: 0;
+                        background: #f8fafc;
+                        color: #475569;
+                        font-size: 12px;
+                        font-weight: 700;
+                        padding: 9px 12px !important;
+                        border-top: none;
+                        border-bottom: 1.5px solid #cbd5e1 !important;
+                        white-space: nowrap;
+                        z-index: 2;
+                    }
+                    .pp-table tbody tr {
+                        height: 44px;
+                        box-sizing: border-box;
+                        transition: background-color 0.15s ease;
+                    }
+                    .pp-table tbody tr:hover {
+                        background-color: #f8fafc !important;
+                    }
+                    .pp-table tbody td {
+                        padding: 8px 12px !important;
+                        vertical-align: middle;
+                        border-bottom: 1px solid #f1f5f9 !important;
+                        color: #334155;
+                        font-size: 13px;
+                    }
+
+                    /* Empty state box */
+                    .pp-empty-box {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 35px 20px;
+                        text-align: center;
+                        color: #64748b;
+                        gap: 6px;
+                    }
+                    .pp-empty-box h4 {
+                        margin: 4px 0 0 0;
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #475569;
+                    }
+                    .pp-empty-box p {
+                        margin: 0;
+                        font-size: 12px;
+                        color: #94a3b8;
+                    }
+
+                    /* Totals Bar */
+                    .pp-totals-bar {
+                        display: flex;
+                        justify-content: flex-end;
+                        align-items: center;
+                        gap: 20px;
+                        padding: 10px 16px;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        border: 1px solid #e2e8f0;
+                        font-size: 13px;
+                        color: #475569;
+                    }
+                    .pp-total-chip strong {
+                        color: #0f172a;
+                    }
+                    .pp-grand-total {
+                        font-size: 15px;
+                        font-weight: 700;
+                    }
+                    .pp-grand-total strong {
+                        color: #1d4ed8;
+                        font-size: 17px;
+                    }
+
+                    /* Action buttons */
+                    .pp-action-buttons-bar {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .pp-btn-clear {
+                        height: 40px;
+                        padding: 0 16px;
+                        background: #ffffff;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: #475569;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        transition: all 0.15s ease;
+                    }
+                    .pp-btn-clear:hover {
+                        background: #f1f5f9;
+                        border-color: #94a3b8;
+                    }
+                    .pp-btn-save {
+                        height: 40px;
+                        padding: 0 18px;
+                        background: #1d4ed8;
+                        border: 1px solid #1d4ed8;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #ffffff;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        transition: all 0.15s ease;
+                        box-shadow: 0 2px 4px rgba(29, 78, 216, 0.2);
+                    }
+                    .pp-btn-save:hover {
+                        background: #1e40af;
+                        border-color: #1e40af;
+                    }
+                    .pp-btn-save-print {
+                        height: 40px;
+                        padding: 0 18px;
+                        background: #16a34a;
+                        border: 1px solid #16a34a;
+                        border-radius: 8px;
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #ffffff;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        transition: all 0.15s ease;
+                        box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+                    }
+                    .pp-btn-save-print:hover {
+                        background: #15803d;
+                        border-color: #15803d;
+                    }
+
+                    @media (max-width: 1024px) {
+                        .pp-main-layout {
+                            grid-template-columns: 1fr;
+                        }
+                        .pp-left-panel, .pp-right-workspace {
+                            max-height: none;
+                        }
+                        .pp-summary-card {
+                            grid-template-columns: 1fr;
+                        }
+                        .pp-summary-sec:not(:last-child) {
+                            border-right: none;
+                            border-bottom: 1px solid #f1f5f9;
+                            padding-bottom: 12px;
+                            padding-right: 0;
+                        }
+                        .pp-form-grid-4 {
+                            grid-template-columns: 1fr 1fr;
+                        }
+                    }
+                </style>
+
+                <!-- Page Header -->
+                <div class="pp-header">
+                    <div class="pp-title-area">
+                        <span class="pp-title-icon">💼</span>
+                        <div class="pp-title-text">
+                            <h2>Purchase & Parties</h2>
+                            <p>Manage purchases, suppliers, customers and accounts</p>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <label style="margin:0; font-weight: 500;">Status:</label>
-                        <select id="receivablesStatusFilter" class="form-control" style="width: auto; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding: 0 15px;" onchange="renderReceivablesTable()">
-                            <option value="all">All</option>
-                            <option value="unpaid" selected>Unpaid / Partial</option>
-                            <option value="fully_paid">Fully Paid</option>
-                        </select>
-                    </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Invoice</th>
-                                <th>Customer</th>
-                                <th>Total Bill (₹)</th>
-                                <th>Paid (₹)</th>
-                                <th style="color: #c53030;">Outstanding (₹)</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="receivablesTableBody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <!-- 25:75 Split Main Layout -->
+                <div class="pp-main-layout">
+                    <!-- Left Panel (25% Width, Independent Scrolling) -->
+                    <div class="pp-left-panel">
+                        <!-- 1. Purchase / Bill Entry -->
+                        <div class="pp-nav-item active" data-module="entry" onclick="switchPPModule('entry')">
+                            <div class="pp-nav-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Purchase / Bill Entry</div>
+                                <div class="pp-nav-desc">Create purchase bills and record stock</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 2. Purchase History -->
+                        <div class="pp-nav-item" data-module="history" onclick="switchPPModule('history')">
+                            <div class="pp-nav-icon pp-nav-icon-cyan">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Purchase History</div>
+                                <div class="pp-nav-desc">View, search and manage purchases</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 3. Customer Details -->
+                        <div class="pp-nav-item" data-module="customers" onclick="switchPPModule('customers')">
+                            <div class="pp-nav-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Customer Details</div>
+                                <div class="pp-nav-desc">Manage customer profiles and accounts</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 4. Supplier Details -->
+                        <div class="pp-nav-item" data-module="suppliers" onclick="switchPPModule('suppliers')">
+                            <div class="pp-nav-icon pp-nav-icon-purple">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="3" width="15" height="13"></rect>
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                                    <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                    <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Supplier Details</div>
+                                <div class="pp-nav-desc">Manage supplier profiles and accounts</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 5. Customer Receivables -->
+                        <div class="pp-nav-item" data-module="receivables" onclick="switchPPModule('receivables')">
+                            <div class="pp-nav-icon pp-nav-icon-green">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Customer Receivables</div>
+                                <div class="pp-nav-desc">View outstanding amounts from customers</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 6. Supplier Payables -->
+                        <div class="pp-nav-item" data-module="payables" onclick="switchPPModule('payables')">
+                            <div class="pp-nav-icon pp-nav-icon-red">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Supplier Payables</div>
+                                <div class="pp-nav-desc">Track pending payments to suppliers</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+
+                        <!-- 7. Main Cash & Bank Book -->
+                        <div class="pp-nav-item" data-module="cashbank" onclick="switchPPModule('cashbank')">
+                            <div class="pp-nav-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="3" y1="21" x2="21" y2="21"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    <polyline points="5 6 12 3 19 6"></polyline>
+                                    <line x1="4" y1="10" x2="4" y2="21"></line>
+                                    <line x1="20" y1="10" x2="20" y2="21"></line>
+                                    <line x1="8" y1="14" x2="8" y2="17"></line>
+                                    <line x1="12" y1="14" x2="12" y2="17"></line>
+                                    <line x1="16" y1="14" x2="16" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="pp-nav-text">
+                                <div class="pp-nav-title">Main Cash & Bank Book</div>
+                                <div class="pp-nav-desc">Manage main cash and bank transactions</div>
+                            </div>
+                            <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+                    </div>
+
+                    <!-- Right Workspace (75% Width, Independent Scrolling) -->
+                    <div class="pp-right-workspace">
+                        <!-- Top Summary Card (Always Visible) -->
+                        <div class="pp-summary-card">
+                            <!-- 1. Total Purchase Amount -->
+                            <div class="pp-summary-sec pp-sec-purchase">
+                                <div class="pp-summary-icon-wrap pp-icon-blue">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="9" cy="21" r="1"></circle>
+                                        <circle cx="20" cy="21" r="1"></circle>
+                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                    </svg>
+                                </div>
+                                <div class="pp-summary-info">
+                                    <div class="pp-summary-label">Total Purchase Amount</div>
+                                    <div class="pp-summary-val-row">
+                                        <div class="pp-summary-value pp-val-blue" id="ppOverviewPurchase">₹0.00</div>
+                                        <span class="pp-summary-badge pp-badge-blue" id="ppOverviewPurchaseCount">0 Bills</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Customer Receivables -->
+                            <div class="pp-summary-sec pp-sec-receivables">
+                                <div class="pp-summary-icon-wrap pp-icon-green">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </div>
+                                <div class="pp-summary-info">
+                                    <div class="pp-summary-label">Customer Receivables</div>
+                                    <div class="pp-summary-val-row">
+                                        <div class="pp-summary-value pp-val-green" id="ppOverviewReceivables">₹0.00</div>
+                                        <span class="pp-summary-badge pp-badge-green" id="ppOverviewReceivablesCount">0 Pending</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Supplier Payables -->
+                            <div class="pp-summary-sec pp-sec-payables">
+                                <div class="pp-summary-icon-wrap pp-icon-red">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="1" y="3" width="15" height="13"></rect>
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                                    </svg>
+                                </div>
+                                <div class="pp-summary-info">
+                                    <div class="pp-summary-label">Supplier Payables</div>
+                                    <div class="pp-summary-val-row">
+                                        <div class="pp-summary-value pp-val-red" id="ppOverviewPayables">₹0.00</div>
+                                        <span class="pp-summary-badge pp-badge-red" id="ppOverviewPayablesCount">0 Due</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Module Workspace Views Container -->
+                        <div class="pp-module-container">
+                            <!-- View 1: Purchase / Bill Entry (Default Active) -->
+                            <div id="ppView_entry" class="pp-view-card">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Purchase / Bill Entry</h3>
+                                            <p>Create purchase bills and record stock purchases.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button type="button" class="btn btn-sm btn-info" onclick="showPurchaseAddNewProductForm()" style="font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;">➕ New Product</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="openScannerModal('purchase')" style="font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;">📷 Scan Barcode</button>
+                                    </div>
+                                </div>
+
+                                <!-- Form Row 1: Supplier, Bill No, Bill Date, Payment Type -->
+                                <div class="pp-form-grid-4">
+                                    <div class="pp-form-group">
+                                        <label>Supplier <span style="color: #dc2626;">*</span></label>
+                                        <div style="display: flex; gap: 6px;">
+                                            <select id="purchaseSupplierSelect" class="pp-form-control" style="flex: 1;" onchange="handlePPSupplierSelectChange(this.value)">
+                                                <option value="">Select Supplier</option>
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="openAddSupplierModal()" style="height: 38px; padding: 0 10px; font-size: 14px;" title="Add Supplier">+</button>
+                                        </div>
+                                        <input type="hidden" id="purchaseSupplier">
+                                    </div>
+                                    <div class="pp-form-group">
+                                        <label>Bill No.</label>
+                                        <div style="display: flex; gap: 6px;">
+                                            <input type="text" id="purchaseInvoiceNumber" class="pp-form-control" placeholder="Bill number" style="flex: 1;">
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="generateInvoiceNumber()" style="height: 38px; padding: 0 10px; font-size: 12px; font-weight: 600;" title="Auto-generate Bill No">⚡</button>
+                                        </div>
+                                    </div>
+                                    <div class="pp-form-group">
+                                        <label>Bill Date <span style="color: #dc2626;">*</span></label>
+                                        <input type="date" id="purchaseDate" class="pp-form-control">
+                                    </div>
+                                    <div class="pp-form-group">
+                                        <label>Payment Type</label>
+                                        <select id="purchasePaymentMethod" class="pp-form-control" onchange="togglePurchasePaymentFields()">
+                                            <option value="cash" selected>Cash</option>
+                                            <option value="bank">Bank Transfer</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="card">Card</option>
+                                            <option value="credit">Credit / Due</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden Credit Fields for savePurchase compatibility -->
+                                <div id="purchaseCreditPaymentGroup" style="display: none; padding: 12px 14px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px;">
+                                    <div style="font-size: 13px; font-weight: 700; color: #c53030; margin-bottom: 8px;">Credit Payment Tracking</div>
+                                    <div class="pp-form-grid-4">
+                                        <div class="pp-form-group">
+                                            <label>Amount Paid Now (₹)</label>
+                                            <input type="number" id="purchaseCreditAmountPaid" class="pp-form-control" step="0.01" value="0" oninput="calculatePurchaseOutstanding()">
+                                        </div>
+                                        <div class="pp-form-group">
+                                            <label>Outstanding Due (₹)</label>
+                                            <input type="number" id="purchaseCreditOutstanding" class="pp-form-control" step="0.01" readonly style="font-weight: bold; color: #c53030;" value="0">
+                                        </div>
+                                        <div class="pp-form-group">
+                                            <label>Initial Payment Account</label>
+                                            <select id="purchaseCreditPaymentMethod" class="pp-form-control">
+                                                <option value="cash">Cash</option>
+                                                <option value="bank">Bank</option>
+                                                <option value="upi">UPI</option>
+                                                <option value="card">Card</option>
+                                            </select>
+                                        </div>
+                                        <div class="pp-form-group">
+                                            <label>Due Date (Optional)</label>
+                                            <input type="date" id="purchaseCreditDueDate" class="pp-form-control">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Row 2: Add Product -->
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <label style="font-size: 12px; font-weight: 700; color: #475569;">Add Product</label>
+                                    <div class="pp-add-product-row">
+                                        <div style="position: relative; flex: 1; min-width: 240px;">
+                                            <input type="text" id="purchaseSearchInput" class="pp-form-control" placeholder="🔍 Search product by name, code or barcode..." oninput="searchPurchaseProduct(this.value)" onkeydown="handlePurchaseSearchKeydown(event)" autocomplete="off" style="width: 100%;">
+                                            <div id="purchaseSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; z-index: 1000; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 16px rgba(0,0,0,0.1); margin-top: 4px;"></div>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 11px; color: #64748b;">Qty</label>
+                                            <input type="number" id="purchaseQty" class="pp-form-control" value="1" min="1" style="width: 75px;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 11px; color: #64748b;">Rate (₹)</label>
+                                            <input type="number" id="purchaseItemPrice" class="pp-form-control" value="0.00" step="0.01" style="width: 110px;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <label style="font-size: 11px; color: #64748b;">GST (%)</label>
+                                            <select id="purchaseItemGST" class="pp-form-control" style="width: 95px;">
+                                                <option value="0">0%</option>
+                                                <option value="5">5%</option>
+                                                <option value="12">12%</option>
+                                                <option value="18" selected>18%</option>
+                                                <option value="28">28%</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" id="purchaseAddBtn" class="btn pp-btn-add" onclick="addPurchaseItem()" style="height: 38px; padding: 0 20px; background: #2563eb; color: white; font-weight: 700; border-radius: 8px; border: 1px solid #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                            + Add
+                                        </button>
+                                    </div>
+                                    <!-- Selected Product Feedback Strip -->
+                                    <div id="purchaseSelectedProduct" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 12px; align-items: center; justify-content: space-between; font-size: 12px; color: #166534;">
+                                        <div>
+                                            <strong>Selected:</strong> <span id="purchaseProductName">Product Name</span>
+                                            <span style="color: #64748b; margin-left: 10px;">Current Stock: <strong id="purchaseCurrentStock">0</strong></span>
+                                        </div>
+                                        <button type="button" onclick="cancelPurchaseSelection()" style="background: transparent; border: none; color: #dc2626; cursor: pointer; font-size: 14px; font-weight: bold;">✕</button>
+                                    </div>
+                                </div>
+
+                                <!-- Items Table -->
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 45px; text-align: center;">#</th>
+                                                <th style="text-align: left;">Product / Item</th>
+                                                <th style="width: 80px; text-align: center;">Qty</th>
+                                                <th style="width: 110px; text-align: right;">Rate (₹)</th>
+                                                <th style="width: 80px; text-align: right;">GST %</th>
+                                                <th style="width: 110px; text-align: right;">GST Amt (₹)</th>
+                                                <th style="width: 120px; text-align: right;">Amount (₹)</th>
+                                                <th style="width: 70px; text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="purchaseTableBody">
+                                            <!-- Rendered by updatePurchaseTable -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Hidden Discount/Other charges inputs for formula preservation -->
+                                <input type="hidden" id="purchaseDiscount" value="0">
+                                <input type="hidden" id="purchaseOtherCharges" value="0">
+
+                                <!-- Totals Bar -->
+                                <div class="pp-totals-bar">
+                                    <div class="pp-total-chip">Items: <strong id="purchaseItemCount">0</strong></div>
+                                    <div class="pp-total-chip">Sub Total: ₹<strong id="purchaseSubtotalValue">0.00</strong></div>
+                                    <div class="pp-total-chip">GST: ₹<strong id="purchaseGstTotalValue">0.00</strong></div>
+                                    <div class="pp-total-chip pp-grand-total">Total: ₹<strong id="purchaseTotalValue">0.00</strong></div>
+                                </div>
+
+                                <!-- Actions Bar -->
+                                <div class="pp-action-buttons-bar">
+                                    <button type="button" class="btn pp-btn-clear" onclick="clearPurchaseCart()">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
+                                        Clear
+                                    </button>
+                                    <div style="display: flex; gap: 10px; margin-left: auto;">
+                                        <button type="button" class="btn pp-btn-save" onclick="savePurchase()">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                            Save Purchase
+                                        </button>
+                                        <button type="button" class="btn pp-btn-save-print" onclick="saveAndPrintPurchase()">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                            Save & Print
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- View 2: Purchase History -->
+                            <div id="ppView_history" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon" style="background: #e0f2fe; color: #0284c7;">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <polyline points="12 6 12 12 16 14"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Purchase History</h3>
+                                            <p>View, search and manage purchase bills.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <span style="font-size: 13px; color: #475569; font-weight: 600;">Period:</span>
+                                        <select id="phFilterMonth" onchange="renderPurchaseHistory()" class="pp-form-control" style="width: 120px;">
+                                            <option value="01">January</option>
+                                            <option value="02">February</option>
+                                            <option value="03">March</option>
+                                            <option value="04">April</option>
+                                            <option value="05">May</option>
+                                            <option value="06">June</option>
+                                            <option value="07">July</option>
+                                            <option value="08">August</option>
+                                            <option value="09">September</option>
+                                            <option value="10">October</option>
+                                            <option value="11">November</option>
+                                            <option value="12">December</option>
+                                        </select>
+                                        <select id="phFilterYear" onchange="renderPurchaseHistory()" class="pp-form-control" style="width: 90px;">
+                                            <option value="2024">2024</option>
+                                            <option value="2025">2025</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2027">2027</option>
+                                            <option value="2028">2028</option>
+                                            <option value="2029">2029</option>
+                                            <option value="2030">2030</option>
+                                        </select>
+                                    </div>
+                                    <input type="text" id="phSearchInput" placeholder="🔍 Search Bill No, Vendor, Date..." oninput="renderPurchaseHistory()" class="pp-form-control" style="flex: 1; min-width: 200px;">
+                                    <button class="btn btn-secondary btn-sm" onclick="resetPurchaseHistoryFilters()" style="height: 38px; padding: 0 12px; border-radius: 8px;">↺ Reset</button>
+                                    <button class="btn btn-success btn-sm" onclick="exportPurchaseHistory()" style="height: 38px; padding: 0 14px; border-radius: 8px; background: #16a34a; border-color: #16a34a; color: white; font-weight: 600;">📥 Export CSV</button>
+                                    <div style="font-weight: 700; font-size: 15px; margin-left: auto; color: #16a34a;">Total: ₹<span id="phTotalAmount">0.00</span></div>
+                                </div>
+
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Date</th>
+                                                <th style="text-align: left;">Invoice No</th>
+                                                <th style="text-align: left;">Supplier</th>
+                                                <th style="text-align: center;">Items</th>
+                                                <th style="text-align: right;">Grand Total</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="purchaseHistoryTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View 3: Customer Details -->
+                            <div id="ppView_customers" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Customer Details</h3>
+                                            <p>Manage customer profiles, contact info and balances.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-info btn-sm" onclick="exportCustomersCSV()" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600;">📥 Export CSV</button>
+                                        <button class="btn btn-success btn-sm" onclick="openAddCustomerModal()" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600; background: #16a34a; border-color: #16a34a; color: white;">➕ Add Customer</button>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="text" id="customerSearchInput" placeholder="🔍 Search customer by name, phone, GSTIN..." oninput="renderCustomerTable()" class="pp-form-control" style="flex: 1; min-width: 250px;">
+                                </div>
+
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Customer Name</th>
+                                                <th style="text-align: left;">GSTIN</th>
+                                                <th style="text-align: left;">State</th>
+                                                <th style="text-align: left;">Phone</th>
+                                                <th style="text-align: center;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customerTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View 4: Supplier Details -->
+                            <div id="ppView_suppliers" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon" style="background: #f3e8ff; color: #9333ea;">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="1" y="3" width="15" height="13"></rect>
+                                                <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                                                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Supplier Details</h3>
+                                            <p>Manage supplier profiles, contact info and accounts.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-info btn-sm" onclick="exportSuppliersCSV()" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600;">📥 Export CSV</button>
+                                        <button class="btn btn-success btn-sm" onclick="openAddSupplierModal()" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600; background: #16a34a; border-color: #16a34a; color: white;">➕ Add Supplier</button>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="text" id="supplierSearchInput" placeholder="🔍 Search supplier by name, phone, GSTIN..." oninput="renderSupplierTable()" class="pp-form-control" style="flex: 1; min-width: 250px;">
+                                </div>
+
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Supplier Name</th>
+                                                <th style="text-align: left;">GSTIN</th>
+                                                <th style="text-align: left;">State</th>
+                                                <th style="text-align: left;">Phone</th>
+                                                <th style="text-align: center;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supplierTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View 5: Customer Receivables -->
+                            <div id="ppView_receivables" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon" style="background: #dcfce7; color: #16a34a;">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Customer Receivables (Credit Sales)</h3>
+                                            <p>View outstanding amounts and pending payments from customers.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <div style="flex: 1; min-width: 280px; position: relative;">
+                                        <input type="text" id="receivablesSearch" placeholder="🔍 Search customer / invoice by name, phone, GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderReceivablesTable(); handleSmartLedgerSearch(event, 'receivables', 'receivablesSmartSearchDropdown')">
+                                        <div id="receivablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; background:white; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.12); z-index:1000; max-height:350px; overflow-y:auto; margin-top:4px;"></div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <label style="margin:0; font-size: 13px; font-weight: 600; color: #475569;">Status:</label>
+                                        <select id="receivablesStatusFilter" class="pp-form-control" style="width: auto;" onchange="renderReceivablesTable()">
+                                            <option value="all">All</option>
+                                            <option value="unpaid" selected>Unpaid / Partial</option>
+                                            <option value="fully_paid">Fully Paid</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Date</th>
+                                                <th style="text-align: left;">Invoice</th>
+                                                <th style="text-align: left;">Customer</th>
+                                                <th style="text-align: right;">Total Bill (₹)</th>
+                                                <th style="text-align: right;">Paid (₹)</th>
+                                                <th style="text-align: right; color: #dc2626;">Outstanding (₹)</th>
+                                                <th style="text-align: left;">Due Date</th>
+                                                <th style="text-align: center;">Status</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="receivablesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View 6: Supplier Payables -->
+                            <div id="ppView_payables" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon" style="background: #fee2e2; color: #dc2626;">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                                <line x1="1" y1="10" x2="23" y2="10"></line>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Supplier Payables (Credit Purchases)</h3>
+                                            <p>Track pending payments and outstanding amounts to suppliers.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <div style="flex: 1; min-width: 280px; position: relative;">
+                                        <input type="text" id="payablesSearch" placeholder="🔍 Search supplier / invoice by name, phone, GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderPayablesTable(); handleSmartLedgerSearch(event, 'payables', 'payablesSmartSearchDropdown')">
+                                        <div id="payablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; background:white; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.12); z-index:1000; max-height:350px; overflow-y:auto; margin-top:4px;"></div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <label style="margin:0; font-size: 13px; font-weight: 600; color: #475569;">Status:</label>
+                                        <select id="payablesStatusFilter" class="pp-form-control" style="width: auto;" onchange="renderPayablesTable()">
+                                            <option value="all">All</option>
+                                            <option value="unpaid" selected>Unpaid / Partial</option>
+                                            <option value="fully_paid">Fully Paid</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Date</th>
+                                                <th style="text-align: left;">Invoice</th>
+                                                <th style="text-align: left;">Supplier</th>
+                                                <th style="text-align: right;">Total Bill (₹)</th>
+                                                <th style="text-align: right;">Paid (₹)</th>
+                                                <th style="text-align: right; color: #dc2626;">Outstanding (₹)</th>
+                                                <th style="text-align: left;">Due Date</th>
+                                                <th style="text-align: center;">Status</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="payablesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- View 7: Main Cash & Bank Book -->
+                            <div id="ppView_cashbank" class="pp-view-card" style="display: none;">
+                                <div class="pp-card-header">
+                                    <div class="pp-card-title-area">
+                                        <div class="pp-card-title-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="3" y1="21" x2="21" y2="21"></line>
+                                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                <polyline points="5 6 12 3 19 6"></polyline>
+                                                <line x1="4" y1="10" x2="4" y2="21"></line>
+                                                <line x1="20" y1="10" x2="20" y2="21"></line>
+                                                <line x1="8" y1="14" x2="8" y2="17"></line>
+                                                <line x1="12" y1="14" x2="12" y2="17"></line>
+                                                <line x1="16" y1="14" x2="16" y2="17"></line>
+                                            </svg>
+                                        </div>
+                                        <div class="pp-card-title-text">
+                                            <h3>Main Cash & Bank Book</h3>
+                                            <p>Manage main cash and bank transactions, receipts and payments.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <div style="display: inline-flex; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
+                                            <button id="cbTabCash" onclick="switchCashBankAccount('cash')" style="padding: 7px 16px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; background: #1d4ed8; color: white;">💵 Cash Account</button>
+                                            <button id="cbTabBank" onclick="switchCashBankAccount('bank')" style="padding: 7px 16px; border: none; font-weight: 600; font-size: 13px; cursor: pointer; background: #f8fafc; color: #475569;">🏦 Bank Account</button>
+                                        </div>
+                                        <button class="btn btn-warning btn-sm" onclick="openCashBankOpeningModal()" style="height: 36px; padding: 0 12px; font-size: 12px; border-radius: 6px;">⚖️ Opening</button>
+                                        <button class="btn btn-success btn-sm" onclick="openAddCashBankTxModal('IN')" style="height: 36px; padding: 0 12px; font-size: 12px; border-radius: 6px; background: #16a34a; border-color: #16a34a; color: white;">➕ <span id="cbBtnInText">Cash In</span></button>
+                                        <button class="btn btn-danger btn-sm" onclick="openAddCashBankTxModal('OUT')" style="height: 36px; padding: 0 12px; font-size: 12px; border-radius: 6px; background: #dc2626; border-color: #dc2626; color: white;">➖ <span id="cbBtnOutText">Cash Out</span></button>
+                                        <button class="btn btn-primary btn-sm" onclick="openCashBankTransferModal()" style="height: 36px; padding: 0 12px; font-size: 12px; border-radius: 6px; background: #2563eb; border-color: #2563eb; color: white;">🔄 Transfer</button>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Cards -->
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #64748b; border-radius: 8px; padding: 10px 14px;">
+                                        <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;" id="cbCardOpeningLabel">Opening Cash</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 3px;" id="cbOpeningDisplay">₹0.00</div>
+                                    </div>
+                                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px; padding: 10px 14px;">
+                                        <div style="font-size: 11px; color: #166534; font-weight: 700; text-transform: uppercase;" id="cbCardInLabel">Total Cash In</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: #16a34a; margin-top: 3px;" id="cbInDisplay">₹0.00</div>
+                                    </div>
+                                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 8px; padding: 10px 14px;">
+                                        <div style="font-size: 11px; color: #991b1b; font-weight: 700; text-transform: uppercase;" id="cbCardOutLabel">Total Cash Out</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: #dc2626; margin-top: 3px;" id="cbOutDisplay">₹0.00</div>
+                                    </div>
+                                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #1d4ed8; border-radius: 8px; padding: 10px 14px;">
+                                        <div style="font-size: 11px; color: #1e40af; font-weight: 700; text-transform: uppercase;" id="cbCardCurrentLabel">Current Cash Balance</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: #1d4ed8; margin-top: 3px;" id="cbCurrentDisplay">₹0.00</div>
+                                    </div>
+                                </div>
+
+                                <!-- Filters -->
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="date" id="cbFilterFrom" class="pp-form-control" style="width: 135px;">
+                                    <span style="font-size: 12px; color: #64748b;">to</span>
+                                    <input type="date" id="cbFilterTo" class="pp-form-control" style="width: 135px;">
+                                    <select id="cbFilterType" class="pp-form-control" style="width: 160px;">
+                                        <option value="">All Types (IN & OUT)</option>
+                                        <option value="IN">IN (Receipts)</option>
+                                        <option value="OUT">OUT (Payments)</option>
+                                    </select>
+                                    <input type="text" id="cbSearch" placeholder="Search particulars, ref, notes..." class="pp-form-control" style="flex: 1; min-width: 180px;" oninput="renderCashBankLedger()">
+                                    <button class="btn btn-primary btn-sm" onclick="renderCashBankLedger()" style="height: 38px; padding: 0 14px; border-radius: 8px; background: #2563eb; border-color: #2563eb; color: white;">🔍 Filter</button>
+                                    <button class="btn btn-success btn-sm" onclick="exportCashBankCSV()" style="height: 38px; padding: 0 14px; border-radius: 8px; background: #16a34a; border-color: #16a34a; color: white;">📥 Export CSV</button>
+                                </div>
+
+                                <!-- Ledger Table -->
+                                <div class="pp-table-container">
+                                    <table class="pp-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Date</th>
+                                                <th style="text-align: left;">Type</th>
+                                                <th style="text-align: left;">Particulars / Description</th>
+                                                <th style="text-align: left;">Ref / Voucher</th>
+                                                <th style="text-align: right;">IN (₹)</th>
+                                                <th style="text-align: right;">OUT (₹)</th>
+                                                <th style="text-align: center;">Status</th>
+                                                <th style="text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cbLedgerBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Payables Tab -->
-            <div id="payables" class="tab-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 class="section-title" style="margin-bottom: 0;">📤 Accounts Payable (Credit Purchases)</h2>
-                    <button class="btn btn-secondary" onclick="switchTab('purchaseparties')">⬅️ Back to Purchase & Parties</button>
-                </div>
-                
-                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="flex: 1; min-width: 450px; position: relative;">
-                        <input type="text" id="payablesSearch" placeholder="🔍 Search customer / supplier by name, phone, GSTIN..." class="form-control" style="width: 100%; max-width: 450px; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding-left: 15px;" oninput="renderPayablesTable(); handleSmartLedgerSearch(event, 'payables', 'payablesSmartSearchDropdown')">
-                        <div id="payablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; max-width: 450px; background:white; border:1px solid #ddd; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; max-height:400px; overflow-y:auto; margin-top:5px;"></div>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <label style="margin:0; font-weight: 500;">Status:</label>
-                        <select id="payablesStatusFilter" class="form-control" style="width: auto; height: 45px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 15px; padding: 0 15px;" onchange="renderPayablesTable()">
-                            <option value="all">All</option>
-                            <option value="unpaid" selected>Unpaid / Partial</option>
-                            <option value="fully_paid">Fully Paid</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Invoice</th>
-                                <th>Supplier</th>
-                                <th>Total Bill (₹)</th>
-                                <th>Paid (₹)</th>
-                                <th style="color: #c53030;">Outstanding (₹)</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="payablesTableBody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- Fallback containers for legacy switchTab('receivables') and switchTab('payables') -->
+            <div id="receivables" class="tab-content" style="display: none;"></div>
+            <div id="payables" class="tab-content" style="display: none;"></div>
 
             <!-- Calculator Tab -->
             <div id="calculator" class="tab-content" style="display: none;">
@@ -7888,69 +9010,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-    <!-- Purchase Modal (Reverted) -->
-    <div id="purchaseModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
-        <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
-            
-            <style>
-                #purchaseModal .form-group { margin-bottom: 15px; }
-                #purchaseModal label { margin-bottom: 6px; font-size: 18px; font-weight: bold; color: #495057; display: block; }
-                #purchaseModal input, #purchaseModal select { padding: 10px 12px; height: 48px; font-size: 20px; width: 100%; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; }
-                #purchaseModal .btn { padding: 10px 16px; font-size: 20px; height: 48px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; }
-                #purchaseFindProductHeader { margin-bottom: 10px !important; }
-                #purchaseFindProductHeader input { height: 32px !important; }
-                #purchaseModal .table th, #purchaseModal .table td { padding: 12px 10px; font-size: 18px; vertical-align: middle; }
-                #purchaseModal h2 { font-size: 24px !important; }
-                #purchasePaymentSection { padding: 10px !important; margin-top: 10px !important; }
-                #purchasePaymentSection h4 { margin-bottom: 10px; font-size: 14px; }
-            </style>
-
-            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
-                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">🛍️ Purchase / Supplier Bill</h2>
-                <button class="modal-close" onclick="closePurchaseModal()" style="font-size: 24px; padding: 0;">&times;</button>
-            </div>
-
-            <div style="overflow-y: auto; flex: 1; padding-right: 5px;">
-            <div id="purchaseBillFormGrid" class="form-grid" style="margin-bottom: 15px; gap: 10px; grid-template-columns: repeat(3, 1fr);">
-                <div class="form-group">
-                    <label>Bill Date <span style="color: red;">*</span></label>
-                    <input type="date" id="purchaseDate">
-                </div>
-                <div class="form-group">
-                    <label>Invoice Number <span style="color: red;">*</span></label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="text" id="purchaseInvoiceNumber" placeholder="e.g., SUP-2024-001" style="flex: 1;">
-                        <button type="button" class="btn btn-secondary" onclick="generateInvoiceNumber()"
-                            style="padding: 0 10px;">⚡ Auto</button>
-                    </div>
-                </div>
-                <div class="form-group" style="position: relative;">
-                    <label>Supplier Name <span style="color: red;">*</span></label>
-                    <input type="text" id="purchaseSupplier" placeholder="Enter Supplier Name"
-                        oninput="searchSuppliers(this.value)" autocomplete="off" list="supplierList">
-                    <datalist id="supplierList"></datalist>
-                    <div id="supplierSearchResults"
-                        style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; z-index: 1000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    </div>
-                </div>
-            </div>
-
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div id="purchaseFindProductHeader" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; flex-wrap: wrap;">
-                    <div style="flex: 1 1 100%; min-width: 100%; position: relative;">
-                        <label>Find Product</label>
-                        <input type="text" id="purchaseSearchInput" placeholder="Search product by name or barcode..."
-                            oninput="searchPurchaseProduct(this.value)" onkeydown="handlePurchaseSearchKeydown(event)" autocomplete="off"
-                            style="width: 100%; height: 52px; padding: 12px 15px; font-size: 20px; border: 2px solid #007bff; border-radius: 6px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
-                        <div id="purchaseSearchResults"
-                            style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ced4da; z-index: 1000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        </div>
-                    </div>
-                    <button class="btn btn-info" onclick="openScannerModal('purchase')" style="height: 52px; font-size: 16px; font-weight: bold;">📷
-                        Scan</button>
-                    <button class="btn btn-success" onclick="showPurchaseAddNewProductForm()" style="height: 52px; font-size: 16px; font-weight: bold;">➕
-                        New Product</button>
-                </div>
+    <!-- Purchase Modal Stub -->
+    <div id="purchaseModal" style="display:none;"></div>
 
                 <!-- New Product Form Container (Hidden by default) -->
                 <div id="purchaseNewProductContainer" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2050; padding: 20px; align-items: center; justify-content: center;">
@@ -8313,144 +9374,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     </div>
                 </div>
 
-                <!-- Selected Product Area -->
-                <div id="purchaseSelectedProduct" style="display: none; background: #d4edda; padding: 15px; border-radius: 8px; border: 1px solid #c3e6cb; margin-bottom: 15px;">
-                    <div style="display: grid; grid-template-columns: minmax(200px, 1fr) 100px 140px 100px 120px 100px; align-items: end; gap: 12px; width: 100%;">
-                        <div style="display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0;">
-                            <span id="purchaseProductName" style="font-weight: bold; font-size: 1.1em; color: #155724; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 6px;">Product Name</span>
-                            <small style="color: #155724; font-weight: bold;">In Stock: <span id="purchaseCurrentStock">0</span></small>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">Qty</label>
-                            <input type="number" id="purchaseQty" value="1" min="1" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px; -moz-appearance: textfield;">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">Rate (₹)</label>
-                            <input type="number" id="purchaseItemPrice" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px;">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;" class="gst-field">
-                            <label style="margin: 0; color: #155724; font-size: 0.9em; font-weight: bold;">GST (%)</label>
-                            <input type="number" id="purchaseItemGST" style="width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #c3e6cb; font-size: 16px; height: 36px;">
-                        </div>
-                        <button id="purchaseAddBtn" class="btn btn-success" onclick="addPurchaseItem()" style="height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; white-space: nowrap; padding: 0 5px; width: 100%;">Add to Bill</button>
-                        <button id="purchaseRemoveBtn" class="btn btn-danger purchase-selection-remove-btn" onclick="cancelPurchaseSelection()" title="Remove Selection" style="height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; white-space: nowrap; padding: 0 5px; width: 100%;">Remove</button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Items Table -->
-            <div id="purchaseBillTableArea" style="background: white; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
-                <table class="table" style="margin-top: 0;">
-                    <thead>
-                        <tr style="background: #343a40; color: white;">
-                            <th>S.No</th>
-                            <th>Product Name</th>
-                            <th class="gst-field" style="display:none;">HSN</th>
-                            <th class="gst-field" style="display:none;">GST%</th>
-                            <th>Qty</th>
-                            <th>Rate</th>
-                            <th class="gst-field" style="display:none;">Amount</th>
-                            <th class="gst-field" style="display:none;">Subtotal</th>
-                            <th id="th-purchase-cgst" style="display:none;">CGST</th>
-                            <th id="th-purchase-sgst" style="display:none;">SGST</th>
-                            <th id="th-purchase-igst" style="display:none;">IGST</th>
-                            <th>Total</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="purchaseTableBody"></tbody>
-                    <tfoot style="background: #f8f9fa;">
-                        <tr>
-                            <td colspan="4" class="purchase-colspan" style="text-align: right; font-weight: bold; padding: 10px;">Subtotal:
-                            </td>
-                            <td style="font-weight: bold; padding: 10px;">₹<span id="purchaseSubtotalValue">0.00</span>
-                            </td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="purchase-colspan" style="text-align: right; font-weight: bold; padding: 10px;">Discount
-                                (₹):</td>
-                            <td style="padding: 5px;"><input type="number" id="purchaseDiscount" value="0"
-                                    oninput="updatePurchaseTable()" min="0" step="0.01"
-                                    style="width: 100px; padding: 5px; border: 1px solid #ced4da; border-radius: 4px;">
-                            </td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="purchase-colspan" style="text-align: right; font-weight: bold; padding: 10px;">Packing /
-                                Other
-                                Charges (₹):</td>
-                            <td style="padding: 5px;"><input type="number" id="purchaseOtherCharges" value="0"
-                                    oninput="updatePurchaseTable()" min="0" step="0.01"
-                                    style="width: 100px; padding: 5px; border: 1px solid #ced4da; border-radius: 4px;">
-                            </td>
-                            <td></td>
-                        </tr>
-                        <tr style="border-top: 2px solid #dee2e6;">
-                            <td colspan="4" class="purchase-colspan"
-                                style="text-align: right; font-weight: bold; font-size: 1.2em; padding: 15px;">Grand
-                                Total:</td>
-                            <td style="font-weight: bold; font-size: 1.2em; color: #28a745; padding: 15px;">₹<span
-                                    id="purchaseTotalValue">0.00</span></td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <div id="purchaseGstSummary" style="display:none; padding: 15px; border-top: 1px solid #dee2e6; background: #fff;"></div>
-            </div>
-            <div id="purchaseBillItemCount" style="margin-top: 10px; color: #666;">Items: <span id="purchaseItemCount">0</span></div>
-
-            <!-- Purchase Payment Section -->
-            <div id="purchasePaymentSection" style="margin-top: 20px; padding: 15px; border: 1px solid #ced4da; border-radius: 8px; background: #f8f9fa;">
-                <h4 style="margin-top: 0;">Payment Details</h4>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div class="form-group" style="flex: 1; min-width: 200px;">
-                        <label>Payment Method</label>
-                        <select id="purchasePaymentMethod" class="form-control" onchange="togglePurchasePaymentFields()">
-                            <option value="cash" selected>Cash Only</option>
-                            <option value="bank">Bank Transfer</option>
-                            <option value="upi">UPI</option>
-                            <option value="card">Card</option>
-                            <option value="credit">Credit (Unpaid / Partial)</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div id="purchaseCreditPaymentGroup" style="display: none; padding: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; margin-top: 15px;">
-                    <h5 style="margin: 0 0 10px 0; color: #c53030;">Credit Tracking</h5>
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <div class="form-group" style="flex: 1; min-width: 150px;">
-                            <label>Amount Paid Now (₹)</label>
-                            <input type="number" id="purchaseCreditAmountPaid" class="form-control" step="0.01" value="0" oninput="calculatePurchaseOutstanding()">
-                        </div>
-                        <div class="form-group" style="flex: 1; min-width: 150px;">
-                            <label>Outstanding (₹)</label>
-                            <input type="number" id="purchaseCreditOutstanding" class="form-control" step="0.01" readonly style="font-weight: bold; color: #c53030;" value="0">
-                        </div>
-                        <div class="form-group" style="flex: 1; min-width: 150px;">
-                            <label>Initial Payment Method</label>
-                            <select id="purchaseCreditPaymentMethod" class="form-control">
-                                <option value="cash">Cash</option>
-                                <option value="bank">Bank</option>
-                                <option value="upi">UPI</option>
-                                <option value="card">Card</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1; min-width: 150px;">
-                            <label>Due Date (Optional)</label>
-                            <input type="date" id="purchaseCreditDueDate" class="form-control">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            </div>
-            <div id="purchaseBillActions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; background: white;">
-                <button class="btn btn-warning" id="purchaseClearFormBtn" onclick="clearPurchaseCart()">🗑️ Clear Form</button>
-                <button class="btn btn-success" id="purchaseSaveBillBtn" onclick="savePurchase()">💾 Save Bill & Update Inventory</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Payment Details Modal -->
     
@@ -8574,40 +9498,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-    <!-- Supplier Management Modal -->
-    <div id="supplierManagementModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
-        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
-            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
-                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">👤 Supplier Details</h2>
-                <button class="modal-close" onclick="closeSupplierManagementModal()" style="font-size: 24px; padding: 0;">&times;</button>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="supplierSearchInput" placeholder="🔍 Search supplier..." oninput="renderSupplierTable()" class="form-control" style="flex: 1; min-width: 250px; max-width: 400px; padding: 10px; font-size: 16px;">
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-info" style="padding: 10px 15px; font-size: 16px;" onclick="exportSuppliersCSV()">📥 Export Suppliers (CSV)</button>
-                    <button class="btn btn-success" style="padding: 10px 15px; font-size: 16px;" onclick="openAddSupplierModal()">➕ Add Supplier</button>
-                </div>
-            </div>
-            
-            <div class="table-responsive" style="overflow: auto; flex: 1;">
-                <table class="table" style="margin: 0;">
-                    <thead style="position: sticky; top: 0; z-index: 10; background: #343a40; color: white;">
-                        <tr>
-                            <th>Supplier Name</th>
-                            <th>GSTIN</th>
-                            <th>State</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="supplierTableBody">
-                        <!-- Filled by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <!-- Supplier Management Modal (Legacy stub - replaced by 25:75 embedded workspace) -->
+    <div id="supplierManagementModal" style="display:none;"></div>
 
     <!-- Add/Edit Supplier Modal -->
     <div id="addSupplierModal" class="modal" style="z-index: 2000;">
@@ -8790,84 +9682,9 @@ input:focus, select:focus, textarea:focus, button:focus {
     </div>
 
         <!-- ======================================================== -->
-    <!-- MAIN CASH & BANK BOOK MODAL (Phase 4E.11) -->
+    <!-- MAIN CASH & BANK BOOK MODAL (Legacy stub - replaced by 25:75 embedded workspace) -->
     <!-- ======================================================== -->
-    <div id="cashBankModal" class="modal" style="z-index: 2000;">
-        <div class="modal-content" style="max-width: 1100px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <h2 style="margin: 0; color: #1e3c72; font-size: 1.4rem;">🏦 Main Cash & Bank Book</h2>
-                    <div style="display: inline-flex; border: 1px solid #ced4da; border-radius: 6px; overflow: hidden;">
-                        <button id="cbTabCash" onclick="switchCashBankAccount('cash')" style="padding: 6px 16px; border: none; font-weight: 600; cursor: pointer; background: #1e3c72; color: white;">💵 Cash Account</button>
-                        <button id="cbTabBank" onclick="switchCashBankAccount('bank')" style="padding: 6px 16px; border: none; font-weight: 600; cursor: pointer; background: #f8f9fa; color: #495057;">🏦 Bank Account</button>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="btn btn-warning" onclick="openCashBankOpeningModal()" style="padding: 6px 12px; font-size: 13px;">⚖️ Opening Balance</button>
-                    <button class="btn btn-success" onclick="openAddCashBankTxModal('IN')" style="padding: 6px 12px; font-size: 13px;">➕ <span id="cbBtnInText">Cash In</span></button>
-                    <button class="btn btn-danger" onclick="openAddCashBankTxModal('OUT')" style="padding: 6px 12px; font-size: 13px;">➖ <span id="cbBtnOutText">Cash Out</span></button>
-                    <button class="btn btn-primary" onclick="openCashBankTransferModal()" style="padding: 6px 12px; font-size: 13px;">🔄 Transfer</button>
-                    <button class="modal-close" onclick="closeCashBankModal()" style="font-size: 24px; padding: 0 5px; border: none; background: transparent; cursor: pointer;">&times;</button>
-                </div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 15px 0;">
-                <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-left: 5px solid #6c757d; border-radius: 6px; padding: 12px;">
-                    <div style="font-size: 12px; color: #6c757d; font-weight: bold; text-transform: uppercase;" id="cbCardOpeningLabel">Opening Cash</div>
-                    <div style="font-size: 20px; font-weight: bold; color: #343a40; margin-top: 4px;" id="cbOpeningDisplay">₹0.00</div>
-                </div>
-                <div style="background: #e8f5e9; border: 1px solid #c3e6cb; border-left: 5px solid #28a745; border-radius: 6px; padding: 12px;">
-                    <div style="font-size: 12px; color: #155724; font-weight: bold; text-transform: uppercase;" id="cbCardInLabel">Total Cash In</div>
-                    <div style="font-size: 20px; font-weight: bold; color: #28a745; margin-top: 4px;" id="cbInDisplay">₹0.00</div>
-                </div>
-                <div style="background: #fde8e8; border: 1px solid #f5c6cb; border-left: 5px solid #dc3545; border-radius: 6px; padding: 12px;">
-                    <div style="font-size: 12px; color: #721c24; font-weight: bold; text-transform: uppercase;" id="cbCardOutLabel">Total Cash Out</div>
-                    <div style="font-size: 20px; font-weight: bold; color: #dc3545; margin-top: 4px;" id="cbOutDisplay">₹0.00</div>
-                </div>
-                <div style="background: #e7f1ff; border: 1px solid #b8daff; border-left: 5px solid #004085; border-radius: 6px; padding: 12px;">
-                    <div style="font-size: 12px; color: #004085; font-weight: bold; text-transform: uppercase;" id="cbCardCurrentLabel">Current Cash Balance</div>
-                    <div style="font-size: 22px; font-weight: bold; color: #004085; margin-top: 4px;" id="cbCurrentDisplay">₹0.00</div>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <input type="date" id="cbFilterFrom" style="padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                <span>to</span>
-                <input type="date" id="cbFilterTo" style="padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                <select id="cbFilterType" style="padding: 5px 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                    <option value="">All Types (IN & OUT)</option>
-                    <option value="IN">IN (Receipts)</option>
-                    <option value="OUT">OUT (Payments)</option>
-                </select>
-                <input type="text" id="cbSearch" placeholder="Search particulars, ref, notes..." style="flex: 1; min-width: 200px; padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;" oninput="renderCashBankLedger()">
-                <button class="btn btn-primary" onclick="renderCashBankLedger()" style="padding: 6px 12px;">🔍 Filter</button>
-                <button class="btn btn-success" onclick="exportCashBankCSV()" style="padding: 6px 12px; background: #28a745;">📥 Export CSV</button>
-            </div>
-
-            <!-- Table -->
-            <div style="flex: 1; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; border-radius: 6px;">
-                <table class="table" style="width: 100%; border-collapse: collapse; margin: 0;">
-                    <thead style="background: #f1f3f5; position: sticky; top: 0; z-index: 1;">
-                        <tr>
-                            <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Date</th>
-                            <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Type</th>
-                            <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Particulars / Description</th>
-                            <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Ref / Voucher</th>
-                            <th style="padding: 8px 10px; text-align: right; border-bottom: 2px solid #dee2e6;">IN (₹)</th>
-                            <th style="padding: 8px 10px; text-align: right; border-bottom: 2px solid #dee2e6;">OUT (₹)</th>
-                            <th style="padding: 8px 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Status</th>
-                            <th style="padding: 8px 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cbLedgerBody">
-                        <!-- Injected by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <div id="cashBankModal" style="display:none;"></div>
 
     <!-- Opening Balance Modal -->
     <div id="cbOpeningModal" class="modal" style="z-index: 2100;">
@@ -8972,40 +9789,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-<!-- Customer Management Modal -->
-    <div id="customerManagementModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
-        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
-            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
-                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">👥 Customer Details</h2>
-                <button class="modal-close" onclick="closeCustomerManagementModal()" style="font-size: 24px; padding: 0;">&times;</button>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="customerSearchInput" placeholder="🔍 Search customer..." oninput="renderCustomerTable()" class="form-control" style="flex: 1; min-width: 250px; max-width: 400px; padding: 10px; font-size: 16px;">
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-info" style="padding: 10px 15px; font-size: 16px;" onclick="exportCustomersCSV()">📥 Export Customers (CSV)</button>
-                    <button class="btn btn-success" style="padding: 10px 15px; font-size: 16px;" onclick="openAddCustomerModal()">➕ Add Customer <kbd id="addCustomerShortcutBadgeList" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 2px 4px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-family: monospace;">Ctrl+M</kbd></button>
-                </div>
-            </div>
-            
-            <div class="table-responsive" style="overflow: auto; flex: 1;">
-                <table class="table" style="margin: 0;">
-                    <thead style="position: sticky; top: 0; z-index: 10; background: #343a40; color: white;">
-                        <tr>
-                            <th>Customer Name</th>
-                            <th>GSTIN</th>
-                            <th>State</th>
-                            <th>Phone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="customerTableBody">
-                        <!-- Filled by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+<!-- Customer Management Modal (Legacy stub - replaced by 25:75 embedded workspace) -->
+    <div id="customerManagementModal" style="display:none;"></div>
 
     <!-- Add/Edit Customer Modal -->
     <!-- Duplicate Customer Warning Modal -->
