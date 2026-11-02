@@ -25,6 +25,15 @@ class PurchaseService {
                     const defaultVariant = db.prepare('SELECT id FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 1').get(item.productId);
                     if (defaultVariant) {
                         item.variantId = defaultVariant.id;
+                    } else {
+                        const prod = db.prepare('SELECT name, barcode, cost_price, price, stock FROM products WHERE id = ?').get(item.productId);
+                        if (prod) {
+                            const newVar = db.prepare(`
+                                INSERT INTO product_variants (product_id, variant_name, sku, barcode, buying_price, selling_price, stock)
+                                VALUES (?, 'Standard', '', ?, ?, ?, ?)
+                            `).run(item.productId, prod.barcode || '', prod.cost_price || 0, prod.price || 0, prod.stock || 0);
+                            item.variantId = newVar.lastInsertRowid;
+                        }
                     }
                 }
 
@@ -42,9 +51,18 @@ class PurchaseService {
             }
 
             const invoiceNum = purchaseData.invoiceNumber || this.generateInvoiceNumber();
+            const supplier_id = purchaseData.supplierId || null;
+
+            if (invoiceNum && supplier_id) {
+                const duplicate = db.prepare("SELECT id FROM purchases WHERE invoice_number = ? AND supplier_id = ? AND status != 'CANCELLED'").get(invoiceNum, supplier_id);
+                if (duplicate) {
+                    let err = new Error('PURCHASE_DUPLICATE_INVOICE');
+                    err.code = 'PURCHASE_DUPLICATE_INVOICE';
+                    throw err;
+                }
+            }
             
             // Map the fields
-            const supplier_id = purchaseData.supplierId || null;
             const supplier_name = purchaseData.supplier || 'Unknown Supplier';
             const date = purchaseData.date;
             const subtotal = purchaseData.subtotal || 0;
@@ -61,16 +79,14 @@ class PurchaseService {
 
             const insertPurchase = db.prepare(`
                 INSERT INTO purchases (
-                    invoice_number, date, supplier_id, subtotal, discount, other_charges,
-                    taxable_value, cgst, sgst, igst, total_tax, total, payment_method, status,
-                    supplier_name, amount_paid, payment_status, outstanding_amount, due_date, tax_type, gst_applied
-                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?, ?, ?, ?, ?, ?)
+                    invoice_number, date, supplier_id, subtotal, discount,
+                    taxable_value, cgst, sgst, igst, total_tax, total, payment_method, status
+                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED')
             `);
             
             const purchaseInfo = insertPurchase.run(
-                invoiceNum, date, supplier_id, subtotal, discount, other_charges,
-                purchaseData.taxableValue || 0, purchaseData.cgst || 0, purchaseData.sgst || 0, purchaseData.igst || 0, purchaseData.totalTax || 0, total, payment_method,
-                supplier_name, amount_paid, payment_status, outstanding_amount, due_date, tax_type, gst_applied
+                invoiceNum, date, supplier_id, subtotal, discount,
+                purchaseData.taxableValue || 0, purchaseData.cgst || 0, purchaseData.sgst || 0, purchaseData.igst || 0, purchaseData.totalTax || 0, total, payment_method
             );
             
             const purchaseId = purchaseInfo.lastInsertRowid;
@@ -96,8 +112,8 @@ class PurchaseService {
                 // Update product variant stock and buying price
                 db.prepare('UPDATE product_variants SET buying_price = ? WHERE id = ?').run(price, item.variantId);
                 
-                // Also update product cost_price if it's a simple product (it's safe to update regardless)
-                db.prepare('UPDATE products SET cost_price = ? WHERE id = ?').run(price, item.productId);
+                // Also update product cost_price and stock
+                db.prepare('UPDATE products SET cost_price = ?, stock = stock + ? WHERE id = ?').run(price, qtyToAdd, item.productId);
 
                 stockService.adjustStock(item.productId, item.variantId, qtyToAdd, 'PURCHASE', 'PURCHASE', purchaseId, date);
             }
@@ -107,6 +123,16 @@ class PurchaseService {
                 const method = (payment_method || 'cash').toLowerCase();
                 const accType = (method === 'cash') ? 'cash' : 'bank';
                 cashBankService.recordPaymentMovement(accType, 'OUT', amount_paid, purchaseId, 'PURCHASE', 'Purchase Payment #' + invoiceNum, date, method, invoiceNum);
+            }
+
+            // Update supplier balance for credit / outstanding amount
+            const dueBalance = (outstanding_amount > 0) ? outstanding_amount : (payment_method === 'credit' ? total : 0);
+            if (supplier_id && dueBalance > 0) {
+                try {
+                    db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
+                } catch(e) {
+                    console.warn('[PurchaseService] Could not update supplier balance:', e.message);
+                }
             }
 
             if (testFailure) {
@@ -125,9 +151,20 @@ class PurchaseService {
         const db = dbManager.getDatabase();
         let purchases = [];
         if (dateStr) {
-            purchases = db.prepare('SELECT * FROM purchases WHERE date(date) = date(?) ORDER BY date DESC').all(dateStr);
+            purchases = db.prepare(`
+                SELECT p.*, s.name as supplier_name 
+                FROM purchases p 
+                LEFT JOIN suppliers s ON p.supplier_id = s.id 
+                WHERE date(p.date) = date(?) 
+                ORDER BY p.date DESC
+            `).all(dateStr);
         } else {
-            purchases = db.prepare('SELECT * FROM purchases ORDER BY date DESC LIMIT 100').all();
+            purchases = db.prepare(`
+                SELECT p.*, s.name as supplier_name 
+                FROM purchases p 
+                LEFT JOIN suppliers s ON p.supplier_id = s.id 
+                ORDER BY p.date DESC LIMIT 100
+            `).all();
         }
         
         const getItems = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?');
@@ -140,7 +177,13 @@ class PurchaseService {
     searchPurchases(query) {
         const db = dbManager.getDatabase();
         const q = '%' + query + '%';
-        const purchases = db.prepare('SELECT p.* FROM purchases p LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE p.invoice_number LIKE ? OR p.date LIKE ? OR s.name LIKE ? OR p.supplier_name LIKE ? OR p.payment_status LIKE ? OR p.status LIKE ? GROUP BY p.id ORDER BY p.date DESC LIMIT 50').all(q, q, q, q, q, q);
+        const purchases = db.prepare(`
+            SELECT p.*, s.name as supplier_name 
+            FROM purchases p 
+            LEFT JOIN suppliers s ON p.supplier_id = s.id 
+            WHERE p.invoice_number LIKE ? OR p.date LIKE ? OR s.name LIKE ? OR p.status LIKE ? 
+            ORDER BY p.date DESC LIMIT 50
+        `).all(q, q, q, q);
         
         const getItems = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?');
         for (let p of purchases) {
@@ -151,7 +194,12 @@ class PurchaseService {
 
     getPurchaseById(id) {
         const db = dbManager.getDatabase();
-        const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(id);
+        const purchase = db.prepare(`
+            SELECT p.*, s.name as supplier_name 
+            FROM purchases p 
+            LEFT JOIN suppliers s ON p.supplier_id = s.id 
+            WHERE p.id = ?
+        `).get(id);
         if (purchase) {
             purchase.items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(purchase.id);
         }
@@ -189,6 +237,7 @@ class PurchaseService {
                         err.code = 'VARIANT_PRODUCT_MISMATCH';
                         throw err;
                     }
+                    db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(item.quantity, item.product_id);
                     stockService.adjustStock(item.product_id, item.variant_id, -item.quantity, 'PURCHASE_CANCELLED', 'PURCHASE', purchaseId);
                 }
             }

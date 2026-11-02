@@ -94,7 +94,7 @@ class SupplierService {
 
             db.prepare(`
                 UPDATE suppliers SET 
-                    name = ?, phone = ?, email = ?, gstin = ?, address = ?, state = ?, country = ?, notes = ?, opening_balance = ?, updated_at = CURRENT_TIMESTAMP
+                    name = ?, phone = ?, email = ?, gstin = ?, address = ?, state = ?, balance = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `).run(
                 data.name || existing.name,
@@ -103,9 +103,7 @@ class SupplierService {
                 data.gstin || existing.gstin,
                 data.address || existing.address,
                 data.state || existing.state,
-                data.country || existing.country,
-                data.notes || existing.notes,
-                data.openingBalance !== undefined ? data.openingBalance : existing.opening_balance,
+                data.openingBalance !== undefined ? data.openingBalance : (existing.balance || 0),
                 id
             );
 
@@ -125,10 +123,24 @@ class SupplierService {
                 throw err;
             }
 
+            // Check for linked purchases
+            try {
+                const purchaseRef = db.prepare('SELECT COUNT(*) as c FROM purchases WHERE supplier_id = ?').get(id);
+                if (purchaseRef && purchaseRef.c > 0) {
+                    return {
+                        deleted: false,
+                        reason: `Supplier has ${purchaseRef.c} linked purchase bill(s). Deletion blocked to preserve transaction history.`,
+                        purchasesCount: purchaseRef.c
+                    };
+                }
+            } catch (pErr) {
+                console.warn('Could not check purchases table:', pErr.message);
+            }
+
             db.prepare("UPDATE suppliers SET status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
             db.prepare('INSERT INTO audit_log (action, record_type, record_id) VALUES (?, ?, ?)').run('SUPPLIER_ARCHIVED', 'SUPPLIER', id);
 
-            return true;
+            return { deleted: true, success: true };
         });
     }
 }
