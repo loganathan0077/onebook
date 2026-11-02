@@ -107,7 +107,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         },
         purchases: {
             create: (data) => ipcRenderer.invoke('sqlite:purchases:create', { sessionToken: currentSessionToken, data }),
-            getAll: (dateStr) => ipcRenderer.invoke('sqlite:purchases:getAll', { sessionToken: currentSessionToken, dateStr }),
+            getAll: (dateStr) => ipcRenderer.invoke('sqlite:purchases:getAll', { sessionToken: currentSessionToken, dateStr: (typeof dateStr === 'string' ? dateStr : null) }),
             search: (query) => ipcRenderer.invoke('sqlite:purchases:search', { sessionToken: currentSessionToken, query }),
             get: (id) => ipcRenderer.invoke('sqlite:purchases:get', { sessionToken: currentSessionToken, id }),
             cancel: (id) => ipcRenderer.invoke('sqlite:purchases:cancel', { sessionToken: currentSessionToken, id })

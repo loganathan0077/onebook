@@ -1348,7 +1348,7 @@ ipcMain.handle('sqlite:sales:cancel', (e, args, arg2) => {
 
 // Purchases
 ipcMain.handle('sqlite:purchases:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.createPurchase(args?.data !== undefined ? args.data : args)));
-ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(args?.dateStr !== undefined ? args.dateStr : args)));
+ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(typeof args?.dateStr === 'string' ? args.dateStr : (typeof args === 'string' ? args : null))));
 ipcMain.handle('sqlite:purchases:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.searchPurchases(args?.query !== undefined ? args.query : args)));
 ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchaseById(args?.id !== undefined ? args.id : args)));
 ipcMain.handle('sqlite:purchases:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseService.cancelPurchase(args?.id !== undefined ? args.id : args)));

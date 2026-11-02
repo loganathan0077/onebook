@@ -4575,7 +4575,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     <!-- Left Panel (25% Width, Independent Scrolling) -->
                     <div class="pp-left-panel">
                         <!-- 1. Purchase / Bill Entry -->
-                        <div class="pp-nav-item active" data-module="entry" onclick="switchPPModule('entry')">
+                        <div id="ppNav_entry" class="pp-nav-item active" data-module="entry" onclick="switchPPModule('entry')">
                             <div class="pp-nav-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -4593,7 +4593,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 2. Purchase History -->
-                        <div class="pp-nav-item" data-module="history" onclick="switchPPModule('history')">
+                        <div id="ppNav_history" class="pp-nav-item" data-module="history" onclick="switchPPModule('history')">
                             <div class="pp-nav-icon pp-nav-icon-cyan">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -4608,7 +4608,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 3. Customer Details -->
-                        <div class="pp-nav-item" data-module="customers" onclick="switchPPModule('customers')">
+                        <div id="ppNav_customers" class="pp-nav-item" data-module="customers" onclick="switchPPModule('customers')">
                             <div class="pp-nav-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -4625,11 +4625,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 4. Supplier Details -->
-                        <div class="pp-nav-item" data-module="suppliers" onclick="switchPPModule('suppliers')">
+                        <div id="ppNav_suppliers" class="pp-nav-item" data-module="suppliers" onclick="switchPPModule('suppliers')">
                             <div class="pp-nav-icon pp-nav-icon-purple">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="1" y="3" width="15" height="13"></rect>
-                                    <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
                                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
                                 </svg>
@@ -4642,7 +4642,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 5. Customer Receivables -->
-                        <div class="pp-nav-item" data-module="receivables" onclick="switchPPModule('receivables')">
+                        <div id="ppNav_receivables" class="pp-nav-item" data-module="receivables" onclick="switchPPModule('receivables')">
                             <div class="pp-nav-icon pp-nav-icon-green">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -4657,7 +4657,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 6. Supplier Payables -->
-                        <div class="pp-nav-item" data-module="payables" onclick="switchPPModule('payables')">
+                        <div id="ppNav_payables" class="pp-nav-item" data-module="payables" onclick="switchPPModule('payables')">
                             <div class="pp-nav-icon pp-nav-icon-red">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
@@ -4672,7 +4672,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         </div>
 
                         <!-- 7. Main Cash & Bank Book -->
-                        <div class="pp-nav-item" data-module="cashbank" onclick="switchPPModule('cashbank')">
+                        <div id="ppNav_cashbank" class="pp-nav-item" data-module="cashbank" onclick="switchPPModule('cashbank')">
                             <div class="pp-nav-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="3" y1="21" x2="21" y2="21"></line>
@@ -5051,7 +5051,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         <div class="pp-card-title-icon" style="background: #f3e8ff; color: #9333ea;">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <rect x="1" y="3" width="15" height="13"></rect>
-                                                <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+                                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                                                 <circle cx="5.5" cy="18.5" r="2.5"></circle>
                                                 <circle cx="18.5" cy="18.5" r="2.5"></circle>
                                             </svg>
@@ -9867,71 +9867,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
-    <!-- Purchase History Modal (Reverted) -->
-    <div id="purchaseHistoryModal" class="modal" style="align-items: center; justify-content: center; padding: 20px;">
-        <div class="modal-content" style="max-width: 1000px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; padding: 20px;">
-            <div class="modal-header" style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #dee2e6;">
-                <h2 style="margin: 0; font-size: 1.5rem; color: #333;">📜 Purchase History</h2>
-                <button class="modal-close" onclick="closePurchaseHistoryModal()" style="font-size: 24px; padding: 0;">&times;</button>
-            </div>
-
-            <!-- Filters & Toolbar -->
-            <div style="padding: 10px 0; border-bottom: 1px solid #dee2e6; gap: 10px; display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="font-size: 14px; color: #666; font-weight: bold;">Period:</span>
-                    <select id="phFilterMonth" onchange="renderPurchaseHistory()"
-                        style="padding: 7px; border: 1px solid #ced4da; border-radius: 4px; background:white;">
-                        <option value="01">January</option>
-                        <option value="02">February</option>
-                        <option value="03">March</option>
-                        <option value="04">April</option>
-                        <option value="05">May</option>
-                        <option value="06">June</option>
-                        <option value="07">July</option>
-                        <option value="08">August</option>
-                        <option value="09">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                    </select>
-                    <select id="phFilterYear" onchange="renderPurchaseHistory()"
-                        style="padding: 7px; border: 1px solid #ced4da; border-radius: 4px; background:white;">
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                        <option value="2029">2029</option>
-                        <option value="2030">2030</option>
-                    </select>
-                </div>
-
-                <input type="text" id="phSearchInput" placeholder="🔍 Search Bill No, Vendor, Date..."
-                    oninput="renderPurchaseHistory()"
-                    style="padding: 8px; border: 1px solid #ced4da; border-radius: 4px; flex: 1; min-width: 200px;">
-
-                <button class="btn btn-secondary btn-sm" onclick="resetPurchaseHistoryFilters()">↺ Reset</button>
-                <button class="btn btn-success btn-sm" onclick="exportPurchaseHistory()">📥 Export CSV</button>
-                <div style="font-weight: bold; font-size: 16px; margin-left: auto; color: #28a745;">Total: ₹<span
-                        id="phTotalAmount">0.00</span></div>
-            </div>
-            <div style="overflow: auto; flex: 1;">
-                <table class="table">
-                    <thead style="position: sticky; top: 0; z-index: 10;">
-                        <tr style="background: #343a40; color: white;">
-                            <th>Date</th>
-                            <th>Invoice No</th>
-                            <th>Supplier</th>
-                            <th>Items</th>
-                            <th>Grand Total</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="purchaseHistoryTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <!-- Purchase History Modal (Legacy stub - replaced by 25:75 embedded workspace) -->
+    <div id="purchaseHistoryModal" style="display:none;"></div>
 
     <!-- Purchase Order Modal -->
     <div id="purchaseDetailsModal" class="modal">
@@ -12741,44 +12678,256 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (header) header.style.display = displayFlex;
         }
 
+        // ==================== PURCHASE & PARTIES (25:75 ERP) LOGIC ====================
+
+        function populatePPSupplierDropdown() {
+            const sel = document.getElementById('purchaseSupplierSelect');
+            if (!sel) return;
+            const curVal = sel.value;
+            sel.innerHTML = '<option value="">Select Supplier</option>';
+            const supList = (typeof suppliers !== 'undefined' && Array.isArray(suppliers)) ? suppliers : [];
+            supList.forEach(s => {
+                if (!s || !s.name) return;
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name + (s.phone ? ' (' + s.phone + ')' : '');
+                sel.appendChild(opt);
+            });
+            if (curVal) sel.value = curVal;
+        }
+
+        function handlePPSupplierSelectChange(val) {
+            const hiddenSupplier = document.getElementById('purchaseSupplier');
+            if (hiddenSupplier) hiddenSupplier.value = val || '';
+            const supList = (typeof suppliers !== 'undefined' && Array.isArray(suppliers)) ? suppliers : [];
+            const matched = supList.find(s => s && (s.name === val || s.id === val));
+            if (matched) {
+                if (typeof selectedSupplierId !== 'undefined') selectedSupplierId = matched.id;
+                const phoneEl = document.getElementById('purchaseSupplierPhone');
+                if (phoneEl) phoneEl.value = matched.phone || '';
+                const addrEl = document.getElementById('purchaseSupplierAddress');
+                if (addrEl) addrEl.value = matched.address || '';
+            } else {
+                if (typeof selectedSupplierId !== 'undefined') selectedSupplierId = null;
+            }
+        }
+
+        async function updatePPSummary() {
+            try {
+                // 1. Total Purchases Amount & Count
+                let purchaseList = (typeof purchases !== 'undefined' && Array.isArray(purchases)) ? purchases : [];
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchases) {
+                    try {
+                        const res = await window.electronAPI.sqlite.purchases.getAll();
+                        const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                        if (list.length > 0) {
+                            purchaseList = list;
+                            purchases = list;
+                        }
+                    } catch(e) {}
+                }
+                const validPurchases = (purchaseList || []).filter(p => p && p.status !== 'cancelled');
+                const totalPurchasesAmt = validPurchases.reduce((sum, p) => sum + (parseFloat(p.totalAmount || p.total || 0) || 0), 0);
+                const purchaseCount = validPurchases.length;
+
+                const purchaseValEl = document.getElementById('ppOverviewPurchase');
+                if (purchaseValEl) purchaseValEl.textContent = '₹' + totalPurchasesAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const purchaseCntEl = document.getElementById('ppOverviewPurchaseCount');
+                if (purchaseCntEl) purchaseCntEl.textContent = purchaseCount + ' Bill' + (purchaseCount === 1 ? '' : 's');
+
+                // 2. Customer Receivables Amount & Pending Count
+                let totalReceivables = 0;
+                let pendingReceivablesCount = 0;
+                const creditSalesMap = {};
+                const salesList = (typeof sales !== 'undefined' && Array.isArray(sales)) ? sales : [];
+                salesList.forEach(sale => {
+                    if (!sale) return;
+                    const hasCredit = (sale.paymentStatus && sale.paymentStatus !== 'fully_paid') ||
+                                      (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
+                    const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
+                    if (isCredit && sale.receiptNumber) {
+                        if (!creditSalesMap[sale.receiptNumber]) {
+                            creditSalesMap[sale.receiptNumber] = {
+                                outstanding: parseFloat(sale.outstandingAmount) || 0,
+                                status: sale.paymentStatus || 'unpaid'
+                            };
+                        } else if (sale.outstandingAmount !== undefined) {
+                            creditSalesMap[sale.receiptNumber].outstanding = parseFloat(sale.outstandingAmount) || 0;
+                            creditSalesMap[sale.receiptNumber].status = sale.paymentStatus || 'unpaid';
+                        }
+                    }
+                });
+                Object.values(creditSalesMap).forEach(b => {
+                    if (b.status !== 'fully_paid' && b.outstanding > 0) {
+                        totalReceivables += b.outstanding;
+                        pendingReceivablesCount++;
+                    }
+                });
+                const recValEl = document.getElementById('ppOverviewReceivables');
+                if (recValEl) recValEl.textContent = '₹' + totalReceivables.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const recCntEl = document.getElementById('ppOverviewReceivablesCount');
+                if (recCntEl) recCntEl.textContent = pendingReceivablesCount + ' Pending';
+
+                // 3. Supplier Payables Amount & Due Count
+                let totalPayables = 0;
+                let duePayablesCount = 0;
+                validPurchases.forEach(p => {
+                    const hasCredit = (p.paymentStatus && p.paymentStatus !== 'fully_paid') ||
+                                      (p.paymentHistory && p.paymentHistory.some(h => h.method === 'credit'));
+                    const isCredit = (p.outstandingAmount !== undefined && p.outstandingAmount > 0) || p.paymentMethod === 'credit' || hasCredit;
+                    if (isCredit && p.paymentStatus !== 'fully_paid') {
+                        const out = parseFloat(p.outstandingAmount || 0);
+                        if (out > 0) {
+                            totalPayables += out;
+                            duePayablesCount++;
+                        }
+                    }
+                });
+                const payValEl = document.getElementById('ppOverviewPayables');
+                if (payValEl) payValEl.textContent = '₹' + totalPayables.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const payCntEl = document.getElementById('ppOverviewPayablesCount');
+                if (payCntEl) payCntEl.textContent = duePayablesCount + ' Due';
+            } catch(err) {
+                console.error('Error updating Purchase & Parties summary:', err);
+            }
+        }
+
+        function switchPPModule(moduleName) {
+            if (!moduleName) moduleName = 'entry';
+            if (moduleName === 'purchase') moduleName = 'entry';
+
+            const validModules = ['entry', 'history', 'customers', 'suppliers', 'receivables', 'payables', 'cashbank'];
+            if (!validModules.includes(moduleName)) {
+                console.warn('Unknown Purchase & Parties module:', moduleName);
+                moduleName = 'entry';
+            }
+
+            // 1. Highlight selected left-side button
+            document.querySelectorAll('.pp-nav-item').forEach(item => {
+                const itemMod = item.getAttribute('data-module');
+                if (itemMod === moduleName || (moduleName === 'entry' && itemMod === 'purchase')) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // 2. Toggle module content visibility inside right workspace
+            validModules.forEach(mod => {
+                const viewEl = document.getElementById('ppView_' + mod);
+                if (viewEl) {
+                    viewEl.style.display = (mod === moduleName) ? 'flex' : 'none';
+                }
+            });
+
+            // 3. Update top summary card
+            updatePPSummary();
+
+            // 4. Render and load actual module content
+            try {
+                switch (moduleName) {
+                    case 'entry':
+                        const dateEl = document.getElementById('purchaseDate');
+                        if (dateEl && !dateEl.value) {
+                            dateEl.value = new Date().toISOString().split('T')[0];
+                        }
+                        populatePPSupplierDropdown();
+                        if (typeof refreshSupplierDatalist === 'function') refreshSupplierDatalist();
+                        if (typeof updatePurchaseTable === 'function') updatePurchaseTable();
+                        break;
+
+                    case 'history':
+                        if (typeof resetPurchaseHistoryFilters === 'function') {
+                            resetPurchaseHistoryFilters();
+                        } else if (typeof renderPurchaseHistory === 'function') {
+                            renderPurchaseHistory();
+                        }
+                        break;
+
+                    case 'customers':
+                        _sqliteCustomerCache = null;
+                        if (typeof renderCustomerTable === 'function') renderCustomerTable();
+                        break;
+
+                    case 'suppliers':
+                        if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.suppliers) {
+                            window.electronAPI.sqlite.suppliers.getAll().then(res => {
+                                const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                                if (list.length > 0) suppliers = list;
+                                if (typeof renderSupplierTable === 'function') renderSupplierTable();
+                            }).catch(() => {
+                                if (typeof renderSupplierTable === 'function') renderSupplierTable();
+                            });
+                        } else {
+                            if (typeof renderSupplierTable === 'function') renderSupplierTable();
+                        }
+                        break;
+
+                    case 'receivables':
+                        if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                        break;
+
+                    case 'payables':
+                        if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchases) {
+                            window.electronAPI.sqlite.purchases.getAll().then(res => {
+                                const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                                if (list.length > 0) purchases = list;
+                                if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                            }).catch(() => {
+                                if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                            });
+                        } else {
+                            if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                        }
+                        break;
+
+                    case 'cashbank':
+                        if (typeof switchCashBankAccount === 'function') {
+                            switchCashBankAccount(typeof currentCashBankAccount !== 'undefined' ? currentCashBankAccount : 'cash');
+                        } else {
+                            if (typeof renderCashBankSummary === 'function') renderCashBankSummary();
+                            if (typeof renderCashBankLedger === 'function') renderCashBankLedger();
+                        }
+                        break;
+                }
+            } catch (err) {
+                console.error('Error switching module to ' + moduleName + ':', err);
+            }
+        }
+
+        async function saveAndPrintPurchase() {
+            try {
+                const res = await savePurchase();
+                if (res !== false) {
+                    if (typeof printPurchaseBill === 'function') {
+                        printPurchaseBill();
+                    }
+                }
+            } catch(e) {
+                console.error('Error in saveAndPrintPurchase:', e);
+            }
+        }
+
         function openPurchaseModal() {
             window.isAddingFromSale = false;
-            document.getElementById('purchaseModal').style.display = 'flex';
-            cancelPurchaseSelection(); // explicitly hide and reset product selection
-
-            togglePurchaseBillElements(true);
-            const titleEl = document.querySelector('#purchaseModal h2');
-            if (titleEl) titleEl.innerHTML = '🛍️ Purchase / Supplier Bill';
-            hidePurchaseAddNewProductForm();
+            if (typeof switchTab === 'function') switchTab('purchaseparties');
+            if (typeof switchPPModule === 'function') switchPPModule('entry');
+            cancelPurchaseSelection();
 
             // Initialize Date
-            if (!document.getElementById('purchaseDate').value) {
-                document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+            const pDate = document.getElementById('purchaseDate');
+            if (pDate && !pDate.value) {
+                pDate.value = new Date().toISOString().split('T')[0];
             }
             setTimeout(() => {
-                const pDate = document.getElementById('purchaseDate');
                 if (pDate) {
                     pDate.focus();
                     pDate.select();
                 }
             }, 50);
 
-            // Invoice Number remains empty until manually auto-generated
-
-            // Clear other fields
-            document.getElementById('purchaseSupplier').value = '';
-            const phoneEl = document.getElementById('purchaseSupplierPhone');
-            if (phoneEl) phoneEl.value = '';
-            const addrEl = document.getElementById('purchaseSupplierAddress');
-            if (addrEl) addrEl.value = '';
-
-            const notesEl = document.getElementById('purchaseNotes');
-            if (notesEl) notesEl.value = '';
-            purchaseCart = [];
-            updatePurchaseTable();
-
-            // Populate Supplier Suggestions
             refreshSupplierDatalist();
+            populatePPSupplierDropdown();
         }
 
 
@@ -13065,6 +13214,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; color: #6c757d; padding: 20px;">No items added yet</td></tr>`;
                 document.getElementById('purchaseItemCount').textContent = '0';
                 document.getElementById('purchaseSubtotalValue').textContent = '0.00';
+                const gstValElEmpty = document.getElementById('purchaseGstTotalValue');
+                if (gstValElEmpty) gstValElEmpty.textContent = '0.00';
                 document.getElementById('purchaseTotalValue').textContent = '0.00';
                 if (document.getElementById('purchaseGstSummary')) document.getElementById('purchaseGstSummary').style.display = 'none';
                 return;
@@ -13154,6 +13305,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             document.getElementById('purchaseItemCount').textContent = purchaseCart.length;
             document.getElementById('purchaseSubtotalValue').textContent = subtotal.toFixed(2);
+            const gstValElFilled = document.getElementById('purchaseGstTotalValue');
+            if (gstValElFilled) gstValElFilled.textContent = totalTaxAmount.toFixed(2);
 
             const discount = parseFloat(document.getElementById('purchaseDiscount').value) || 0;
             const other = parseFloat(document.getElementById('purchaseOtherCharges').value) || 0;
@@ -13200,6 +13353,7 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // --- Supplier Search Logic (Custom Dropdown) ---
         function refreshSupplierDatalist() {
+            if (typeof populatePPSupplierDropdown === 'function') populatePPSupplierDropdown();
             const dataList = document.getElementById('supplierList');
             if (!dataList) return;
             dataList.innerHTML = '';
@@ -13316,9 +13470,8 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // Supplier Management Functions
         function openSupplierManagementModal() {
-            document.getElementById('supplierManagementModal').style.display = 'flex';
-            document.getElementById('supplierSearchInput').value = '';
-            renderSupplierTable();
+            if (typeof switchTab === 'function') switchTab('purchaseparties');
+            if (typeof switchPPModule === 'function') switchPPModule('suppliers');
         }
 
         function closeSupplierManagementModal() {
@@ -13578,10 +13731,8 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function openCustomerManagementModal() {
-            document.getElementById('customerManagementModal').style.display = 'flex';
-            document.getElementById('customerSearchInput').value = '';
-            _sqliteCustomerCache = null; // force fresh load on each open
-            renderCustomerTable();
+            if (typeof switchTab === 'function') switchTab('purchaseparties');
+            if (typeof switchPPModule === 'function') switchPPModule('customers');
         }
 
         function closeCustomerManagementModal() {
@@ -14073,7 +14224,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (!requireLicensedForWrite('creating a purchase')) return;
             if (!window.hasPermission('purchase_entry')) return showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
             const invoice = document.getElementById('purchaseInvoiceNumber').value.trim();
-            const supplierName = document.getElementById('purchaseSupplier').value;
+            const supplierName = document.getElementById('purchaseSupplier').value || (document.getElementById('purchaseSupplierSelect') ? document.getElementById('purchaseSupplierSelect').value : '');
             const date = document.getElementById('purchaseDate').value;
 
             const discount = parseFloat(document.getElementById('purchaseDiscount').value) || 0;
@@ -14912,18 +15063,12 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // --- Purchase History Functions ---
         function openPurchaseHistoryModal() {
-            console.log('Opening Purchase History Modal');
+            console.log('Opening Purchase History Module');
             try {
-                // Default to Monthly functionality if function exists, else simple render
-                if (typeof resetPurchaseHistoryFilters === 'function') {
-                    resetPurchaseHistoryFilters();
-                } else {
-                    renderPurchaseHistory();
-                }
-                document.getElementById('purchaseHistoryModal').style.display = 'flex';
+                if (typeof switchTab === 'function') switchTab('purchaseparties');
+                if (typeof switchPPModule === 'function') switchPPModule('history');
             } catch (e) {
-                console.error('Error opening history:', e);
-                alert('Error opening history: ' + e.message);
+                console.error('Error opening history module:', e);
             }
         }
 
@@ -15030,9 +15175,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 
                 let results = [];
                 if (search) {
-                    results = await window.electronAPI.sqlite.purchases.search(search);
+                    const searchRes = await window.electronAPI.sqlite.purchases.search(search);
+                    results = (searchRes && searchRes.success && Array.isArray(searchRes.data)) ? searchRes.data : (Array.isArray(searchRes) ? searchRes : []);
                 } else {
-                    results = await window.electronAPI.sqlite.purchases.getAll();
+                    const allRes = await window.electronAPI.sqlite.purchases.getAll();
+                    results = (allRes && allRes.success && Array.isArray(allRes.data)) ? allRes.data : (Array.isArray(allRes) ? allRes : []);
                 }
 
                 const targetMonthStr = selectedYear + '-' + selectedMonth;
@@ -15372,6 +15519,33 @@ input:focus, select:focus, textarea:focus, button:focus {
                     } else {
                         console.error("updateProductsTable function is missing!");
                     }
+                } else if (tabName === 'purchaseparties') {
+                    if (typeof updatePPSummary === 'function') updatePPSummary();
+                    if (typeof switchPPModule === 'function') {
+                        const activeItem = document.querySelector('.pp-nav-item.active');
+                        const mod = activeItem ? (activeItem.getAttribute('data-module') || 'entry') : 'entry';
+                        switchPPModule(mod);
+                    }
+                } else if (tabName === 'receivables') {
+                    const ppTab = document.getElementById('purchaseparties');
+                    if (ppTab) {
+                        document.querySelectorAll('.tab-content').forEach(t => { t.style.display = 'none'; t.classList.remove('active'); });
+                        ppTab.style.display = 'block';
+                        ppTab.classList.add('active');
+                        const prodNav = document.querySelector('.nav-tab[data-tab="purchaseparties"]');
+                        if (prodNav) prodNav.classList.add('active');
+                    }
+                    if (typeof switchPPModule === 'function') switchPPModule('receivables');
+                } else if (tabName === 'payables') {
+                    const ppTab = document.getElementById('purchaseparties');
+                    if (ppTab) {
+                        document.querySelectorAll('.tab-content').forEach(t => { t.style.display = 'none'; t.classList.remove('active'); });
+                        ppTab.style.display = 'block';
+                        ppTab.classList.add('active');
+                        const prodNav = document.querySelector('.nav-tab[data-tab="purchaseparties"]');
+                        if (prodNav) prodNav.classList.add('active');
+                    }
+                    if (typeof switchPPModule === 'function') switchPPModule('payables');
                 }
             } catch (error) {
                 console.error(`❌ Error updating tab "${tabName}":`, error);
@@ -33681,22 +33855,25 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
     const key = e.key.toLowerCase();
     if (key === 'b') {
         e.preventDefault();
-        openPurchaseModal();
+        switchPPModule('entry');
     } else if (key === 'h') {
         e.preventDefault();
-        openPurchaseHistoryModal();
+        switchPPModule('history');
     } else if (key === 's') {
         e.preventDefault();
-        openSupplierManagementModal();
+        switchPPModule('suppliers');
     } else if (key === 'c') {
         e.preventDefault();
-        openCustomerManagementModal();
+        switchPPModule('customers');
     } else if (key === 'r') {
         e.preventDefault();
-        switchTab('receivables');
+        switchPPModule('receivables');
     } else if (key === 'p') {
         e.preventDefault();
-        switchTab('payables');
+        switchPPModule('payables');
+    } else if (key === 'm') {
+        e.preventDefault();
+        switchPPModule('cashbank');
     }
 });
 </script>
