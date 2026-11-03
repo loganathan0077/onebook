@@ -4377,6 +4377,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                         border-color: #2563eb;
                         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
                     }
+                    .vendor-result-item:hover, .vendor-result-item.highlighted {
+                        background-color: #eff6ff !important;
+                        border-left: 3px solid #2563eb !important;
+                    }
+                    .search-result-item:hover, .search-result-item.highlighted {
+                        background-color: #eff6ff !important;
+                        border-left: 3px solid #2563eb !important;
+                    }
 
                     /* Add product row */
                     .pp-add-product-row {
@@ -4858,7 +4866,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </div>
                                 </div>
 
-                                <!-- Form Row 1: Bill Date, Bill No, Supplier -->
+                                <!-- Form Row 1: Bill Date, Bill No, Vendor -->
                                 <div class="pp-form-grid-3">
                                     <div class="pp-form-group">
                                         <label>Bill Date <span style="color: #dc2626;">*</span></label>
@@ -4872,14 +4880,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         </div>
                                     </div>
                                     <div class="pp-form-group">
-                                        <label>Supplier <span style="color: #dc2626;">*</span></label>
-                                        <div style="display: flex; gap: 6px;">
-                                            <select id="purchaseSupplierSelect" class="pp-form-control" style="flex: 1;" onchange="handlePPSupplierSelectChange(this.value)" onkeydown="handlePurchaseSupplierKeydown(event)">
-                                                <option value="">Select Supplier</option>
-                                            </select>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="openAddSupplierModal()" style="height: 38px; padding: 0 10px; font-size: 14px;" title="Add Supplier">+</button>
+                                        <label>Vendor <span style="color: #dc2626;">*</span></label>
+                                        <div style="display: flex; gap: 6px; position: relative;">
+                                            <div style="position: relative; flex: 1;">
+                                                <input type="text" id="purchaseVendorSearch" class="pp-form-control" placeholder="Search vendor by name, phone or GSTIN..." autocomplete="off" oninput="handlePurchaseVendorInput(this.value)" onclick="handlePurchaseVendorClick()" onfocus="handlePurchaseVendorFocus()" onkeydown="handlePurchaseVendorKeydown(event)" style="width: 100%; padding-right: 28px;">
+                                                <button type="button" id="purchaseVendorToggleBtn" onclick="toggleVendorDropdown(event)" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 11px; padding: 4px;" title="Show all vendors">▼</button>
+                                                <div id="purchaseVendorResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 8px; z-index: 1000; max-height: 240px; overflow-y: auto; box-shadow: 0 8px 16px rgba(0,0,0,0.1); margin-top: 4px;"></div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="openAddSupplierModal()" style="height: 38px; padding: 0 10px; font-size: 14px;" title="Add New Vendor">+</button>
                                         </div>
                                         <input type="hidden" id="purchaseSupplier">
+                                        <select id="purchaseSupplierSelect" style="display: none;" onchange="handlePPSupplierSelectChange(this.value)"></select>
+                                        <div id="purchaseTaxBadge" style="display: none; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-top: 4px;"></div>
                                     </div>
                                 </div>
 
@@ -4972,11 +4984,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                                         Clear
                                     </button>
                                     <div style="display: flex; gap: 10px; margin-left: auto;">
-                                        <button type="button" class="btn pp-btn-save" onclick="savePurchase()">
+                                        <button type="button" id="purchaseSaveBtn" class="btn pp-btn-save" onclick="savePurchase()" onkeydown="handleSaveBtnKeydown(event)" tabindex="0">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                             Save Purchase
                                         </button>
-                                        <button type="button" class="btn pp-btn-save-print" onclick="saveAndPrintPurchase()">
+                                        <button type="button" id="purchaseSavePrintBtn" class="btn pp-btn-save-print" onclick="saveAndPrintPurchase()" onkeydown="handleSavePrintBtnKeydown(event)" tabindex="0">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                             Save & Print
                                         </button>
@@ -12807,20 +12819,380 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // ==================== PURCHASE & PARTIES (25:75 ERP) LOGIC ====================
 
-        function populatePPSupplierDropdown() {
-            const sel = document.getElementById('purchaseSupplierSelect');
-            if (!sel) return;
-            const curVal = sel.value;
-            sel.innerHTML = '<option value="">Select Supplier</option>';
+        let selectedVendor = null;
+        let vendorHighlightIndex = -1;
+
+        async function loadPurchasePartiesData() {
+            try {
+                const promises = [];
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.suppliers) {
+                    promises.push(
+                        window.electronAPI.sqlite.suppliers.getAll().then(res => {
+                            const list = (res && res.success !== false && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                            if (list && Array.isArray(list)) {
+                                suppliers = list;
+                            }
+                        }).catch(e => console.warn('[PP] Error loading suppliers from SQLite:', e))
+                    );
+                }
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.customers) {
+                    promises.push(
+                        window.electronAPI.sqlite.customers.getAll().then(res => {
+                            const list = (res && res.success !== false && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                            if (list && Array.isArray(list)) {
+                                _sqliteCustomerCache = list;
+                                customers = list;
+                            }
+                        }).catch(e => console.warn('[PP] Error loading customers from SQLite:', e))
+                    );
+                }
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchases) {
+                    promises.push(
+                        window.electronAPI.sqlite.purchases.getAll().then(res => {
+                            const list = (res && res.success !== false && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                            if (list && Array.isArray(list)) {
+                                purchases = list;
+                            }
+                        }).catch(e => console.warn('[PP] Error loading purchases from SQLite:', e))
+                    );
+                }
+                await Promise.all(promises);
+            } catch (err) {
+                console.error('[PP] Failed to load purchase & parties data:', err);
+            }
+
+            populatePPVendorSelection();
+            if (typeof updatePPSummary === 'function') updatePPSummary();
+        }
+
+        function getAllVendors() {
+            const list = [];
             const supList = (typeof suppliers !== 'undefined' && Array.isArray(suppliers)) ? suppliers : [];
+            const custList = (_sqliteCustomerCache && _sqliteCustomerCache.length) ? _sqliteCustomerCache : ((typeof customers !== 'undefined' && Array.isArray(customers)) ? customers : []);
+
             supList.forEach(s => {
                 if (!s || !s.name) return;
-                const opt = document.createElement('option');
-                opt.value = s.name;
-                opt.textContent = s.name + (s.phone ? ' (' + s.phone + ')' : '');
-                sel.appendChild(opt);
+                list.push({
+                    id: s.id,
+                    type: 'supplier',
+                    name: s.name,
+                    phone: s.phone || '',
+                    email: s.email || '',
+                    gstin: s.gstin || '',
+                    address: s.address || '',
+                    state: s.state || '',
+                    country: s.country || 'INDIA',
+                    balance: parseFloat(s.balance || 0),
+                    displayName: s.name + ' — SUPPLIER'
+                });
             });
-            if (curVal) sel.value = curVal;
+
+            custList.forEach(c => {
+                if (!c || !c.name) return;
+                list.push({
+                    id: c.id,
+                    type: 'customer',
+                    name: c.name,
+                    phone: c.phone || '',
+                    email: c.email || '',
+                    gstin: c.gstin || '',
+                    address: c.address || '',
+                    state: c.state || '',
+                    country: c.country || 'INDIA',
+                    balance: parseFloat(c.balance || c.opening_balance || 0),
+                    displayName: c.name + ' — CUSTOMER'
+                });
+            });
+
+            return list;
+        }
+
+        function populatePPVendorSelection() {
+            const all = getAllVendors();
+            const supSelect = document.getElementById('purchaseSupplierSelect');
+            if (supSelect) {
+                const curVal = supSelect.value;
+                supSelect.innerHTML = '<option value="">Select Vendor</option>';
+                all.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.name;
+                    opt.textContent = v.displayName + (v.phone ? ' (' + v.phone + ')' : '');
+                    opt.dataset.id = v.id;
+                    opt.dataset.type = v.type;
+                    supSelect.appendChild(opt);
+                });
+                if (curVal) supSelect.value = curVal;
+            }
+        }
+
+        function populatePPSupplierDropdown() {
+            populatePPVendorSelection();
+        }
+
+        function toggleVendorDropdown(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (!resultsDiv) return;
+            if (resultsDiv.style.display === 'block') {
+                resultsDiv.style.display = 'none';
+            } else {
+                const input = document.getElementById('purchaseVendorSearch');
+                searchPurchaseVendors(input ? input.value : '');
+                if (input) input.focus();
+            }
+        }
+
+        function handlePurchaseVendorClick() {
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (resultsDiv && resultsDiv.style.display === 'block') return;
+            const input = document.getElementById('purchaseVendorSearch');
+            searchPurchaseVendors(input ? input.value : '');
+        }
+
+        function handlePurchaseVendorFocus() {
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (resultsDiv && resultsDiv.style.display === 'block') return;
+            const input = document.getElementById('purchaseVendorSearch');
+            searchPurchaseVendors(input ? input.value : '');
+        }
+
+        function handlePurchaseVendorInput(val) {
+            const q = (val || '').trim();
+            if (!q) {
+                // Clear the Vendor search text -> close or hide the results immediately
+                const resultsDiv = document.getElementById('purchaseVendorResults');
+                if (resultsDiv) resultsDiv.style.display = 'none';
+                return;
+            }
+            searchPurchaseVendors(q);
+        }
+
+        // Single registration of document-level outside click for vendor dropdown
+        if (!window._purchaseVendorOutsideClickAttached) {
+            window._purchaseVendorOutsideClickAttached = true;
+            document.addEventListener('click', function(e) {
+                const resultsDiv = document.getElementById('purchaseVendorResults');
+                if (resultsDiv && resultsDiv.style.display !== 'none') {
+                    const vendorInput = document.getElementById('purchaseVendorSearch');
+                    const toggleBtn = document.getElementById('purchaseVendorToggleBtn');
+                    const isInsideInput = vendorInput && vendorInput.contains(e.target);
+                    const isInsideResults = resultsDiv.contains(e.target);
+                    const isInsideToggle = toggleBtn && toggleBtn.contains(e.target);
+                    if (!isInsideInput && !isInsideResults && !isInsideToggle) {
+                        resultsDiv.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function searchPurchaseVendors(query) {
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (!resultsDiv) return;
+
+            const all = (typeof getAllVendors === 'function') ? getAllVendors() : [];
+            const q = (query || '').trim().toLowerCase();
+
+            let matches = [];
+            if (!q) {
+                matches = all.slice(0, 40);
+            } else {
+                matches = all.filter(v => {
+                    const name = (v.name || '').toLowerCase();
+                    const phone = (v.phone || '').toLowerCase();
+                    const gstin = (v.gstin || '').toLowerCase();
+                    const state = (v.state || '').toLowerCase();
+                    return name.includes(q) || phone.includes(q) || gstin.includes(q) || state.includes(q);
+                }).slice(0, 40);
+            }
+
+            window._currentVendorMatches = matches;
+            vendorHighlightIndex = -1;
+
+            if (matches.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding: 10px 14px; color: #64748b; font-size: 13px; text-align: center;">No matching vendors found</div>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+
+            resultsDiv.innerHTML = matches.map((m, idx) => {
+                const isSup = (m.type === 'supplier');
+                const badgeColor = isSup ? '#0284c7' : '#16a34a';
+                const badgeBg = isSup ? '#e0f2fe' : '#dcfce7';
+                return `
+                    <div class="vendor-result-item" id="v-result-${idx}"
+                         style="padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px;"
+                         onmouseenter="setVendorHighlight(${idx})"
+                         onclick="if(window._currentVendorMatches && window._currentVendorMatches[${idx}]) selectPurchaseVendor(window._currentVendorMatches[${idx}])">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #0f172a;">${escapeHtml(m.name)}</span>
+                            <span style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px; background: ${badgeBg}; color: ${badgeColor}; letter-spacing: 0.5px;">${m.type.toUpperCase()}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; display: flex; gap: 10px; margin-top: 3px; flex-wrap: wrap;">
+                            ${m.phone ? `<span>📞 ${escapeHtml(m.phone)}</span>` : ''}
+                            ${m.gstin ? `<span>GSTIN: <strong>${escapeHtml(m.gstin)}</strong></span>` : ''}
+                            ${m.state ? `<span>State: <strong>${escapeHtml(m.state)}</strong></span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            resultsDiv.style.display = 'block';
+        }
+
+        function setVendorHighlight(index) {
+            vendorHighlightIndex = index;
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (!resultsDiv) return;
+            const items = resultsDiv.querySelectorAll('.vendor-result-item');
+            items.forEach((item, idx) => {
+                if (idx === index) {
+                    item.classList.add('highlighted');
+                    item.style.backgroundColor = '#eff6ff';
+                } else {
+                    item.classList.remove('highlighted');
+                    item.style.backgroundColor = '';
+                }
+            });
+        }
+
+        function updateVendorHighlight(items) {
+            if (!items || items.length === 0) return;
+            items.forEach((item, idx) => {
+                if (idx === vendorHighlightIndex) {
+                    item.classList.add('highlighted');
+                    item.style.backgroundColor = '#eff6ff';
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('highlighted');
+                    item.style.backgroundColor = '';
+                }
+            });
+        }
+
+        function handlePurchaseVendorKeydown(event) {
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!resultsDiv || resultsDiv.style.display === 'none') {
+                    searchPurchaseVendors(event.target.value);
+                }
+                const items = resultsDiv ? resultsDiv.querySelectorAll('.vendor-result-item') : [];
+                if (items.length === 0) return;
+                if (vendorHighlightIndex < 0) {
+                    vendorHighlightIndex = 0;
+                } else {
+                    vendorHighlightIndex = (vendorHighlightIndex + 1) % items.length;
+                }
+                updateVendorHighlight(items);
+                return;
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!resultsDiv || resultsDiv.style.display === 'none') {
+                    searchPurchaseVendors(event.target.value);
+                }
+                const items = resultsDiv ? resultsDiv.querySelectorAll('.vendor-result-item') : [];
+                if (items.length === 0) return;
+                if (vendorHighlightIndex <= 0) {
+                    vendorHighlightIndex = items.length - 1;
+                } else {
+                    vendorHighlightIndex = (vendorHighlightIndex - 1) % items.length;
+                }
+                updateVendorHighlight(items);
+                return;
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (resultsDiv && resultsDiv.style.display !== 'none') {
+                    const items = resultsDiv.querySelectorAll('.vendor-result-item');
+                    if (items.length > 0) {
+                        const idx = (vendorHighlightIndex >= 0 && vendorHighlightIndex < items.length) ? vendorHighlightIndex : 0;
+                        if (window._currentVendorMatches && window._currentVendorMatches[idx]) {
+                            selectPurchaseVendor(window._currentVendorMatches[idx]);
+                        } else if (items[idx]) {
+                            items[idx].click();
+                        }
+                        return;
+                    }
+                }
+                // If already selected or no dropdown open, move focus to product search
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    if (searchInput.select) searchInput.select();
+                }
+                return;
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (resultsDiv) resultsDiv.style.display = 'none';
+                vendorHighlightIndex = -1;
+                return;
+            }
+        }
+
+        function selectPurchaseVendor(vendor) {
+            if (!vendor) return;
+            selectedVendor = vendor;
+            selectedSupplierId = vendor.id;
+            window.selectedVendorType = vendor.type;
+
+            const vendorInput = document.getElementById('purchaseVendorSearch');
+            if (vendorInput) {
+                vendorInput.value = vendor.name + ' — ' + vendor.type.toUpperCase();
+            }
+            const hiddenSup = document.getElementById('purchaseSupplier');
+            if (hiddenSup) hiddenSup.value = vendor.name;
+
+            const supSelect = document.getElementById('purchaseSupplierSelect');
+            if (supSelect) supSelect.value = vendor.name;
+
+            const phoneEl = document.getElementById('purchaseSupplierPhone');
+            if (phoneEl) phoneEl.value = vendor.phone || '';
+            const addrEl = document.getElementById('purchaseSupplierAddress');
+            if (addrEl) addrEl.value = vendor.address || '';
+
+            // Update tax badge
+            const taxType = getSupplierTaxType(vendor);
+            const badge = document.getElementById('purchaseTaxBadge');
+            if (badge) {
+                const stateName = vendor.state || (taxType === 'intra' ? 'Tamil Nadu' : 'Other');
+                if (taxType === 'intra') {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = '#eff6ff';
+                    badge.style.color = '#1d4ed8';
+                    badge.style.border = '1px solid #bfdbfe';
+                    badge.textContent = `📍 ${stateName} (33) – Intra-State (CGST + SGST)`;
+                } else {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = '#fef3c7';
+                    badge.style.color = '#b45309';
+                    badge.style.border = '1px solid #fde68a';
+                    badge.textContent = `📍 ${stateName} – Inter-State (IGST)`;
+                }
+            }
+
+            // Close dropdown immediately!
+            const resultsDiv = document.getElementById('purchaseVendorResults');
+            if (resultsDiv) resultsDiv.style.display = 'none';
+
+            // Recalculate purchase table if items already in cart
+            if (typeof updatePurchaseTable === 'function') {
+                updatePurchaseTable();
+            }
+
+            // Keyboard workflow step: After selecting Vendor, focus Product Search
+            setTimeout(() => {
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    if (searchInput.select) searchInput.select();
+                }
+            }, 40);
         }
 
         function getSupplierTaxType(supplier) {
@@ -12864,9 +13236,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 event.stopPropagation();
-                const supSelect = document.getElementById('purchaseSupplierSelect');
-                if (supSelect) {
-                    supSelect.focus();
+                const vendorInput = document.getElementById('purchaseVendorSearch') || document.getElementById('purchaseSupplierSelect');
+                if (vendorInput) {
+                    vendorInput.focus();
+                    if (vendorInput.select) vendorInput.select();
                 }
             }
         }
@@ -12883,30 +13256,56 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
         function handlePPSupplierSelectChange(val) {
-            const hiddenSupplier = document.getElementById('purchaseSupplier');
-            if (hiddenSupplier) hiddenSupplier.value = val || '';
-            const supList = (typeof suppliers !== 'undefined' && Array.isArray(suppliers)) ? suppliers : [];
-            const matched = supList.find(s => s && (s.name === val || s.id === val));
+            const all = getAllVendors();
+            const matched = all.find(v => v.name === val || v.id === val || (v.displayName && v.displayName === val));
             if (matched) {
-                if (typeof selectedSupplierId !== 'undefined') selectedSupplierId = matched.id;
-                const phoneEl = document.getElementById('purchaseSupplierPhone');
-                if (phoneEl) phoneEl.value = matched.phone || '';
-                const addrEl = document.getElementById('purchaseSupplierAddress');
-                if (addrEl) addrEl.value = matched.address || '';
-            } else {
-                if (typeof selectedSupplierId !== 'undefined') selectedSupplierId = null;
+                selectPurchaseVendor(matched);
             }
-            // Recalculate purchase table if items already in cart
-            if (typeof updatePurchaseTable === 'function') {
-                updatePurchaseTable();
-            }
+        }
 
-            // Keyboard navigation: After selecting Supplier, focus Product Search
-            if (val) {
-                setTimeout(() => {
-                    const searchInput = document.getElementById('purchaseSearchInput');
-                    if (searchInput) searchInput.focus();
-                }, 40);
+        function handleSaveBtnKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (window._isSavingPurchase) return;
+                savePurchase();
+            } else if (event.key === 'ArrowRight' || event.key === 'Tab') {
+                event.preventDefault();
+                event.stopPropagation();
+                const printBtn = document.getElementById('purchaseSavePrintBtn');
+                if (printBtn) printBtn.focus();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (purchaseCart && purchaseCart.length > 0) {
+                    const lastQty = document.getElementById('purchase-item-qty-' + (purchaseCart.length - 1));
+                    if (lastQty) { lastQty.focus(); lastQty.select(); return; }
+                }
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) searchInput.focus();
+            }
+        }
+
+        function handleSavePrintBtnKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (window._isSavingPurchase) return;
+                saveAndPrintPurchase();
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                event.stopPropagation();
+                const saveBtn = document.getElementById('purchaseSaveBtn');
+                if (saveBtn) saveBtn.focus();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (purchaseCart && purchaseCart.length > 0) {
+                    const lastQty = document.getElementById('purchase-item-qty-' + (purchaseCart.length - 1));
+                    if (lastQty) { lastQty.focus(); lastQty.select(); return; }
+                }
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) searchInput.focus();
             }
         }
 
@@ -12990,7 +13389,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
-        function switchPPModule(moduleName) {
+        async function switchPPModule(moduleName) {
             if (!moduleName) moduleName = 'entry';
             if (moduleName === 'purchase') moduleName = 'entry';
 
@@ -13029,8 +13428,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         if (dateEl && !dateEl.value) {
                             dateEl.value = new Date().toISOString().split('T')[0];
                         }
-                        populatePPSupplierDropdown();
-                        if (typeof refreshSupplierDatalist === 'function') refreshSupplierDatalist();
+                        await loadPurchasePartiesData();
                         if (typeof updatePurchaseTable === 'function') updatePurchaseTable();
                         break;
 
@@ -13212,12 +13610,61 @@ input:focus, select:focus, textarea:focus, button:focus {
                         return;
                     }
                 }
+
+                // 3. If no matching product appears:
+                // "Press Enter to continue to manual product entry. Do not create a fake product."
+                if (q) {
+                    if (resultsDiv) resultsDiv.style.display = 'none';
+                    showPurchaseAddNewProductForm();
+                    const nm = document.getElementById('newProductName');
+                    if (nm) {
+                        nm.value = (searchInput ? searchInput.value : '').trim();
+                        setTimeout(() => { nm.focus(); if (nm.select) nm.select(); }, 50);
+                    }
+                    return;
+                }
+
+                // If search is empty and cart has items:
+                // "After finishing product quantities:
+                // - Press Enter to move to Save Purchase.
+                // - Press Enter again to save the purchase."
+                if (purchaseCart && purchaseCart.length > 0) {
+                    if (resultsDiv) resultsDiv.style.display = 'none';
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) {
+                        saveBtn.focus();
+                    }
+                    return;
+                }
                 return;
             }
 
-            if (!resultsDiv || resultsDiv.style.display === 'none' || resultsDiv.innerHTML.trim() === '') return;
+            if (!resultsDiv || resultsDiv.style.display === 'none' || resultsDiv.innerHTML.trim() === '') {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (purchaseCart && purchaseCart.length > 0) {
+                        const firstQty = document.getElementById('purchase-item-qty-0');
+                        if (firstQty) { firstQty.focus(); firstQty.select(); return; }
+                    }
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) saveBtn.focus();
+                }
+                return;
+            }
+
             const items = resultsDiv.querySelectorAll('.search-result-item');
-            if (items.length === 0) return;
+            if (items.length === 0) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (purchaseCart && purchaseCart.length > 0) {
+                        const firstQty = document.getElementById('purchase-item-qty-0');
+                        if (firstQty) { firstQty.focus(); firstQty.select(); return; }
+                    }
+                }
+                return;
+            }
 
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
@@ -13259,6 +13706,15 @@ input:focus, select:focus, textarea:focus, button:focus {
                 purchaseSearchHighlightIndex = -1;
                 return;
             }
+
+            // When user types a new query, clear existing selection
+            if (selectedPurchaseProduct) {
+                selectedPurchaseProduct = null;
+                window.selectedPurchaseVariant = null;
+                const selFeedback = document.getElementById('purchaseSelectedProduct');
+                if (selFeedback) selFeedback.style.display = 'none';
+            }
+
             const prodList = (typeof products !== 'undefined' && Array.isArray(products)) ? products : [];
             const matches = (typeof window.searchProductsUnified === 'function') 
                 ? window.searchProductsUnified(q, prodList).slice(0, 12)
@@ -13350,37 +13806,163 @@ input:focus, select:focus, textarea:focus, button:focus {
                 variant = parent.variants.find(v => String(v.id) === String(variantId));
             }
 
+            const displayName = window.getVariantDisplayName ? window.getVariantDisplayName(parent, variant) : (variant ? `${parent.name} - ${variant.variantName}` : parent.name);
+            const defaultPrice = variant 
+                ? (variant.buyingPrice !== undefined ? variant.buyingPrice : 0) 
+                : (parent.costPrice !== undefined ? parent.costPrice : (parent.cost_price !== undefined ? parent.cost_price : (parent.price || 0)));
+            const defaultGST = parent.gstRate !== undefined ? parent.gstRate : 18;
+            const currentStock = variant ? (variant.stock !== undefined ? variant.stock : (parent.stock || 0)) : (parent.stock || 0);
+
+            // Set selected state for toolbar
             selectedPurchaseProduct = parent;
             window.selectedPurchaseVariant = variant;
 
-            const displayName = window.getVariantDisplayName ? window.getVariantDisplayName(parent, variant) : (variant ? `${parent.name} - ${variant.variantName}` : parent.name);
-            document.getElementById('purchaseProductName').textContent = displayName;
-            document.getElementById('purchaseCurrentStock').textContent = variant ? (variant.stock || 0) : (parent.stock || 0);
+            // Populate toolbar feedback strip
+            const pNameEl = document.getElementById('purchaseProductName');
+            if (pNameEl) pNameEl.textContent = displayName;
+            const pStockEl = document.getElementById('purchaseCurrentStock');
+            if (pStockEl) pStockEl.textContent = currentStock;
+            const selStrip = document.getElementById('purchaseSelectedProduct');
+            if (selStrip) selStrip.style.display = 'flex';
 
-            document.getElementById('purchaseSelectedProduct').style.display = 'flex';
-            document.getElementById('purchaseSearchResults').style.display = 'none';
-            document.getElementById('purchaseSearchInput').value = '';
-
-            // Set quantity to 1
+            // Populate Add Product toolbar input controls
             const qtyInput = document.getElementById('purchaseQty');
-            qtyInput.value = 1;
+            if (qtyInput) qtyInput.value = 1;
 
-            // Default rate: buyingPrice or costPrice
-            const defaultPrice = variant ? (variant.buyingPrice !== undefined ? variant.buyingPrice : 0) : (parent.costPrice !== undefined ? parent.costPrice : (parent.cost_price !== undefined ? parent.cost_price : (parent.price || 0)));
-            document.getElementById('purchaseItemPrice').value = parseFloat(defaultPrice || 0).toFixed(2);
+            const priceInput = document.getElementById('purchaseItemPrice');
+            if (priceInput) priceInput.value = parseFloat(defaultPrice || 0).toFixed(2);
 
-            // GST Rate
             const gstSelect = document.getElementById('purchaseItemGST');
             if (gstSelect) {
-                const gRate = parent.gstRate !== undefined ? String(parent.gstRate) : '18';
-                gstSelect.value = ['0','5','12','18','28'].includes(gRate) ? gRate : '18';
+                gstSelect.value = String(defaultGST);
+                if (!gstSelect.value) gstSelect.value = '18';
             }
 
-            // Keyboard workflow step 4: Move focus to Quantity field & select its text
-            setTimeout(() => {
-                qtyInput.focus();
-                if (qtyInput.select) qtyInput.select();
-            }, 30);
+            // Hide search dropdown & clear input
+            const searchInput = document.getElementById('purchaseSearchInput');
+            if (searchInput) searchInput.value = '';
+            const resultsDiv = document.getElementById('purchaseSearchResults');
+            if (resultsDiv) resultsDiv.style.display = 'none';
+
+            // Focus Qty field in the Add Product input row
+            const focusQty = () => {
+                const qEl = document.getElementById('purchaseQty');
+                if (qEl) {
+                    qEl.focus();
+                    if (qEl.select) qEl.select();
+                }
+            };
+            focusQty();
+            setTimeout(focusQty, 30);
+            setTimeout(focusQty, 60);
+        }
+
+        function handlePurchaseRowQtyKeydown(event, index) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                const inputEl = (event.target && event.target.value !== undefined) ? event.target : document.getElementById('purchase-item-qty-' + index);
+                const val = parseFloat(inputEl ? inputEl.value : 0);
+                if (!isNaN(val) && val > 0 && purchaseCart[index]) {
+                    purchaseCart[index].qty = val;
+                    updatePurchaseTable();
+                }
+                const rateEl = document.getElementById('purchase-item-rate-' + index);
+                if (rateEl) {
+                    rateEl.focus();
+                    if (rateEl.select) rateEl.select();
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (index > 0) {
+                    const prevQty = document.getElementById('purchase-item-qty-' + (index - 1));
+                    if (prevQty) { prevQty.focus(); prevQty.select(); }
+                } else {
+                    const searchInput = document.getElementById('purchaseSearchInput');
+                    if (searchInput) { searchInput.focus(); searchInput.select(); }
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (index < purchaseCart.length - 1) {
+                    const nextQty = document.getElementById('purchase-item-qty-' + (index + 1));
+                    if (nextQty) { nextQty.focus(); nextQty.select(); }
+                } else {
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) saveBtn.focus();
+                }
+            }
+        }
+
+        function handlePurchaseRowRateKeydown(event, index) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                const inputEl = (event.target && event.target.value !== undefined) ? event.target : document.getElementById('purchase-item-rate-' + index);
+                const val = parseFloat(inputEl ? inputEl.value : 0);
+                if (!isNaN(val) && val >= 0 && purchaseCart[index]) {
+                    purchaseCart[index].price = val;
+                    updatePurchaseTable();
+                }
+                const gstEl = document.getElementById('purchase-item-gst-' + index);
+                if (gstEl) gstEl.focus();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (index > 0) {
+                    const prevRate = document.getElementById('purchase-item-rate-' + (index - 1));
+                    if (prevRate) { prevRate.focus(); prevRate.select(); }
+                } else {
+                    const searchInput = document.getElementById('purchaseSearchInput');
+                    if (searchInput) { searchInput.focus(); searchInput.select(); }
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (index < purchaseCart.length - 1) {
+                    const nextRate = document.getElementById('purchase-item-rate-' + (index + 1));
+                    if (nextRate) { nextRate.focus(); nextRate.select(); }
+                } else {
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) saveBtn.focus();
+                }
+            }
+        }
+
+        function handlePurchaseRowGstKeydown(event, index) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                const inputEl = (event.target && event.target.value !== undefined) ? event.target : document.getElementById('purchase-item-gst-' + index);
+                const val = parseFloat(inputEl ? inputEl.value : 0) || 0;
+                if (purchaseCart[index]) {
+                    purchaseCart[index].gstRate = val;
+                    updatePurchaseTable();
+                }
+                if (index < purchaseCart.length - 1) {
+                    const nextQty = document.getElementById('purchase-item-qty-' + (index + 1));
+                    if (nextQty) { nextQty.focus(); nextQty.select(); }
+                } else {
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) saveBtn.focus();
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                const rateEl = document.getElementById('purchase-item-rate-' + index);
+                if (rateEl) { rateEl.focus(); rateEl.select(); }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                if (index < purchaseCart.length - 1) {
+                    const nextGst = document.getElementById('purchase-item-gst-' + (index + 1));
+                    if (nextGst) nextGst.focus();
+                } else {
+                    const saveBtn = document.getElementById('purchaseSaveBtn');
+                    if (saveBtn) saveBtn.focus();
+                }
+            }
         }
 
         function handlePurchaseQtyKeydown(event) {
@@ -13391,6 +13973,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (rateInput) {
                     rateInput.focus();
                     if (rateInput.select) rateInput.select();
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    if (searchInput.select) searchInput.select();
                 }
             }
         }
@@ -13403,6 +13993,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (gstSelect) {
                     gstSelect.focus();
                 }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                const qtyInput = document.getElementById('purchaseQty');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    if (qtyInput.select) qtyInput.select();
+                }
             }
         }
 
@@ -13411,11 +14009,27 @@ input:focus, select:focus, textarea:focus, button:focus {
                 event.preventDefault();
                 event.stopPropagation();
                 addPurchaseItem();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                const rateInput = document.getElementById('purchaseItemPrice');
+                if (rateInput) {
+                    rateInput.focus();
+                    if (rateInput.select) rateInput.select();
+                }
             }
         }
 
         function addPurchaseItem() {
-            if (!selectedPurchaseProduct) return;
+            if (!selectedPurchaseProduct) {
+                showAlert('Please select a product from search', '⚠️');
+                const searchInput = document.getElementById('purchaseSearchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    if (searchInput.select) searchInput.select();
+                }
+                return;
+            }
             const qty = parseFloat(document.getElementById('purchaseQty').value);
             const price = parseFloat(document.getElementById('purchaseItemPrice').value) || 0;
             const gstEl = document.getElementById('purchaseItemGST');
@@ -13463,6 +14077,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             const searchInput = document.getElementById('purchaseSearchInput');
             if (searchInput) {
                 searchInput.value = '';
+                searchInput.focus();
                 setTimeout(() => { searchInput.focus(); }, 30);
             }
         }
@@ -13590,18 +14205,18 @@ input:focus, select:focus, textarea:focus, button:focus {
                         ${item.barcode ? `<span style="font-size: 11px; color: #64748b; margin-left: 6px;">[${item.barcode}]</span>` : ''}
                     </td>
                     <td style="text-align: center; vertical-align: middle;">
-                        <input type="number" value="${item.qty}" min="0.01" step="any" class="pp-form-control" 
+                        <input type="number" id="purchase-item-qty-${index}" value="${item.qty}" min="0.01" step="any" class="pp-form-control purchase-item-qty-input" 
                                style="width: 70px; height: 30px; padding: 2px 6px; font-size: 12.5px; text-align: center; margin: 0 auto; display: block;" 
-                               onchange="updatePurchaseItemQty(${index}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                               onchange="updatePurchaseItemQty(${index}, this.value)" onkeydown="handlePurchaseRowQtyKeydown(event, ${index})">
                     </td>
                     <td style="text-align: right; vertical-align: middle;">
-                        <input type="number" value="${price.toFixed(2)}" min="0" step="0.01" class="pp-form-control" 
+                        <input type="number" id="purchase-item-rate-${index}" value="${price.toFixed(2)}" min="0" step="0.01" class="pp-form-control" 
                                style="width: 95px; height: 30px; padding: 2px 6px; font-size: 12.5px; text-align: right; margin-left: auto; display: block;" 
-                               onchange="updatePurchaseItemPrice(${index}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                               onchange="updatePurchaseItemPrice(${index}, this.value)" onkeydown="handlePurchaseRowRateKeydown(event, ${index})">
                     </td>
                     <td style="text-align: right; vertical-align: middle;">
-                        <select class="pp-form-control" style="width: 75px; height: 30px; padding: 2px 4px; font-size: 12px; text-align: right; margin-left: auto; display: block;" 
-                                onchange="updatePurchaseItemGST(${index}, this.value)">
+                        <select id="purchase-item-gst-${index}" class="pp-form-control" style="width: 75px; height: 30px; padding: 2px 4px; font-size: 12px; text-align: right; margin-left: auto; display: block;" 
+                                onchange="updatePurchaseItemGST(${index}, this.value)" onkeydown="handlePurchaseRowGstKeydown(event, ${index})">
                             <option value="0" ${gstRate === 0 ? 'selected' : ''}>0%</option>
                             <option value="5" ${gstRate === 5 ? 'selected' : ''}>5%</option>
                             <option value="12" ${gstRate === 12 ? 'selected' : ''}>12%</option>
@@ -14694,11 +15309,14 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         // Save Purchase
         async function savePurchase() {
-            if (!requireLicensedForWrite('creating a purchase')) return false;
-            if (!window.hasPermission('purchase_entry')) {
-                showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
-                return false;
-            }
+            if (window._isSavingPurchase) return false;
+            window._isSavingPurchase = true;
+            try {
+                if (!requireLicensedForWrite('creating a purchase')) return false;
+                if (!window.hasPermission('purchase_entry')) {
+                    showAlert('Unauthorized: You do not have permission to enter purchases.', 'error');
+                    return false;
+                }
             const invoice = (document.getElementById('purchaseInvoiceNumber').value || '').trim();
             const supplierSelect = document.getElementById('purchaseSupplierSelect');
             const supplierInput = document.getElementById('purchaseSupplier');
@@ -14713,14 +15331,35 @@ input:focus, select:focus, textarea:focus, button:focus {
                 return false;
             }
 
-            const matchedSupplier = (typeof suppliers !== 'undefined' && Array.isArray(suppliers)) ? suppliers.find(s => 
-                (selectedSupplierId && s.id === selectedSupplierId) ||
-                (s.name && s.name.toLowerCase() === supplierName.toLowerCase()) ||
-                s.name === supplierName
-            ) : null;
+            const allVendors = (typeof getAllVendors === 'function') ? getAllVendors() : [];
+            let matchedVendor = selectedVendor;
+            if (!matchedVendor && (selectedSupplierId || supplierName)) {
+                matchedVendor = allVendors.find(v => 
+                    (selectedSupplierId && v.id === selectedSupplierId) ||
+                    (v.name && v.name.toLowerCase() === supplierName.toLowerCase()) ||
+                    v.name === supplierName
+                );
+            }
+            if (!matchedVendor && typeof suppliers !== 'undefined' && Array.isArray(suppliers)) {
+                const s = suppliers.find(sup => 
+                    (selectedSupplierId && sup.id === selectedSupplierId) ||
+                    (sup.name && sup.name.toLowerCase() === supplierName.toLowerCase()) ||
+                    sup.name === supplierName
+                );
+                if (s) {
+                    matchedVendor = {
+                        id: s.id,
+                        type: 'supplier',
+                        name: s.name,
+                        phone: s.phone || '',
+                        gstin: s.gstin || '',
+                        state: s.state || ''
+                    };
+                }
+            }
 
-            if (!matchedSupplier) {
-                showAlert('Please select a valid supplier from the list, or Add New Supplier.', '⚠️');
+            if (!matchedVendor) {
+                showAlert('Please select a valid vendor from the list.', '⚠️');
                 return false;
             }
 
@@ -14730,7 +15369,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
 
             // Determine tax type: Intra-state (Tamil Nadu) vs Inter-state
-            const taxType = getSupplierTaxType(matchedSupplier);
+            const taxType = getSupplierTaxType(matchedVendor);
 
             // Compute precise line items and GST values
             let totalTaxable = 0;
@@ -14792,8 +15431,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             // and subsequent supplier payments are handled through Supplier Payables
             const purchaseData = {
                 invoiceNumber: invoice,
-                supplier: matchedSupplier.name,
-                supplierId: matchedSupplier.id,
+                supplier: matchedVendor.name,
+                supplierId: matchedVendor.id,
+                vendorType: matchedVendor.type || 'supplier',
                 taxType: taxType,
                 date: date,
                 items: preparedItems,
@@ -14815,9 +15455,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 dueDate: ''
             };
 
-            try {
-                // Pre-check for duplicate invoice
-                // Fix: search IPC returns { success: true, data: [...] }, unpack safely
+            // Pre-check for duplicate invoice
+            // Fix: search IPC returns { success: true, data: [...] }, unpack safely
                 const searchRes = await window.electronAPI.sqlite.purchases.search(invoice);
                 const existingList = (searchRes && Array.isArray(searchRes.data)) 
                     ? searchRes.data 
@@ -14826,7 +15465,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const isDuplicate = existingList.some(p => 
                     p && p.invoice_number && 
                     p.invoice_number.toLowerCase() === invoice.toLowerCase() && 
-                    (p.supplier_id === matchedSupplier.id || (p.supplier_name && p.supplier_name.toLowerCase() === matchedSupplier.name.toLowerCase())) && 
+                    (p.supplier_id === matchedVendor.id || (p.supplier_name && p.supplier_name.toLowerCase() === matchedVendor.name.toLowerCase())) && 
                     p.status !== 'CANCELLED'
                 );
 
@@ -14846,8 +15485,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                     ...purchaseData, 
                     id: purchaseId,
                     invoice_number: invoice,
-                    supplier_name: matchedSupplier.name,
-                    supplier_id: matchedSupplier.id,
+                    supplier_name: matchedVendor.name,
+                    supplier_id: matchedVendor.id,
                     amount_paid: 0,
                     outstanding_amount: totalAmount,
                     payment_status: 'unpaid',
@@ -14880,11 +15519,19 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('purchaseDiscount').value = 0;
                 document.getElementById('purchaseOtherCharges').value = 0;
                 document.getElementById('purchaseInvoiceNumber').value = '';
+                const vSearch = document.getElementById('purchaseVendorSearch');
+                if (vSearch) vSearch.value = '';
                 if (document.getElementById('purchaseSupplierSelect')) document.getElementById('purchaseSupplierSelect').value = '';
                 if (document.getElementById('purchaseSupplier')) document.getElementById('purchaseSupplier').value = '';
                 const badge = document.getElementById('purchaseTaxBadge');
                 if (badge) badge.style.display = 'none';
                 selectedSupplierId = null;
+                selectedVendor = null;
+                window.selectedVendorType = null;
+
+                // Reset Bill Date to today
+                const pDate = document.getElementById('purchaseDate');
+                if (pDate) pDate.value = new Date().toISOString().split('T')[0];
 
                 // Prepare Fresh Bill and update all views
                 updatePurchaseTable();
@@ -14893,9 +15540,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (typeof updatePPOverview === 'function') updatePPOverview();
                 if (typeof renderPayablesTable === 'function') renderPayablesTable();
 
+                // Focus Bill Date field for the next purchase
                 setTimeout(() => {
-                    const invInput = document.getElementById('purchaseInvoiceNumber');
-                    if (invInput) invInput.focus();
+                    const dateInput = document.getElementById('purchaseDate');
+                    if (dateInput) {
+                        dateInput.focus();
+                        if (dateInput.select) dateInput.select();
+                    }
                 }, 50);
 
                 return { ...purchaseData, id: purchaseId };
@@ -14904,6 +15555,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                 console.error("Purchase error:", err);
                 showAlert("Error saving purchase: " + (err.message || err), 'error');
                 return false;
+            } finally {
+                window._isSavingPurchase = false;
             }
         }
         
@@ -16191,6 +16844,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         console.error("updateProductsTable function is missing!");
                     }
                 } else if (tabName === 'purchaseparties') {
+                    if (typeof loadPurchasePartiesData === 'function') loadPurchasePartiesData();
                     if (typeof updatePPSummary === 'function') updatePPSummary();
                     if (typeof switchPPModule === 'function') {
                         const activeItem = document.querySelector('.pp-nav-item.active');
@@ -27442,6 +28096,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             } else if (typeof window.initPettyCash === 'function') {
                 await window.initPettyCash();
             }
+            if (typeof loadPurchasePartiesData === 'function') await loadPurchasePartiesData();
         });
     </script>
 
@@ -34149,9 +34804,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             // Only proceed if focused on an interactive element
             if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'BUTTON' || active.tagName === 'TEXTAREA')) {
                 
-                // Let specific comboboxes handle their own dropdown navigation for Up/Down
-                const comboboxes = ['saleCustomerSearch', 'saleProductSearch', 'purchaseSearchInput', 'paymentMethod', 'saleUnitSearch', 'quickSaleBarcode', 'stockBarcode', 'inventorySearchInput', 'customerSearch'];
-                if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && comboboxes.includes(active.id)) {
+                // Let specific comboboxes and purchase table items handle their own navigation for Up/Down
+                const comboboxes = ['saleCustomerSearch', 'saleProductSearch', 'purchaseSearchInput', 'purchaseVendorSearch', 'paymentMethod', 'saleUnitSearch', 'quickSaleBarcode', 'stockBarcode', 'inventorySearchInput', 'customerSearch'];
+                if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (comboboxes.includes(active.id) || (active.id && active.id.startsWith('purchase-item-')))) {
                     return; // Let the specific handler deal with it
                 }
                 

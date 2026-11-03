@@ -125,13 +125,22 @@ class PurchaseService {
                 cashBankService.recordPaymentMovement(accType, 'OUT', amount_paid, purchaseId, 'PURCHASE', 'Purchase Payment #' + invoiceNum, date, method, invoiceNum);
             }
 
-            // Update supplier balance for credit / outstanding amount
+            // Update supplier/vendor balance for credit / outstanding amount
             const dueBalance = (outstanding_amount > 0) ? outstanding_amount : (payment_method === 'credit' ? total : 0);
             if (supplier_id && dueBalance > 0) {
-                try {
-                    db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
-                } catch(e) {
-                    console.warn('[PurchaseService] Could not update supplier balance:', e.message);
+                const isCustomer = (purchaseData.vendorType === 'customer') || (String(supplier_id).startsWith('cus'));
+                if (isCustomer) {
+                    try {
+                        db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
+                    } catch(e) {
+                        console.warn('[PurchaseService] Could not update customer balance:', e.message);
+                    }
+                } else {
+                    try {
+                        db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
+                    } catch(e) {
+                        console.warn('[PurchaseService] Could not update supplier balance:', e.message);
+                    }
                 }
             }
 
@@ -152,17 +161,21 @@ class PurchaseService {
         let purchases = [];
         if (dateStr) {
             purchases = db.prepare(`
-                SELECT p.*, s.name as supplier_name 
+                SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                       CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
                 FROM purchases p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.id 
+                LEFT JOIN customers c ON p.supplier_id = c.id
                 WHERE date(p.date) = date(?) 
                 ORDER BY p.date DESC
             `).all(dateStr);
         } else {
             purchases = db.prepare(`
-                SELECT p.*, s.name as supplier_name 
+                SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                       CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
                 FROM purchases p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.id 
+                LEFT JOIN customers c ON p.supplier_id = c.id
                 ORDER BY p.date DESC LIMIT 100
             `).all();
         }
@@ -178,10 +191,12 @@ class PurchaseService {
         const db = dbManager.getDatabase();
         const q = '%' + query + '%';
         const purchases = db.prepare(`
-            SELECT p.*, s.name as supplier_name 
+            SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                   CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
             FROM purchases p 
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
-            WHERE p.invoice_number LIKE ? OR p.date LIKE ? OR s.name LIKE ? OR p.status LIKE ? 
+            LEFT JOIN customers c ON p.supplier_id = c.id
+            WHERE p.invoice_number LIKE ? OR p.date LIKE ? OR COALESCE(s.name, c.name) LIKE ? OR p.status LIKE ? 
             ORDER BY p.date DESC LIMIT 50
         `).all(q, q, q, q);
         
@@ -195,9 +210,11 @@ class PurchaseService {
     getPurchaseById(id) {
         const db = dbManager.getDatabase();
         const purchase = db.prepare(`
-            SELECT p.*, s.name as supplier_name 
+            SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                   CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
             FROM purchases p 
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
+            LEFT JOIN customers c ON p.supplier_id = c.id
             WHERE p.id = ?
         `).get(id);
         if (purchase) {

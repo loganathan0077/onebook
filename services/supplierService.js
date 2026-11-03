@@ -43,7 +43,7 @@ class SupplierService {
             `);
             
             // Since the frontend sometimes provides 'sup_...' ids, we can use it or generate one
-            const id = data.id || 'sup_' + Date.now();
+            const id = data.id || ('sup_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
             
             insert.run(
                 id,
