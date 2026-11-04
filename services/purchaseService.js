@@ -245,10 +245,15 @@ class PurchaseService {
             FROM purchases p 
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
             LEFT JOIN customers c ON p.supplier_id = c.id
-            WHERE p.id = ?
-        `).get(id);
+            WHERE p.id = ? OR p.invoice_number = ?
+        `).get(id, id);
         if (purchase) {
             purchase.items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(purchase.id);
+            try {
+                purchase.payments = db.prepare("SELECT * FROM party_payments WHERE purchase_id = ? AND status != 'CANCELLED' ORDER BY date DESC, id DESC").all(purchase.id);
+            } catch (e) {
+                purchase.payments = [];
+            }
         }
         return purchase;
     }

@@ -21,9 +21,20 @@ class PaymentService {
             if (sale.status === 'CANCELLED') throw new Error('SALE_CANCELLED');
 
             const saleId = sale.id;
-            const customerId = sale.customer_id || "WALK-IN";
-            
-            // if (!customerId) throw new Error('CUSTOMER_REQUIRED_FOR_PAYMENT');
+            let customerId = sale.customer_id;
+            if (!customerId || customerId === 'WALK-IN') {
+                customerId = 'WALK-IN';
+                try {
+                    db.prepare("INSERT OR IGNORE INTO customers (id, name, balance) VALUES ('WALK-IN', 'Walk-in Customer', 0)").run();
+                } catch(e) {}
+            } else {
+                const custExists = db.prepare('SELECT id FROM customers WHERE id = ?').get(customerId);
+                if (!custExists) {
+                    try {
+                        db.prepare('INSERT OR IGNORE INTO customers (id, name, balance) VALUES (?, ?, 0)').run(customerId, sale.customer_name || ('Customer ' + customerId));
+                    } catch(e) {}
+                }
+            }
 
             const amount = parseFloat(data.amount);
             if (isNaN(amount) || amount <= 0) throw new Error('INVALID_AMOUNT');
@@ -157,8 +168,14 @@ class PaymentService {
             const db = dbManager.getDatabase();
             
             // Validate purchase
-            const invOrId = (data.invoice !== undefined && data.invoice !== null && data.invoice !== '') ? data.invoice : data.purchaseId;
-            const purchase = db.prepare('SELECT * FROM purchases WHERE invoice_number = ? OR id = ?').get(invOrId, invOrId);
+            let purchase = null;
+            if (data.purchaseId) {
+                purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(data.purchaseId);
+            }
+            if (!purchase) {
+                const invOrId = (data.invoice !== undefined && data.invoice !== null && data.invoice !== '') ? data.invoice : data.purchaseId;
+                purchase = db.prepare('SELECT * FROM purchases WHERE id = ? OR invoice_number = ? ORDER BY (outstanding_amount > 0) DESC, id DESC').get(invOrId, invOrId);
+            }
             if (!purchase) throw new Error('PURCHASE_NOT_FOUND');
             if (purchase.status === 'CANCELLED') throw new Error('PURCHASE_CANCELLED');
 
@@ -175,6 +192,17 @@ class PaymentService {
                 }
             }
             if (!supplierId) supplierId = 'GENERAL_SUPPLIER';
+
+            // Ensure supplier exists in master table so foreign key constraint never fails
+            const supExists = db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplierId);
+            if (!supExists) {
+                const cusExists = db.prepare('SELECT id FROM customers WHERE id = ?').get(supplierId);
+                if (!cusExists) {
+                    try {
+                        db.prepare('INSERT OR IGNORE INTO suppliers (id, name, balance) VALUES (?, ?, 0)').run(supplierId, purchase.supplier_name || ('Supplier ' + supplierId));
+                    } catch(e) {}
+                }
+            }
 
             const amount = parseFloat(data.amount);
             if (isNaN(amount) || amount <= 0) throw new Error('INVALID_AMOUNT');

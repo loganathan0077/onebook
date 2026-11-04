@@ -271,6 +271,7 @@ function createSchema() {
             amount REAL NOT NULL,
             method TEXT,
             reference TEXT,
+            notes TEXT,
             date DATETIME DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'ACTIVE',
             FOREIGN KEY (customer_id) REFERENCES customers(id),
@@ -574,6 +575,15 @@ function createSchema() {
     // Runtime column migration for party_payments
     const ppCols = db.prepare('PRAGMA table_info(party_payments)').all().map(c => c.name);
     if (!ppCols.includes('notes')) db.exec('ALTER TABLE party_payments ADD COLUMN notes TEXT');
+
+    // Runtime column migration for payments
+    const paymentCols = db.prepare('PRAGMA table_info(payments)').all().map(c => c.name);
+    if (!paymentCols.includes('notes')) db.exec('ALTER TABLE payments ADD COLUMN notes TEXT');
+
+    // Ensure WALK-IN customer exists to prevent foreign key errors
+    try {
+        db.prepare("INSERT OR IGNORE INTO customers (id, name, balance) VALUES ('WALK-IN', 'Walk-in Customer', 0)").run();
+    } catch(e) {}
 
     // Sync outstanding amount for existing credit purchases based on party_payments
     try {

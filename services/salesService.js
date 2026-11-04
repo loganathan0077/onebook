@@ -294,9 +294,14 @@ class SalesService {
 
     getSaleById(id) {
         const db = dbManager.getDatabase();
-        const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(id);
+        const sale = db.prepare('SELECT * FROM sales WHERE id = ? OR receipt_number = ?').get(id, id);
         if (sale) {
             sale.items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(sale.id);
+            try {
+                sale.payments = db.prepare("SELECT * FROM payments WHERE sale_id = ? AND status != 'CANCELLED' ORDER BY date DESC, id DESC").all(sale.id);
+            } catch (e) {
+                sale.payments = [];
+            }
         }
         return sale;
     }
