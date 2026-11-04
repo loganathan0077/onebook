@@ -13536,26 +13536,6 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
 
 
-        function togglePurchasePaymentFields() {
-            const method = document.getElementById('purchasePaymentMethod').value;
-            const group = document.getElementById('purchaseCreditPaymentGroup');
-            if (method === 'credit') {
-                group.style.display = 'block';
-                calculatePurchaseOutstanding();
-            } else {
-                group.style.display = 'none';
-                document.getElementById('purchaseCreditAmountPaid').value = '0';
-                document.getElementById('purchaseCreditOutstanding').value = '0';
-            }
-        }
-
-        function calculatePurchaseOutstanding() {
-            const total = parseFloat(document.getElementById('purchaseTotalValue').textContent) || 0;
-            const paid = parseFloat(document.getElementById('purchaseCreditAmountPaid').value) || 0;
-            const outstanding = total - paid;
-            document.getElementById('purchaseCreditOutstanding').value = outstanding > 0 ? outstanding.toFixed(2) : '0.00';
-        }
-
         function closePurchaseModal() {
             document.getElementById('purchaseModal').style.display = 'none';
         }
