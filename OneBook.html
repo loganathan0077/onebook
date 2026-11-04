@@ -2798,7 +2798,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             <div id="sales" class="tab-content">
                 <!-- Sticky Top Sale Entry Toolbar -->
                 <div id="salesStickyToolbar" style="position: sticky; top: -20px; z-index: 200; background: #f8f9fa; padding: 10px 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <form id="addItemForm" onsubmit="addItemToCart(event)" style="margin: 0; display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: nowrap;">
+                    <form id="addItemForm" onsubmit="event.preventDefault();" style="margin: 0; display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: nowrap;">
                         <!-- 1. Sale Date (far left) -->
                         <div id="customSaleDateContainer" style="display: none; background: #fff; padding: 2px 10px; border-radius: 6px; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); flex: 0 0 auto; height: 42px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;">
                             <span style="font-weight: 600; font-size: 11px; color: #6c757d; line-height: 1.1; margin-bottom: 1px; white-space: nowrap;">Sale Date <small style="font-weight:normal;color:#888">(Ctrl+D)</small></span>
@@ -2839,17 +2839,17 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                         <!-- 4. Quantity -->
                         <div style="flex: 0.8; min-width: 65px;">
-                            <input type="number" id="saleQuantity" class="form-control" min="1" value="1" required placeholder="Qty" onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('salePrice').focus();}" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; text-align: center; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                            <input type="number" id="saleQuantity" class="form-control" min="0.01" step="any" value="1" required placeholder="Qty" onfocus="handleSaleQtyFocus(this)" onmouseup="handleSaleQtyMouseUp(event, this)" onkeydown="handleSaleQtyKeyDown(event, this)" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; text-align: center; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
                         </div>
 
-                        <!-- 5. Price (₹) -->
+                        <!-- 5. Price (₹) (Read-only) -->
                         <div style="flex: 1; min-width: 85px;">
-                            <input type="number" id="salePrice" class="form-control" step="0.01" placeholder="Price (₹)" onfocus="this.select()" onkeydown="if(event.key==='Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey){event.preventDefault(); document.getElementById('btnAddItemSale').focus();}" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;">
+                            <input type="text" id="salePrice" class="form-control" readonly tabindex="-1" placeholder="Price (₹)" title="Product Selling Price (Read-only)" onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();addItemToCart(event);}else if(!['Tab','Escape','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();}" onbeforeinput="event.preventDefault();" onpaste="return false;" ondrop="return false;" style="width: 100%; padding: 8px 10px; height: 42px; font-size: 15px; font-weight: bold; background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; text-align: center; cursor: not-allowed; user-select: none;">
                         </div>
 
                         <!-- 6. Add Item Button -->
                         <div style="flex: 0 0 auto;">
-                            <button type="submit" id="btnAddItemSale" class="btn btn-primary" style="height: 42px; padding: 0 16px; white-space: nowrap; font-size: 15px; font-weight: bold; border-radius: 6px; background-color: #004085; border: none; display: inline-flex; align-items: center; justify-content: center;">+ Add Item</button>
+                            <button type="button" id="btnAddItemSale" class="btn btn-primary" onclick="addItemToCart(event)" style="height: 42px; padding: 0 16px; white-space: nowrap; font-size: 15px; font-weight: bold; border-radius: 6px; background-color: #004085; border: none; display: inline-flex; align-items: center; justify-content: center;">+ Add Item</button>
                         </div>
 
                         <!-- 7. Total Amount (₹) (far right) -->
@@ -3269,7 +3269,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         
                         <div class="form-group" style="margin-bottom: 10px;">
                             <label style="font-size: 12px; color: #6c757d; margin-bottom: 4px; display: block;">Payment Method</label>
-                            <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" style="font-weight: bold; background-color: #f8f9fa; padding: 4px 8px; line-height: 1.4;">
+                            <select id="paymentMethod" class="form-control" onchange="togglePaymentFields()" onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btnCompleteSale').focus();}" style="font-weight: bold; background-color: #f8f9fa; padding: 4px 8px; line-height: 1.4;">
                                 <option value="cash" selected>Cash Only</option>
                                 <option value="card">Card</option>
                                 <option value="upi">UPI</option>
@@ -3299,37 +3299,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                             </div>
                         </div>
                         
-                        <div id="creditPaymentGroup" style="display: none; padding: 10px; margin-top: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px;">
-                            <h4 style="margin: 0 0 10px 0; color: #c53030; font-size: 13px; border-bottom: 1px solid #fed7d7; padding-bottom: 5px;">💳 Credit Details</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label style="font-size: 11px; color: #c53030;">Initial Paid (₹)</label>
-                                    <input type="number" id="creditAmountPaid" step="0.01" class="form-control form-control-sm" onchange="calculateChange()" oninput="calculateChange()" placeholder="e.g. 1000" value="0">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label style="font-size: 11px; color: #c53030;">Outstanding (₹)</label>
-                                    <input type="text" id="creditOutstanding" class="form-control form-control-sm" readonly style="font-weight: bold; color: #c53030; background: #fff;" value="₹0.00">
-                                </div>
-                                <div class="form-group" id="inlineAdvancePaymentSection" style="margin-bottom: 0;">
-                                    <label style="font-size: 11px; color: #c53030;">Method</label>
-                                    <select id="creditPaymentMethod" class="form-control form-control-sm" onchange="calculateChange()">
-                                        <option value="cash">Cash</option>
-                                        <option value="upi">UPI</option>
-                                        <option value="card">Card</option>
-                                        <option value="bank">Bank</option>
-                                        <option value="cheque">Cheque</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" id="inlineReferenceGroup" style="display: none; margin-bottom: 0;">
-                                    <label style="font-size: 11px; color: #c53030;">Ref No.</label>
-                                    <input type="text" id="creditReference" class="form-control form-control-sm" placeholder="Ref No">
-                                </div>
-                                <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 0;">
-                                    <label style="font-size: 11px; color: #c53030;">Due Date</label>
-                                    <input type="date" id="creditDueDate" class="form-control form-control-sm">
-                                </div>
-                            </div>
+                        <div id="creditPaymentGroup" style="display: none !important;">
+                            <input type="hidden" id="creditAmountPaid" value="0">
+                            <input type="hidden" id="creditOutstanding" value="0.00">
+                            <input type="hidden" id="creditPaymentMethod" value="credit">
+                            <input type="hidden" id="creditDueDate" value="">
                         </div>
                     </div>
 
@@ -4422,10 +4396,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                         border-bottom: 1.5px solid #cbd5e1 !important;
                         white-space: nowrap;
                         z-index: 2;
-                        height: 34px;
+                        height: 32px;
+                        padding: 5px 8px !important;
                     }
                     .pp-table tbody tr {
-                        height: 38px;
+                        height: 34px;
                         box-sizing: border-box;
                         transition: background-color 0.15s ease;
                     }
@@ -4433,7 +4408,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         background-color: #f8fafc !important;
                     }
                     .pp-table tbody td {
-                        padding: 4px 10px !important;
+                        padding: 3px 8px !important;
                         vertical-align: middle;
                         border-bottom: 1px solid #f1f5f9 !important;
                         color: #334155;
@@ -4441,28 +4416,28 @@ input:focus, select:focus, textarea:focus, button:focus {
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
-                        height: 38px;
+                        height: 34px;
                         line-height: 1.2;
                     }
                     .pp-action-group {
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
-                        gap: 4px;
+                        gap: 6px;
                         vertical-align: middle;
                     }
                     .pp-action-btn {
-                        width: 30px;
-                        height: 30px;
-                        min-width: 30px;
-                        max-width: 30px;
+                        width: 28px;
+                        height: 28px;
+                        min-width: 28px;
+                        max-width: 28px;
                         padding: 0;
                         margin: 0;
                         display: inline-flex;
                         align-items: center;
                         justify-content: center;
                         border-radius: 6px;
-                        font-size: 13px;
+                        font-size: 12px;
                         line-height: 1;
                         border: 1px solid transparent;
                         cursor: pointer;
@@ -4737,8 +4712,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </svg>
                             </div>
                             <div class="pp-nav-text">
-                                <div class="pp-nav-title">Customer Receivables</div>
-                                <div class="pp-nav-desc">View outstanding amounts from customers</div>
+                                <div class="pp-nav-title">Receivable</div>
+                                <div class="pp-nav-desc">Customer outstanding balances</div>
                             </div>
                             <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </div>
@@ -4752,8 +4727,8 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </svg>
                             </div>
                             <div class="pp-nav-text">
-                                <div class="pp-nav-title">Supplier Payables</div>
-                                <div class="pp-nav-desc">Track pending payments to suppliers</div>
+                                <div class="pp-nav-title">Payable</div>
+                                <div class="pp-nav-desc">Vendor outstanding balances</div>
                             </div>
                             <svg class="pp-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </div>
@@ -4813,7 +4788,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </svg>
                                 </div>
                                 <div class="pp-summary-info">
-                                    <div class="pp-summary-label">Customer Receivables</div>
+                                    <div class="pp-summary-label">Receivable</div>
                                     <div class="pp-summary-val-row">
                                         <div class="pp-summary-value pp-val-green" id="ppOverviewReceivables">₹0.00</div>
                                         <span class="pp-summary-badge pp-badge-green" id="ppOverviewReceivablesCount">0 Pending</span>
@@ -4832,7 +4807,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </svg>
                                 </div>
                                 <div class="pp-summary-info">
-                                    <div class="pp-summary-label">Supplier Payables</div>
+                                    <div class="pp-summary-label">Payable</div>
                                     <div class="pp-summary-val-row">
                                         <div class="pp-summary-value pp-val-red" id="ppOverviewPayables">₹0.00</div>
                                         <span class="pp-summary-badge pp-badge-red" id="ppOverviewPayablesCount">0 Due</span>
@@ -4895,13 +4870,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </div>
                                 </div>
 
-                                <!-- Hidden Inputs for payment & backward compatibility -->
-                                <input type="hidden" id="purchasePaymentMethod" value="credit">
-                                <input type="hidden" id="purchaseCreditAmountPaid" value="0">
-                                <input type="hidden" id="purchaseCreditOutstanding" value="0">
-                                <input type="hidden" id="purchaseCreditDueDate" value="">
-                                <div id="purchaseCreditPaymentGroup" style="display: none;"></div>
-
                                 <!-- Form Row 2: Add Product -->
                                 <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
                                     <label style="font-size: 12px; font-weight: 700; color: #475569;">Add Product</label>
@@ -4963,9 +4931,38 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     </table>
                                 </div>
 
-                                <!-- Hidden Discount/Other charges inputs for formula preservation -->
-                                <input type="hidden" id="purchaseDiscount" value="0">
-                                <input type="hidden" id="purchaseOtherCharges" value="0">
+                                <!-- Payment & Settlement Bar -->
+                                <div class="pp-payment-bar" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <label style="font-size: 12px; font-weight: 700; color: #475569; margin: 0;">Payment Method:</label>
+                                            <select id="purchasePaymentMethod" class="pp-form-control" style="width: 170px; height: 32px; font-weight: 600; font-size: 12.5px; padding: 2px 8px;" onchange="togglePurchasePaymentFields()">
+                                                <option value="credit" selected>Credit (Unpaid/Partial)</option>
+                                                <option value="cash">Cash</option>
+                                                <option value="bank">Bank Transfer</option>
+                                                <option value="upi">UPI</option>
+                                                <option value="card">Card</option>
+                                            </select>
+                                        </div>
+                                        <div id="purchaseCreditPaymentGroup" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <label style="font-size: 12px; font-weight: 700; color: #475569; margin: 0;">Paid Now (₹):</label>
+                                                <input type="number" id="purchaseCreditAmountPaid" class="pp-form-control" style="width: 110px; height: 32px; text-align: right; font-weight: 600; font-size: 12.5px; padding: 2px 6px;" value="0" min="0" step="0.01" oninput="calculatePurchaseOutstanding()">
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <label style="font-size: 12px; font-weight: 700; color: #dc2626; margin: 0;">Outstanding (₹):</label>
+                                                <input type="number" id="purchaseCreditOutstanding" class="pp-form-control" style="width: 115px; height: 32px; text-align: right; font-weight: 700; font-size: 12.5px; color: #dc2626; background: #fef2f2; padding: 2px 6px;" value="0.00" readonly>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <label style="font-size: 12px; font-weight: 600; color: #64748b; margin: 0;">Due Date:</label>
+                                                <input type="date" id="purchaseCreditDueDate" class="pp-form-control" style="width: 130px; height: 32px; font-size: 12px; padding: 2px 6px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="purchasePaymentSummaryBadge" style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: #fee2e2; color: #991b1b;">
+                                        Supplier Outstanding: ₹<span id="purchaseBadgeOutstanding">0.00</span>
+                                    </div>
+                                </div>
 
                                 <!-- Totals Bar with Tax Breakdown -->
                                 <div class="pp-totals-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
@@ -5050,12 +5047,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                                     <table class="pp-table">
                                         <thead>
                                             <tr>
-                                                <th style="text-align: left;">Date</th>
-                                                <th style="text-align: left;">Invoice No</th>
+                                                <th style="text-align: left; width: 110px;">Date</th>
+                                                <th style="text-align: left; width: 160px;">Invoice No</th>
                                                 <th style="text-align: left;">Supplier</th>
-                                                <th style="text-align: center;">Items</th>
-                                                <th style="text-align: right;">Grand Total</th>
-                                                <th style="text-align: center;">Action</th>
+                                                <th style="text-align: center; width: 95px;">Items</th>
+                                                <th style="text-align: right; width: 130px;">Grand Total</th>
+                                                <th style="text-align: center; width: 90px;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="purchaseHistoryTableBody"></tbody>
@@ -5149,108 +5146,122 @@ input:focus, select:focus, textarea:focus, button:focus {
                                 </div>
                             </div>
 
-                            <!-- View 5: Customer Receivables -->
+                            <!-- View 5: Receivable -->
                             <div id="ppView_receivables" class="pp-view-card" style="display: none;">
-                                <div class="pp-card-header">
-                                    <div class="pp-card-title-area">
-                                        <div class="pp-card-title-icon" style="background: #dcfce7; color: #16a34a;">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <line x1="12" y1="1" x2="12" y2="23"></line>
-                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                            </svg>
+                                <!-- State A: Party-wise Summary Page -->
+                                <div id="receivablesSummaryView">
+                                    <div class="pp-card-header">
+                                        <div class="pp-card-title-area">
+                                            <div class="pp-card-title-icon" style="background: #dcfce7; color: #16a34a;">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="pp-card-title-text">
+                                                <h3>Receivable</h3>
+                                                <p>Party-wise customer outstanding balances and payment management.</p>
+                                            </div>
                                         </div>
-                                        <div class="pp-card-title-text">
-                                            <h3>Customer Receivables (Credit Sales)</h3>
-                                            <p>View outstanding amounts and pending payments from customers.</p>
+                                    </div>
+
+                                    <!-- Top Summary Strip -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Outstanding</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #16a34a; margin-top: 2px;" id="recSummaryTotal">₹0.00</div>
                                         </div>
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Number of Parties</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;" id="recSummaryParties">0 Customers</div>
+                                        </div>
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Active Invoices</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;" id="recSummaryInvoices">0 Invoices</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="text" id="receivablesSearch" placeholder="🔍 Search customer by name, phone or GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderReceivablesTable()">
+                                        </div>
+                                    </div>
+
+                                    <div class="pp-table-container">
+                                        <table class="pp-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="text-align: left; padding: 7px 14px;">Customer Name</th>
+                                                    <th style="text-align: right; width: 220px; padding: 7px 14px;">Total Outstanding (₹)</th>
+                                                    <th style="text-align: center; width: 110px; padding: 7px 14px;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="receivablesTableBody"></tbody>
+                                        </table>
                                     </div>
                                 </div>
 
-                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                    <div style="flex: 1; min-width: 280px; position: relative;">
-                                        <input type="text" id="receivablesSearch" placeholder="🔍 Search customer / invoice by name, phone, GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderReceivablesTable(); handleSmartLedgerSearch(event, 'receivables', 'receivablesSmartSearchDropdown')">
-                                        <div id="receivablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; background:white; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.12); z-index:1000; max-height:350px; overflow-y:auto; margin-top:4px;"></div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px; align-items: center;">
-                                        <label style="margin:0; font-size: 13px; font-weight: 600; color: #475569;">Status:</label>
-                                        <select id="receivablesStatusFilter" class="pp-form-control" style="width: auto;" onchange="renderReceivablesTable()">
-                                            <option value="all">All</option>
-                                            <option value="unpaid" selected>Unpaid / Partial</option>
-                                            <option value="fully_paid">Fully Paid</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="pp-table-container">
-                                    <table class="pp-table">
-                                        <thead>
-                                            <tr>
-                                                <th style="text-align: left;">Date</th>
-                                                <th style="text-align: left;">Invoice</th>
-                                                <th style="text-align: left;">Customer</th>
-                                                <th style="text-align: right;">Total Bill (₹)</th>
-                                                <th style="text-align: right;">Paid (₹)</th>
-                                                <th style="text-align: right; color: #dc2626;">Outstanding (₹)</th>
-                                                <th style="text-align: left;">Due Date</th>
-                                                <th style="text-align: center;">Status</th>
-                                                <th style="text-align: center;">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="receivablesTableBody"></tbody>
-                                    </table>
-                                </div>
+                                <!-- State B: Dedicated Full-Page Customer Account View -->
+                                <div id="receivablesAccountView" style="display: none;"></div>
                             </div>
 
-                            <!-- View 6: Supplier Payables -->
+                            <!-- View 6: Payable -->
                             <div id="ppView_payables" class="pp-view-card" style="display: none;">
-                                <div class="pp-card-header">
-                                    <div class="pp-card-title-area">
-                                        <div class="pp-card-title-icon" style="background: #fee2e2; color: #dc2626;">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                                                <line x1="1" y1="10" x2="23" y2="10"></line>
-                                            </svg>
+                                <!-- State A: Party-wise Summary Page -->
+                                <div id="payablesSummaryView">
+                                    <div class="pp-card-header">
+                                        <div class="pp-card-title-area">
+                                            <div class="pp-card-title-icon" style="background: #fee2e2; color: #dc2626;">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                                                </svg>
+                                            </div>
+                                            <div class="pp-card-title-text">
+                                                <h3>Payable</h3>
+                                                <p>Party-wise vendor outstanding balances and payment management.</p>
+                                            </div>
                                         </div>
-                                        <div class="pp-card-title-text">
-                                            <h3>Supplier Payables (Credit Purchases)</h3>
-                                            <p>Track pending payments and outstanding amounts to suppliers.</p>
+                                    </div>
+
+                                    <!-- Top Summary Strip -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Outstanding</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #dc2626; margin-top: 2px;" id="paySummaryTotal">₹0.00</div>
                                         </div>
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Number of Parties</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;" id="paySummaryParties">0 Vendors</div>
+                                        </div>
+                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Active Bills</div>
+                                            <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;" id="paySummaryInvoices">0 Bills</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                                        <div style="flex: 1; position: relative;">
+                                            <input type="text" id="payablesSearch" placeholder="🔍 Search vendor by name, phone or GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderPayablesTable()">
+                                        </div>
+                                    </div>
+
+                                    <div class="pp-table-container">
+                                        <table class="pp-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="text-align: left; padding: 7px 14px;">Vendor Name</th>
+                                                    <th style="text-align: right; width: 220px; padding: 7px 14px;">Total Outstanding (₹)</th>
+                                                    <th style="text-align: center; width: 110px; padding: 7px 14px;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="payablesTableBody"></tbody>
+                                        </table>
                                     </div>
                                 </div>
 
-                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                    <div style="flex: 1; min-width: 280px; position: relative;">
-                                        <input type="text" id="payablesSearch" placeholder="🔍 Search supplier / invoice by name, phone, GSTIN..." class="pp-form-control" style="width: 100%;" oninput="renderPayablesTable(); handleSmartLedgerSearch(event, 'payables', 'payablesSmartSearchDropdown')">
-                                        <div id="payablesSmartSearchDropdown" style="display:none; position:absolute; top:100%; left:0; width:100%; background:white; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.12); z-index:1000; max-height:350px; overflow-y:auto; margin-top:4px;"></div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px; align-items: center;">
-                                        <label style="margin:0; font-size: 13px; font-weight: 600; color: #475569;">Status:</label>
-                                        <select id="payablesStatusFilter" class="pp-form-control" style="width: auto;" onchange="renderPayablesTable()">
-                                            <option value="all">All</option>
-                                            <option value="unpaid" selected>Unpaid / Partial</option>
-                                            <option value="fully_paid">Fully Paid</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="pp-table-container">
-                                    <table class="pp-table">
-                                        <thead>
-                                            <tr>
-                                                <th style="text-align: left;">Date</th>
-                                                <th style="text-align: left;">Invoice</th>
-                                                <th style="text-align: left;">Supplier</th>
-                                                <th style="text-align: right;">Total Bill (₹)</th>
-                                                <th style="text-align: right;">Paid (₹)</th>
-                                                <th style="text-align: right; color: #dc2626;">Outstanding (₹)</th>
-                                                <th style="text-align: left;">Due Date</th>
-                                                <th style="text-align: center;">Status</th>
-                                                <th style="text-align: center;">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="payablesTableBody"></tbody>
-                                    </table>
-                                </div>
+                                <!-- State B: Dedicated Full-Page Vendor Account View -->
+                                <div id="payablesAccountView" style="display: none;"></div>
                             </div>
 
                             <!-- View 7: Main Cash & Bank Book -->
@@ -9560,6 +9571,71 @@ input:focus, select:focus, textarea:focus, button:focus {
         </div>
     </div>
 
+    <!-- Focused Party Payment Modal -->
+    <div id="focusedPaymentModal" class="modal" style="display: none; z-index: 3000; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px);">
+        <div class="modal-content" style="max-width: 460px; width: 92%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; overflow: hidden; padding: 0;">
+            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 15px; font-weight: 700; color: #0f172a;" id="fpmTitle">Record Payment</div>
+                <button type="button" onclick="closeFocusedPaymentModal()" style="border: none; background: transparent; font-size: 22px; color: #94a3b8; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            <div style="padding: 18px 20px;">
+                <input type="hidden" id="fpmType">
+                <input type="hidden" id="fpmInvoice">
+                <input type="hidden" id="fpmMaxBalance">
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; font-size: 13px;">
+                    <div>
+                        <span style="color: #64748b; display: block; font-size: 11px; text-transform: uppercase; font-weight: 600;">Invoice No</span>
+                        <strong id="fpmInvoiceNo" style="font-family: monospace; font-size: 13.5px; color: #0f172a;">-</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: #64748b; display: block; font-size: 11px; text-transform: uppercase; font-weight: 600;">Remaining Balance</span>
+                        <strong id="fpmRemainingBalance" style="color: #dc2626; font-size: 14px; font-weight: 800;">₹0.00</strong>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">Payment Amount (₹) <span style="color: #ef4444;">*</span></label>
+                    <input type="number" id="fpmAmount" class="pp-form-control" step="0.01" min="0.01" placeholder="Enter payment amount" style="width: 100%; font-size: 14px; font-weight: 700;">
+                    <small id="fpmAmountError" style="color: #ef4444; font-size: 11.5px; margin-top: 3px; display: none;"></small>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">Payment Date <span style="color: #ef4444;">*</span></label>
+                        <input type="date" id="fpmDate" class="pp-form-control" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">Payment Mode <span style="color: #ef4444;">*</span></label>
+                        <select id="fpmMethod" class="pp-form-control" style="width: 100%;">
+                            <option value="cash" selected>Cash</option>
+                            <option value="bank">Bank Transfer</option>
+                            <option value="upi">UPI</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="card">Card</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px;">Reference No. / UTR (Optional)</label>
+                    <input type="text" id="fpmReference" class="pp-form-control" placeholder="e.g. UPI Ref / Cheque No" style="width: 100%;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px;">Notes / Remarks (Optional)</label>
+                    <input type="text" id="fpmNotes" class="pp-form-control" placeholder="Brief payment notes" style="width: 100%;">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeFocusedPaymentModal()" style="padding: 7px 16px; border-radius: 6px; font-weight: 600;">Cancel</button>
+                    <button type="button" id="fpmSubmitBtn" class="btn btn-success btn-sm" onclick="submitFocusedPayment()" style="padding: 7px 18px; border-radius: 6px; font-weight: 700; background: #16a34a; border-color: #16a34a; color: white;">Save Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Supplier Management Modal (Legacy stub - replaced by 25:75 embedded workspace) -->
     <div id="supplierManagementModal" style="display:none;"></div>
 
@@ -10008,123 +10084,32 @@ input:focus, select:focus, textarea:focus, button:focus {
     <!-- Purchase History Modal (Legacy stub - replaced by 25:75 embedded workspace) -->
     <div id="purchaseHistoryModal" style="display:none;"></div>
 
-    <!-- Purchase Order Modal -->
-    <div id="purchaseDetailsModal" class="modal">
-        <div class="modal-content"
-            style="max-width: 800px; padding: 0; overflow-y: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-            <!-- Invoice Header -->
-
-            <div
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; color: white; display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h2 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;">PURCHASE RECEIPT
-                    </h2>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Invoice #: <span id="detailInvoice"
-                            style="font-weight: bold; font-family: 'Courier New', monospace; font-size: 16px;"></span>
-                    </p>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                    <div style="text-align: right;">
-                        <p
-                            style="margin: 0; font-size: 12px; text-transform: uppercase; opacity: 0.8; letter-spacing: 1px;">
-                            Date</p>
-                        <p style="margin: 0; font-size: 18px; font-weight: bold;" id="detailDate"></p>
+    <!-- Purchase Details Modal -->
+    <div id="purchaseDetailsModal" class="modal" style="display: none; position: fixed; inset: 0; z-index: 1050; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div class="modal-dialog" style="max-width: 940px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1); overflow: hidden; margin: auto;">
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
-                    <button onclick="closePurchaseDetailsModal()"
-                        style="background: none; border: none; color: white; font-size: 28px; line-height: 1; cursor: pointer; padding: 0; opacity: 0.8;">&times;</button>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;" id="purchaseModalTitle">Purchase Bill Details</h3>
+                        <p style="margin: 0; font-size: 11.5px; color: #64748b;" id="purchaseModalSubheading">Invoice details & item breakdown</p>
+                    </div>
                 </div>
+                <button type="button" onclick="closePurchaseDetailsModal()" style="border: none; background: transparent; font-size: 24px; color: #94a3b8; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px;" title="Close modal" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#94a3b8'">&times;</button>
             </div>
-
-            <div style="padding: 30px;">
-                <!-- Info Section -->
-                <div style="display: flex; gap: 40px; margin-bottom: 40px;">
-                    <div style="flex: 1;">
-                        <h5
-                            style="color: #6c757d; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px; margin-bottom: 12px; font-weight: 700;">
-                            Supplier Details</h5>
-                        <h3 style="margin: 0 0 8px 0; color: #2d3748; font-size: 20px;" id="detailSupplier"></h3>
-                        <p style="margin: 0; color: #718096; line-height: 1.6; font-size: 14px;">
-                            <span id="detailSupplierPhone"></span><br>
-                            <span id="detailSupplierAddress"></span>
-                        </p>
-                    </div>
-                    <div style="flex: 1; border-left: 1px solid #e2e8f0; padding-left: 30px;">
-                        <h5
-                            style="color: #6c757d; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px; margin-bottom: 12px; font-weight: 700;">
-                            Notes</h5>
-                        <p style="margin: 0; color: #718096; font-style: italic; background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #edf2f7;"
-                            id="detailNotes">-</p>
-                    </div>
-                </div>
-
-                <!-- Table -->
-                <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
-                    <table class="table" style="margin: 0; width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                            <tr>
-                                <th
-                                    style="padding: 12px 15px; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase; width: 60px;">
-                                    #</th>
-                                <th
-                                    style="padding: 12px 15px; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase;">
-                                    Product / Item</th>
-                                <th
-                                    style="padding: 12px 15px; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase; text-align: center; width: 80px;">
-                                    Qty</th>
-                                <th
-                                    style="padding: 12px 15px; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase; text-align: right; width: 120px;">
-                                    Rate</th>
-                                <th
-                                    style="padding: 12px 15px; color: #4a5568; font-weight: 600; font-size: 13px; text-transform: uppercase; text-align: right; width: 120px;">
-                                    Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detailTableBody">
-                            <!-- Items -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Summary Section -->
-                <div style="display: flex; justify-content: flex-end;">
-                    <div
-                        style="width: 320px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #edf2f7;">
-                        <div
-                            style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
-                            <span style="color: #718096;">Subtotal</span>
-                            <span style="font-weight: 600; color: #2d3748;">₹<span id="detailSubtotal"></span></span>
-                        </div>
-                        <div
-                            style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #e53e3e;">
-                            <span>Discount</span>
-                            <span>- ₹<span id="detailDiscount"></span></span>
-                        </div>
-                        <div
-                            style="display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 14px;">
-                            <span style="color: #718096;">Packing / Other Charges</span>
-                            <span>+ ₹<span id="detailOtherCharges"></span></span>
-                        </div>
-                        <div
-                            style="border-top: 2px dashed #cbd5e0; padding-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 16px; font-weight: 700; color: #2d3748;">Grand Total</span>
-                            <span style="font-size: 24px; font-weight: 800; color: #38a169;">₹<span
-                                    id="detailGrandTotal"></span></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer & Actions -->
-                <div
-                    style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="closePurchaseDetailsModal()" class="btn btn-secondary"
-                            style="background: #718096; border: none; padding: 10px 20px;">Close</button>
-                        <button onclick="printPurchaseBill()" class="btn btn-primary" style="padding: 10px 20px;">🖨️
-                            Print Invoice</button>
-                    </div>
-                    <button id="deletePurchaseBtn" class="btn btn-danger admin-only"
-                        style="display: none; padding: 10px 20px;">🗑️ Delete Bill Record</button>
-                </div>
+            
+            <!-- Modal Body (Scrollable) -->
+            <div id="purchaseDetailsContent" style="padding: 22px; overflow-y: auto; flex: 1; max-height: calc(90vh - 120px);">
+                <!-- Dynamic Content Loaded by viewPurchaseDetails -->
+            </div>
+            
+            <!-- Modal Footer -->
+            <div style="padding: 12px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div id="purchaseModalFooterActions" style="display: flex; gap: 8px;"></div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closePurchaseDetailsModal()" style="padding: 6px 18px; border-radius: 6px; font-weight: 600; font-size: 12.5px;">Close</button>
             </div>
         </div>
     </div>
@@ -11567,6 +11552,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                     purchases = (pRes && pRes.success && Array.isArray(pRes.data)) ? pRes.data : (Array.isArray(pRes) ? pRes : []);
                 } catch(e) { purchases = []; }
             } else { purchases = []; }
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.suppliers) {
+                try {
+                    const sRes = await window.electronAPI.sqlite.suppliers.getAll();
+                    suppliers = (sRes && sRes.success && Array.isArray(sRes.data)) ? sRes.data : (Array.isArray(sRes) ? sRes : (suppliers || []));
+                } catch(e) {}
+            }
             if (purchases.length > 0) {
                 console.log('📦 Purchase history loaded:', purchases.length);
             }
@@ -13323,7 +13314,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         }
                     } catch(e) {}
                 }
-                const validPurchases = (purchaseList || []).filter(p => p && p.status !== 'cancelled');
+                const validPurchases = (purchaseList || []).filter(p => p && String(p.status || '').toUpperCase() !== 'CANCELLED');
                 const totalPurchasesAmt = validPurchases.reduce((sum, p) => sum + (parseFloat(p.totalAmount || p.total || 0) || 0), 0);
                 const purchaseCount = validPurchases.length;
 
@@ -13339,23 +13330,27 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const salesList = (typeof sales !== 'undefined' && Array.isArray(sales)) ? sales : [];
                 salesList.forEach(sale => {
                     if (!sale) return;
-                    const hasCredit = (sale.paymentStatus && sale.paymentStatus !== 'fully_paid') ||
+                    const recNo = sale.receiptNumber || sale.receipt_number || sale.id;
+                    const status = (sale.paymentStatus || sale.payment_status || '').toLowerCase();
+                    const method = (sale.paymentMethod || sale.payment_method || '').toLowerCase();
+                    const outAmt = parseFloat(sale.outstandingAmount !== undefined ? sale.outstandingAmount : (sale.outstanding_amount !== undefined ? sale.outstanding_amount : 0)) || 0;
+                    const hasCredit = (status && status !== 'fully_paid') ||
                                       (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
-                    const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
-                    if (isCredit && sale.receiptNumber) {
-                        if (!creditSalesMap[sale.receiptNumber]) {
-                            creditSalesMap[sale.receiptNumber] = {
-                                outstanding: parseFloat(sale.outstandingAmount) || 0,
-                                status: sale.paymentStatus || 'unpaid'
+                    const isCredit = (outAmt > 0.009) || method === 'credit' || hasCredit;
+                    if (isCredit && recNo) {
+                        if (!creditSalesMap[recNo]) {
+                            creditSalesMap[recNo] = {
+                                outstanding: outAmt,
+                                status: status || (outAmt <= 0 ? 'fully_paid' : 'unpaid')
                             };
-                        } else if (sale.outstandingAmount !== undefined) {
-                            creditSalesMap[sale.receiptNumber].outstanding = parseFloat(sale.outstandingAmount) || 0;
-                            creditSalesMap[sale.receiptNumber].status = sale.paymentStatus || 'unpaid';
+                        } else {
+                            creditSalesMap[recNo].outstanding = outAmt;
+                            creditSalesMap[recNo].status = status;
                         }
                     }
                 });
                 Object.values(creditSalesMap).forEach(b => {
-                    if (b.status !== 'fully_paid' && b.outstanding > 0) {
+                    if (b.status !== 'fully_paid' && b.outstanding > 0.009) {
                         totalReceivables += b.outstanding;
                         pendingReceivablesCount++;
                     }
@@ -13369,13 +13364,15 @@ input:focus, select:focus, textarea:focus, button:focus {
                 let totalPayables = 0;
                 let duePayablesCount = 0;
                 validPurchases.forEach(p => {
-                    const hasCredit = (p.paymentStatus && p.paymentStatus !== 'fully_paid') ||
+                    const status = (p.paymentStatus || p.payment_status || '').toLowerCase();
+                    const method = (p.paymentMethod || p.payment_method || '').toLowerCase();
+                    const outAmt = parseFloat(p.outstandingAmount !== undefined ? p.outstandingAmount : (p.outstanding_amount !== undefined ? p.outstanding_amount : 0)) || 0;
+                    const hasCredit = (status && status !== 'fully_paid') ||
                                       (p.paymentHistory && p.paymentHistory.some(h => h.method === 'credit'));
-                    const isCredit = (p.outstandingAmount !== undefined && p.outstandingAmount > 0) || p.paymentMethod === 'credit' || hasCredit;
-                    if (isCredit && p.paymentStatus !== 'fully_paid') {
-                        const out = parseFloat(p.outstandingAmount || 0);
-                        if (out > 0) {
-                            totalPayables += out;
+                    const isCredit = (outAmt > 0.009) || method === 'credit' || hasCredit;
+                    if (isCredit && status !== 'fully_paid') {
+                        if (outAmt > 0.009) {
+                            totalPayables += outAmt;
                             duePayablesCount++;
                         }
                     }
@@ -13460,10 +13457,22 @@ input:focus, select:focus, textarea:focus, button:focus {
                         break;
 
                     case 'receivables':
-                        if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                        if (typeof returnToPartySummary === 'function') returnToPartySummary('receivables');
+                        if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales) {
+                            window.electronAPI.sqlite.sales.getAll().then(res => {
+                                const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                                if (list.length > 0) sales = list;
+                                if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                            }).catch(() => {
+                                if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                            });
+                        } else {
+                            if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                        }
                         break;
 
                     case 'payables':
+                        if (typeof returnToPartySummary === 'function') returnToPartySummary('payables');
                         if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.purchases) {
                             window.electronAPI.sqlite.purchases.getAll().then(res => {
                                 const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
@@ -14157,6 +14166,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 document.getElementById('purchaseTotalValue').textContent = '0.00';
                 const chip = document.getElementById('purchaseTaxBreakdownChip');
                 if (chip) chip.innerHTML = `GST: ₹<strong id="purchaseGstTotalValue">0.00</strong>`;
+                if (typeof calculatePurchaseOutstanding === 'function') calculatePurchaseOutstanding();
                 return;
             }
 
@@ -14251,6 +14261,82 @@ input:focus, select:focus, textarea:focus, button:focus {
                     chip.innerHTML = `GST (IGST): ₹<strong id="purchaseGstTotalValue">${totalTaxAmount.toFixed(2)}</strong>`;
                 } else {
                     chip.innerHTML = `GST (CGST ₹${totalCGST.toFixed(2)} + SGST ₹${totalSGST.toFixed(2)}): ₹<strong id="purchaseGstTotalValue">${totalTaxAmount.toFixed(2)}</strong>`;
+                }
+            }
+            if (typeof calculatePurchaseOutstanding === 'function') calculatePurchaseOutstanding();
+        }
+
+        function togglePurchasePaymentFields() {
+            const methodEl = document.getElementById('purchasePaymentMethod');
+            const method = methodEl ? methodEl.value : 'credit';
+            const creditGroup = document.getElementById('purchaseCreditPaymentGroup');
+            const summaryBadge = document.getElementById('purchasePaymentSummaryBadge');
+            const badgeOut = document.getElementById('purchaseBadgeOutstanding');
+            const paidInput = document.getElementById('purchaseCreditAmountPaid');
+            const outInput = document.getElementById('purchaseCreditOutstanding');
+            const totalEl = document.getElementById('purchaseTotalValue');
+            const grandTotal = totalEl ? (parseFloat(totalEl.textContent) || 0) : 0;
+
+            if (method === 'credit') {
+                if (creditGroup) creditGroup.style.display = 'flex';
+                if (summaryBadge) {
+                    summaryBadge.style.display = 'block';
+                    summaryBadge.style.background = '#fee2e2';
+                    summaryBadge.style.color = '#991b1b';
+                }
+                calculatePurchaseOutstanding();
+            } else {
+                if (creditGroup) creditGroup.style.display = 'none';
+                if (paidInput) paidInput.value = grandTotal.toFixed(2);
+                if (outInput) outInput.value = '0.00';
+                if (badgeOut) badgeOut.textContent = '0.00';
+                if (summaryBadge) {
+                    summaryBadge.style.display = 'block';
+                    summaryBadge.style.background = '#dcfce7';
+                    summaryBadge.style.color = '#166534';
+                    summaryBadge.textContent = 'Full Payment (' + method.toUpperCase() + '): ₹' + grandTotal.toFixed(2);
+                }
+            }
+        }
+
+        function calculatePurchaseOutstanding() {
+            const methodEl = document.getElementById('purchasePaymentMethod');
+            const method = methodEl ? methodEl.value : 'credit';
+            const totalEl = document.getElementById('purchaseTotalValue');
+            const grandTotal = totalEl ? (parseFloat(totalEl.textContent) || 0) : 0;
+            const paidInput = document.getElementById('purchaseCreditAmountPaid');
+            const outInput = document.getElementById('purchaseCreditOutstanding');
+            const badgeOut = document.getElementById('purchaseBadgeOutstanding');
+            const summaryBadge = document.getElementById('purchasePaymentSummaryBadge');
+
+            if (method !== 'credit') {
+                if (outInput) outInput.value = '0.00';
+                if (badgeOut) badgeOut.textContent = '0.00';
+                return;
+            }
+
+            let paid = paidInput ? (parseFloat(paidInput.value) || 0) : 0;
+            if (paid < 0) {
+                paid = 0;
+                if (paidInput) paidInput.value = '0';
+            }
+            if (paid > grandTotal && grandTotal > 0) {
+                paid = grandTotal;
+                if (paidInput) paidInput.value = paid.toFixed(2);
+            }
+
+            const outstanding = Math.max(0, parseFloat((grandTotal - paid).toFixed(2)));
+            if (outInput) outInput.value = outstanding.toFixed(2);
+            if (badgeOut) badgeOut.textContent = outstanding.toFixed(2);
+            if (summaryBadge) {
+                if (outstanding > 0) {
+                    summaryBadge.style.background = '#fee2e2';
+                    summaryBadge.style.color = '#991b1b';
+                    summaryBadge.innerHTML = 'Supplier Outstanding: ₹<span id="purchaseBadgeOutstanding">' + outstanding.toFixed(2) + '</span>';
+                } else {
+                    summaryBadge.style.background = '#dcfce7';
+                    summaryBadge.style.color = '#166534';
+                    summaryBadge.innerHTML = 'Fully Settled (₹' + grandTotal.toFixed(2) + ')';
                 }
             }
         }
@@ -15323,8 +15409,10 @@ input:focus, select:focus, textarea:focus, button:focus {
             const supplierName = (supplierSelect ? supplierSelect.value : '') || (supplierInput ? supplierInput.value : '');
             const date = document.getElementById('purchaseDate').value;
 
-            const discount = parseFloat(document.getElementById('purchaseDiscount').value) || 0;
-            const other = parseFloat(document.getElementById('purchaseOtherCharges').value) || 0;
+            const discountEl = document.getElementById('purchaseDiscount');
+            const otherEl = document.getElementById('purchaseOtherCharges');
+            const discount = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
+            const other = otherEl ? (parseFloat(otherEl.value) || 0) : 0;
 
             if (!invoice || !supplierName || !date) {
                 showAlert('Please fill required fields (Invoice, Supplier, Date)', '⚠️');
@@ -15427,8 +15515,36 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             const totalAmount = parseFloat((totalTaxable + totalTax - discount + other).toFixed(2));
 
-            // In accordance with the Purchase Entry module requirements, payment method is credit
-            // and subsequent supplier payments are handled through Supplier Payables
+            // Payment method and status calculation from UI
+            const paymentMethodEl = document.getElementById('purchasePaymentMethod');
+            const paymentMethod = paymentMethodEl ? (paymentMethodEl.value || 'credit') : 'credit';
+            const paidInputEl = document.getElementById('purchaseCreditAmountPaid');
+            const dueDateEl = document.getElementById('purchaseCreditDueDate');
+            const dueDate = dueDateEl ? dueDateEl.value : '';
+
+            let amountPaid = 0;
+            let outstandingAmount = 0;
+            let paymentStatus = 'unpaid';
+
+            if (paymentMethod === 'credit') {
+                amountPaid = paidInputEl ? (parseFloat(paidInputEl.value) || 0) : 0;
+                if (amountPaid < 0) amountPaid = 0;
+                if (amountPaid > totalAmount) amountPaid = totalAmount;
+                outstandingAmount = parseFloat((totalAmount - amountPaid).toFixed(2));
+                if (outstandingAmount <= 0.009) {
+                    paymentStatus = 'fully_paid';
+                    outstandingAmount = 0;
+                } else if (amountPaid > 0) {
+                    paymentStatus = 'partially_paid';
+                } else {
+                    paymentStatus = 'unpaid';
+                }
+            } else {
+                amountPaid = totalAmount;
+                outstandingAmount = 0;
+                paymentStatus = 'fully_paid';
+            }
+
             const purchaseData = {
                 invoiceNumber: invoice,
                 supplier: matchedVendor.name,
@@ -15448,11 +15564,11 @@ input:focus, select:focus, textarea:focus, button:focus {
                 totalAmount: totalAmount,
                 total: totalAmount,
                 gstApplied: true,
-                paymentMethod: 'credit',
-                paymentStatus: 'unpaid',
-                amountPaid: 0,
-                outstandingAmount: totalAmount,
-                dueDate: ''
+                paymentMethod: paymentMethod,
+                paymentStatus: paymentStatus,
+                amountPaid: amountPaid,
+                outstandingAmount: outstandingAmount,
+                dueDate: dueDate
             };
 
             // Pre-check for duplicate invoice
@@ -15478,7 +15594,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (createRes && createRes.success === false) {
                     throw new Error(createRes.error || 'Failed to save purchase in database');
                 }
-                const purchaseId = (createRes && createRes.data) ? createRes.data : createRes;
+                const purchaseId = (createRes && createRes.data) ? (createRes.data.id || createRes.data) : createRes;
 
                 // Sync with local memory array for immediate overview & payables view
                 const legacyRecord = { 
@@ -15487,10 +15603,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                     invoice_number: invoice,
                     supplier_name: matchedVendor.name,
                     supplier_id: matchedVendor.id,
-                    amount_paid: 0,
-                    outstanding_amount: totalAmount,
-                    payment_status: 'unpaid',
-                    payment_method: 'credit'
+                    amount_paid: amountPaid,
+                    outstanding_amount: outstandingAmount,
+                    payment_status: paymentStatus,
+                    payment_method: paymentMethod
                 };
                 if (typeof purchases !== 'undefined' && Array.isArray(purchases)) {
                     purchases.push(legacyRecord);
@@ -15512,12 +15628,30 @@ input:focus, select:focus, textarea:focus, button:focus {
                 }
                 if (typeof saveData === 'function') saveData();
 
+                // Safely reload purchases and suppliers from SQLite
+                if (window.electronAPI && window.electronAPI.sqlite) {
+                    try {
+                        if (window.electronAPI.sqlite.purchases) {
+                            const pRes = await window.electronAPI.sqlite.purchases.getAll();
+                            const pList = (pRes && pRes.success && Array.isArray(pRes.data)) ? pRes.data : (Array.isArray(pRes) ? pRes : []);
+                            if (pList.length > 0) purchases = pList;
+                        }
+                    } catch(e) {}
+                    try {
+                        if (window.electronAPI.sqlite.suppliers) {
+                            const sRes = await window.electronAPI.sqlite.suppliers.getAll();
+                            const sList = (sRes && sRes.success && Array.isArray(sRes.data)) ? sRes.data : (Array.isArray(sRes) ? sRes : []);
+                            if (sList.length > 0) suppliers = sList;
+                        }
+                    } catch(e) {}
+                }
+
                 showAlert('Purchase Saved Successfully!', '✅');
 
                 // Clear Data
                 purchaseCart = [];
-                document.getElementById('purchaseDiscount').value = 0;
-                document.getElementById('purchaseOtherCharges').value = 0;
+                if (document.getElementById('purchaseDiscount')) document.getElementById('purchaseDiscount').value = 0;
+                if (document.getElementById('purchaseOtherCharges')) document.getElementById('purchaseOtherCharges').value = 0;
                 document.getElementById('purchaseInvoiceNumber').value = '';
                 const vSearch = document.getElementById('purchaseVendorSearch');
                 if (vSearch) vSearch.value = '';
@@ -15533,11 +15667,20 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const pDate = document.getElementById('purchaseDate');
                 if (pDate) pDate.value = new Date().toISOString().split('T')[0];
 
+                // Reset Payment Fields
+                if (paymentMethodEl) paymentMethodEl.value = 'credit';
+                if (paidInputEl) paidInputEl.value = '0';
+                const outEl = document.getElementById('purchaseCreditOutstanding');
+                if (outEl) outEl.value = '0.00';
+                const dueEl = document.getElementById('purchaseCreditDueDate');
+                if (dueEl) dueEl.value = '';
+                if (typeof togglePurchasePaymentFields === 'function') togglePurchasePaymentFields();
+
                 // Prepare Fresh Bill and update all views
                 updatePurchaseTable();
                 if (typeof updateInventoryTable === 'function') updateInventoryTable();
                 if (typeof renderPurchaseHistory === 'function') renderPurchaseHistory();
-                if (typeof updatePPOverview === 'function') updatePPOverview();
+                if (typeof updatePPSummary === 'function') updatePPSummary();
                 if (typeof renderPayablesTable === 'function') renderPayablesTable();
 
                 // Focus Bill Date field for the next purchase
@@ -16507,9 +16650,12 @@ input:focus, select:focus, textarea:focus, button:focus {
 
                 const targetMonthStr = selectedYear + '-' + selectedMonth;
                 
-                // Filter by month string
-                const filteredPurchases = results.filter(pc => {
-                    if (search) return true; // if searching, don't restrict by month unless we want to
+                // Exclude cancelled purchases from active history view
+                const activePurchases = results.filter(pc => pc && String(pc.status || '').toUpperCase() !== 'CANCELLED');
+                
+                // Filter by month string (unless searching)
+                const filteredPurchases = activePurchases.filter(pc => {
+                    if (search) return true;
                     if (pc.date) {
                         const pcDate = new Date(pc.date);
                         const pcMonthStr = pcDate.getFullYear() + '-' + String(pcDate.getMonth() + 1).padStart(2, '0');
@@ -16523,22 +16669,23 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (totalDisplay) totalDisplay.textContent = totalAmount.toFixed(2);
 
                 if (filteredPurchases.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6c757d;">No matching records found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 25px; color: #64748b; font-size: 13px;">No matching purchase records found.</td></tr>';
                     return;
                 }
 
                 filteredPurchases.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
                 tbody.innerHTML = filteredPurchases.map(pc => {
-                    // Map SQLite fields to renderPurchaseRow expectations
                     const legacyPc = {
                         id: pc.id,
                         date: pc.date,
                         invoiceNumber: pc.invoice_number,
                         supplier: pc.supplier_name,
+                        supplierId: pc.supplier_id,
                         totalAmount: pc.total,
                         paymentStatus: pc.payment_status,
-                        status: pc.status
+                        status: pc.status,
+                        items: pc.items || []
                     };
                     return renderPurchaseRow(legacyPc);
                 }).join('');
@@ -16547,137 +16694,365 @@ input:focus, select:focus, textarea:focus, button:focus {
             } catch (error) {
                 console.error('Error rendering purchase history:', error);
                 const tbody = document.getElementById('purchaseHistoryTableBody');
-                if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error loading history</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red; padding: 20px;">Error loading purchase history: ' + (error.message || error) + '</td></tr>';
             }
         }
 
-        
-
         function renderPurchaseRow(pc) {
             const items = Array.isArray(pc.items) ? pc.items : [];
-            const itemCount = items.reduce((acc, item) => acc + (parseInt(item.qty) || 0), 0);
-            const deleteBtn = window.isUserAdmin ?
-                `<button class="btn btn-danger btn-sm" onclick="deletePurchase(${pc.id})">🗑️</button>` : '';
-                
+            const itemCount = items.reduce((acc, item) => acc + (parseFloat(item.quantity !== undefined ? item.quantity : (item.qty || 0)) || 0), 0);
+            const itemLabel = itemCount === 1 ? '1 Item' : `${itemCount} Items`;
+            
+            const canDelete = window.isUserAdmin || (typeof window.hasPermission === 'function' && (window.hasPermission('delete') || window.hasPermission('purchase_entry')));
+            const deleteBtn = canDelete ? `
+                <button type="button" class="pp-action-btn pp-action-btn-delete" onclick="deletePurchase(${pc.id})" title="Delete Purchase" aria-label="Delete Purchase">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>` : '';
+
             let supplierDisplay = pc.supplier || '-';
-            if (pc.supplierId) {
+            if (pc.supplierId && typeof suppliers !== 'undefined' && Array.isArray(suppliers)) {
                 const sup = suppliers.find(s => s.id === pc.supplierId);
                 if (sup) supplierDisplay = sup.name;
             }
 
             return `
-                <tr>
-                    <td>${pc.date || 'N/A'}</td>
-                    <td>${pc.invoiceNumber || '-'}</td>
-                    <td>${supplierDisplay}</td>
-                    <td>${itemCount} Items</td>
-                    <td>₹${(pc.totalAmount || 0).toFixed(2)}</td>
-                    <td>
-                        <button class="btn btn-info btn-sm" onclick="viewPurchaseDetails(${pc.id})">👁️ View</button>
-                        ${deleteBtn}
+                <tr style="height: 34px;">
+                    <td style="text-align: left; padding: 3px 8px;">${pc.date ? pc.date.split('T')[0] : 'N/A'}</td>
+                    <td style="text-align: left; font-family: monospace; font-weight: 600; color: #1e293b; padding: 3px 8px;">${pc.invoiceNumber || '-'}</td>
+                    <td style="text-align: left; padding: 3px 8px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${supplierDisplay}">${supplierDisplay}</td>
+                    <td style="text-align: center; padding: 3px 8px;"><span style="display: inline-block; padding: 1px 6px; font-size: 11px; background: #f1f5f9; color: #475569; border-radius: 4px; font-weight: 500;">${itemLabel}</span></td>
+                    <td style="text-align: right; font-weight: 600; color: #0f172a; padding: 3px 8px;">₹${(parseFloat(pc.totalAmount) || 0).toFixed(2)}</td>
+                    <td style="text-align: center; padding: 3px 8px;">
+                        <div class="pp-action-group">
+                            <button type="button" class="pp-action-btn pp-action-btn-view" onclick="viewPurchaseDetails(${pc.id})" title="View Purchase" aria-label="View Purchase">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                            ${deleteBtn}
+                        </div>
                     </td>
                 </tr>
             `;
         }
 
         async function deletePurchase(id) {
-            if (!window.isUserAdmin) return showAlert('Unauthorized: Only Administrators can cancel purchases.', 'error');
-            showConfirm('⚠️ Are you sure you want to CANCEL this purchase?<br><br>Inventory will be reduced automatically. This action cannot be undone!', async () => {
+            if (typeof requireLicensedForWrite === 'function' && !requireLicensedForWrite('deleting a purchase')) return;
+            if (!window.isUserAdmin && typeof window.hasPermission === 'function' && !window.hasPermission('delete') && !window.hasPermission('purchase_entry')) {
+                return showAlert('Unauthorized: You do not have permission to delete purchases.', 'error');
+            }
+            showConfirm('⚠️ Are you sure you want to delete this purchase bill?<br><br>Inventory will be reduced/reversed automatically and vendor balance updated. This action cannot be undone!', async () => {
                 try {
-                    await window.electronAPI.sqlite.purchases.cancel(id);
+                    const res = await window.electronAPI.sqlite.purchases.cancel(id);
+                    if (res && res.success === false) {
+                        throw new Error(res.error || 'Failed to delete purchase');
+                    }
                     
                     // Remove from legacy array to keep reports in sync
-                    purchases = purchases.filter(p => String(p.id) !== String(id));
-                    saveData();
+                    if (typeof purchases !== 'undefined' && Array.isArray(purchases)) {
+                        purchases = purchases.filter(p => String(p.id) !== String(id));
+                    }
+                    if (typeof saveData === 'function') saveData();
 
                     // Refresh views
-                    renderPurchaseHistory();
-                    updateInventoryTable();
-                    closePurchaseDetailsModal(); // Close details if open
+                    await renderPurchaseHistory();
+                    if (typeof updatePPSummary === 'function') await updatePPSummary();
+                    if (typeof updateInventoryTable === 'function') updateInventoryTable();
+                    if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                    closePurchaseDetailsModal();
 
-                    showAlert('✅ Purchase cancelled and stock reversed successfully.', '❌');
+                    showAlert('✅ Purchase deleted and inventory reversed successfully.', 'success');
                 } catch (e) {
-                    console.error("Cancel purchase error:", e);
-                    showAlert('❌ Error cancelling purchase: ' + (e.message || e), 'error');
+                    console.error("Delete purchase error:", e);
+                    showAlert('❌ Error deleting purchase: ' + (e.message || e), 'error');
                 }
             });
         }
-        
 
         async function viewPurchaseDetails(id) {
             const modal = document.getElementById('purchaseDetailsModal');
             const content = document.getElementById('purchaseDetailsContent');
             if (!modal || !content) return;
+
             try {
                 const pcRaw = await window.electronAPI.sqlite.purchases.get(id);
-                const pc = (pcRaw && pcRaw.data) ? pcRaw.data : pcRaw;
+                const pc = (pcRaw && pcRaw.data) ? pcRaw.data : (pcRaw && pcRaw.id ? pcRaw : null);
                 if (!pc) {
-                    showAlert('Purchase not found', 'error');
+                    showAlert('Purchase record not found in database.', 'error');
                     return;
                 }
 
                 const isCancelled = pc.status === 'CANCELLED';
                 const itemsList = Array.isArray(pc.items) ? pc.items : [];
-                const itemsHtml = itemsList.map(item => `
-                    <tr>
-                        <td>${item.product_name}</td>
-                        <td>${item.quantity}</td>
-                        <td>₹${(item.price || 0).toFixed(2)}</td>
-                        <td>₹${(item.total || 0).toFixed(2)}</td>
-                    </tr>
-                `).join('');
+                
+                // Determine tax regime
+                const isInterState = (pc.tax_type === 'inter') || itemsList.some(it => parseFloat(it.igst || 0) > 0);
+                
+                // Format date
+                let formattedDate = 'N/A';
+                if (pc.date) {
+                    try {
+                        const d = new Date(pc.date);
+                        formattedDate = isNaN(d.getTime()) ? pc.date.split('T')[0] : d.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+                    } catch(e) {
+                        formattedDate = pc.date.split('T')[0];
+                    }
+                }
+
+                // Vendor information
+                const vendorName = pc.supplier_name || 'Unknown Vendor';
+                const vendorGstin = pc.supplier_gstin || 'Unregistered / None';
+                const vendorState = pc.supplier_state || 'N/A';
+                const vendorPhone = pc.supplier_phone || '';
+                const vendorAddress = pc.supplier_address || '';
+                const vendorType = pc.vendor_type === 'customer' ? 'Customer' : 'Supplier';
+
+                // Payment / Outstanding information
+                const paymentMethod = (pc.payment_method || 'Credit').toUpperCase();
+                const paymentStatus = (pc.payment_status || 'unpaid').toUpperCase();
+                const grandTotal = parseFloat(pc.total || 0);
+                const outstandingAmt = pc.outstanding_amount !== undefined ? parseFloat(pc.outstanding_amount) : (pc.payment_status === 'unpaid' ? grandTotal : 0);
+
+                // Build Items rows
+                let totalTaxableCalculated = 0;
+                let totalCgstCalculated = 0;
+                let totalSgstCalculated = 0;
+                let totalIgstCalculated = 0;
+
+                const itemsRowsHtml = itemsList.map((item, idx) => {
+                    const qty = parseFloat(item.quantity !== undefined ? item.quantity : (item.qty || 0));
+                    const rate = parseFloat(item.price || 0);
+                    const lineTaxable = parseFloat(item.taxable_value !== undefined ? item.taxable_value : (qty * rate));
+                    const cgst = parseFloat(item.cgst || 0);
+                    const sgst = parseFloat(item.sgst || 0);
+                    const igst = parseFloat(item.igst || 0);
+                    const lineTax = cgst + sgst + igst;
+                    const lineTotal = parseFloat(item.total !== undefined ? item.total : (lineTaxable + lineTax));
+                    
+                    totalTaxableCalculated += lineTaxable;
+                    totalCgstCalculated += cgst;
+                    totalSgstCalculated += sgst;
+                    totalIgstCalculated += igst;
+
+                    let gstPercent = 0;
+                    if (lineTaxable > 0 && lineTax > 0) {
+                        gstPercent = Math.round((lineTax / lineTaxable) * 100);
+                    } else if (item.gst) {
+                        gstPercent = parseFloat(item.gst);
+                    }
+
+                    const taxBreakdownDisplay = (igst > 0 || isInterState)
+                        ? `<span style="color: #64748b; font-size: 11px;">IGST: ₹${igst.toFixed(2)}</span>`
+                        : `<span style="color: #64748b; font-size: 11px;">CGST: ₹${cgst.toFixed(2)}<br>SGST: ₹${sgst.toFixed(2)}</span>`;
+
+                    return `
+                        <tr style="height: 34px;">
+                            <td style="text-align: center; color: #64748b; font-size: 11.5px; padding: 4px 6px;">${idx + 1}</td>
+                            <td style="text-align: left; font-weight: 500; color: #1e293b; padding: 4px 8px;">
+                                ${item.product_name || 'Unknown Item'}
+                                ${item.barcode ? `<span style="font-size: 10px; color: #94a3b8; margin-left: 4px;">[${item.barcode}]</span>` : ''}
+                            </td>
+                            <td style="text-align: center; font-weight: 600; padding: 4px 6px;">${qty}</td>
+                            <td style="text-align: right; padding: 4px 8px;">₹${rate.toFixed(2)}</td>
+                            <td style="text-align: right; padding: 4px 8px;">₹${lineTaxable.toFixed(2)}</td>
+                            <td style="text-align: center; padding: 4px 6px;">
+                                <span style="background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #475569;">${gstPercent}%</span>
+                            </td>
+                            <td style="text-align: right; padding: 4px 8px; line-height: 1.2;">${taxBreakdownDisplay}</td>
+                            <td style="text-align: right; font-weight: 700; color: #0f172a; padding: 4px 8px;">₹${lineTotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                const subtotalDisplay = parseFloat(pc.subtotal || pc.taxable_value || totalTaxableCalculated || 0);
+                const discountDisplay = parseFloat(pc.discount || 0);
+                const otherChargesDisplay = parseFloat(pc.other_charges || pc.otherCharges || 0);
 
                 content.innerHTML = `
-                    ${isCancelled ? '<div style="background: red; color: white; text-align: center; padding: 5px; font-weight: bold; margin-bottom: 10px; border-radius: 4px;">CANCELLED</div>' : ''}
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
-                        <div>
-                            <strong>Invoice:</strong> ${pc.invoice_number}<br>
-                            <strong>Date:</strong> ${new Date(pc.date).toLocaleDateString()}
+                    ${isCancelled ? `
+                        <div style="background: #fef2f2; border: 1px solid #f87171; color: #991b1b; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            THIS PURCHASE BILL IS CANCELLED (Inventory & balances reversed)
                         </div>
-                        <div style="text-align: right;">
-                            <strong>Supplier:</strong> ${pc.supplier_name}<br>
-                            <strong>Status:</strong> <span class="badge ${pc.payment_status === 'fully_paid' ? 'bg-success' : 'bg-warning'}">${(pc.payment_status || 'fully_paid').replace('_', ' ').toUpperCase()}</span>
+                    ` : ''}
+
+                    <!-- Top Details Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px;">
+                        <!-- Invoice & Payment Card -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Bill Information</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px;">
+                                <span style="color: #64748b;">Invoice / Bill No:</span>
+                                <span style="font-weight: 700; color: #0f172a; font-family: monospace; font-size: 13px;">${pc.invoice_number || '-'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px;">
+                                <span style="color: #64748b;">Bill Date:</span>
+                                <span style="font-weight: 600; color: #334155;">${formattedDate}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px;">
+                                <span style="color: #64748b;">Tax Regime:</span>
+                                <span style="font-weight: 600; color: ${isInterState ? '#d97706' : '#2563eb'};">
+                                    ${isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
+                                </span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
+                                <span style="color: #64748b;">Payment / Status:</span>
+                                <div>
+                                    <span style="display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: ${paymentStatus === 'FULLY_PAID' ? '#dcfce7' : '#fef3c7'}; color: ${paymentStatus === 'FULLY_PAID' ? '#166534' : '#92400e'};">
+                                        ${paymentMethod} • ${paymentStatus}
+                                    </span>
+                                </div>
+                            </div>
+                            ${outstandingAmt > 0 ? `
+                                <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 12.5px; color: #dc2626; font-weight: 600;">
+                                    <span>Outstanding Due:</span>
+                                    <span>₹${outstandingAmt.toFixed(2)}</span>
+                                </div>
+                            ` : ''}
                         </div>
-                    </div>
-                    
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Product</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHtml}
-                        </tbody>
-                    </table>
-                    
-                    <div style="text-align: right; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
-                        <p><strong>Subtotal:</strong> ₹${(pc.subtotal || 0).toFixed(2)}</p>
-                        ${pc.discount > 0 ? `<p><strong>Discount:</strong> -₹${pc.discount.toFixed(2)}</p>` : ''}
-                        ${pc.other_charges > 0 ? `<p><strong>Other Charges:</strong> +₹${pc.other_charges.toFixed(2)}</p>` : ''}
-                        <h4><strong>Grand Total:</strong> ₹${(pc.total || 0).toFixed(2)}</h4>
+
+                        <!-- Vendor Information Card -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Vendor Details</div>
+                                <span style="font-size: 10.5px; font-weight: 600; background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px;">${vendorType}</span>
+                            </div>
+                            <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">${vendorName}</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px;">
+                                <span style="color: #64748b;">GSTIN:</span>
+                                <span style="font-family: monospace; font-weight: 600; color: #334155;">${vendorGstin}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px;">
+                                <span style="color: #64748b;">State / Supply Place:</span>
+                                <span style="font-weight: 600; color: #334155;">${vendorState}</span>
+                            </div>
+                            ${vendorPhone ? `
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748b;">
+                                    <span>Contact:</span>
+                                    <span>${vendorPhone}</span>
+                                </div>
+                            ` : ''}
+                            ${vendorAddress ? `
+                                <div style="font-size: 11.5px; color: #64748b; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${vendorAddress}">
+                                    ${vendorAddress}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
 
-                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                        ${!isCancelled ? `<button class="btn btn-danger" onclick="deletePurchase('${pc.id}')">🗑️ Cancel Purchase</button>` : ''}
+                    <!-- Items Table -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 18px;">
+                        <div style="max-height: 260px; overflow-y: auto;">
+                            <table class="pp-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                                <thead>
+                                    <tr style="height: 32px; background: #f8fafc;">
+                                        <th style="text-align: center; width: 40px; padding: 5px 4px; font-size: 11px;">#</th>
+                                        <th style="text-align: left; padding: 5px 8px; font-size: 11px;">Product / Item</th>
+                                        <th style="text-align: center; width: 60px; padding: 5px 4px; font-size: 11px;">Qty</th>
+                                        <th style="text-align: right; width: 85px; padding: 5px 8px; font-size: 11px;">Rate</th>
+                                        <th style="text-align: right; width: 90px; padding: 5px 8px; font-size: 11px;">Taxable</th>
+                                        <th style="text-align: center; width: 65px; padding: 5px 4px; font-size: 11px;">GST %</th>
+                                        <th style="text-align: right; width: 125px; padding: 5px 8px; font-size: 11px;">Tax</th>
+                                        <th style="text-align: right; width: 95px; padding: 5px 8px; font-size: 11px;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsRowsHtml || '<tr><td colspan="8" style="text-align:center; padding: 15px; color: #94a3b8;">No items found</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Summary Breakdown Section -->
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="width: 320px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; color: #475569;">
+                                <span>Taxable Amount</span>
+                                <span style="font-weight: 600;">₹${subtotalDisplay.toFixed(2)}</span>
+                            </div>
+                            ${isInterState ? `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; color: #64748b;">
+                                    <span>Integrated GST (IGST)</span>
+                                    <span>₹${totalIgstCalculated.toFixed(2)}</span>
+                                </div>
+                            ` : `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; color: #64748b;">
+                                    <span>Central GST (CGST)</span>
+                                    <span>₹${totalCgstCalculated.toFixed(2)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; color: #64748b;">
+                                    <span>State GST (SGST)</span>
+                                    <span>₹${totalSgstCalculated.toFixed(2)}</span>
+                                </div>
+                            `}
+                            ${discountDisplay > 0 ? `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; color: #dc2626;">
+                                    <span>Discount</span>
+                                    <span>- ₹${discountDisplay.toFixed(2)}</span>
+                                </div>
+                            ` : ''}
+                            ${otherChargesDisplay > 0 ? `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; color: #475569;">
+                                    <span>Other Charges</span>
+                                    <span>+ ₹${otherChargesDisplay.toFixed(2)}</span>
+                                </div>
+                            ` : ''}
+                            <div style="border-top: 1.5px dashed #cbd5e1; padding-top: 8px; margin-top: 6px; display: flex; justify-content: space-between; align-items: baseline;">
+                                <span style="font-weight: 700; font-size: 14px; color: #0f172a;">Grand Total</span>
+                                <span style="font-weight: 800; font-size: 18px; color: #16a34a;">₹${grandTotal.toFixed(2)}</span>
+                            </div>
+                        </div>
                     </div>
                 `;
 
-                modal.style.display = 'block';
+                // Footer Actions
+                const footerActions = document.getElementById('purchaseModalFooterActions');
+                if (footerActions) {
+                    footerActions.innerHTML = `
+                        <button type="button" class="btn btn-primary btn-sm" onclick="printPurchaseBill(${JSON.stringify(pc).replace(/"/g, '&quot;')})" style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            Print Bill
+                        </button>
+                        ${!isCancelled ? `
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deletePurchase(${pc.id})" style="display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 12px; background: #ef4444; border-color: #dc2626;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                Delete Bill
+                            </button>
+                        ` : ''}
+                    `;
+                }
+
+                modal.style.display = 'flex';
             } catch (err) {
                 console.error("Error viewing purchase:", err);
-                showAlert("Error loading details.", "error");
+                showAlert("Error loading purchase details: " + (err.message || err), "error");
             }
         }
 
-
-
         function closePurchaseDetailsModal() {
-            document.getElementById('purchaseDetailsModal').style.display = 'none';
+            const modal = document.getElementById('purchaseDetailsModal');
+            if (modal) modal.style.display = 'none';
         }
+
+        // Close purchase details modal on click backdrop or Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('purchaseDetailsModal');
+                if (modal && (modal.style.display === 'flex' || modal.style.display === 'block')) {
+                    closePurchaseDetailsModal();
+                }
+            }
+        });
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('purchaseDetailsModal');
+            if (modal && (modal.style.display === 'flex' || modal.style.display === 'block') && e.target === modal) {
+                closePurchaseDetailsModal();
+            }
+        });
 
         window.switchTab = switchTab;
         function switchTab(tabName, clickedNav = null) {
@@ -18226,17 +18601,26 @@ input:focus, select:focus, textarea:focus, button:focus {
 
         function onSaleUnitSelection(value, text, skipFocus = false) {
             const searchInput = document.getElementById('saleUnitSearch');
-            searchInput.value = text;
+            if (searchInput) searchInput.value = text;
             
-            document.getElementById('saleUnitDropdown').style.display = 'none';
-            document.getElementById('saleUnitClear').style.display = 'block';
+            const dropdown = document.getElementById('saleUnitDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+            const clearBtn = document.getElementById('saleUnitClear');
+            if (clearBtn) clearBtn.style.display = 'block';
             
             const unitSelect = document.getElementById('saleUnit');
-            unitSelect.value = value;
-            onSaleUnitChange();
+            if (unitSelect) {
+                unitSelect.value = value;
+                onSaleUnitChange();
+            }
             
             if (!skipFocus) {
-                document.getElementById('saleQuantity').focus();
+                const qtyEl = document.getElementById('saleQuantity');
+                if (qtyEl) {
+                    qtyEl.focus();
+                    if (typeof handleSaleQtyFocus === 'function') handleSaleQtyFocus(qtyEl);
+                    if (qtyEl.select) qtyEl.select();
+                }
             }
         }
 
@@ -18468,6 +18852,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                     }
                     
                     const dropdown = document.getElementById('saleProductDropdown');
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
                     if (dropdown.style.display === 'none') return;
                     
                     const items = dropdown.querySelectorAll('.custom-dropdown-item');
@@ -18482,7 +18870,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                         comboboxSelectedIndex = Math.max(comboboxSelectedIndex - 1, 0);
                         updateComboboxSelection(items);
                     } else if (e.key === 'Enter') {
-                        e.preventDefault();
                         const query = (searchInput.value || '').trim();
                         // If exact barcode match exists in candidate products, prioritize selecting it
                         let exactBarcodeMatch = null;
@@ -18505,14 +18892,10 @@ input:focus, select:focus, textarea:focus, button:focus {
                             return;
                         }
 
-                        if (comboboxSelectedIndex >= 0) {
+                        if (comboboxSelectedIndex >= 0 && items[comboboxSelectedIndex]) {
                             items[comboboxSelectedIndex].click();
-                        } else {
-                            if(items.length === 1) {
-                                items[0].click();
-                            } else if (items.length > 0) {
-                                items[0].click();
-                            }
+                        } else if (items.length > 0) {
+                            items[0].click();
                         }
                     } else if (e.key === 'Escape') {
                         dropdown.style.display = 'none';
@@ -18543,6 +18926,34 @@ input:focus, select:focus, textarea:focus, button:focus {
             if (unitSearchInput) {
                 unitSearchInput.addEventListener('keydown', function(e) {
                     const dropdown = document.getElementById('saleUnitDropdown');
+
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (dropdown && dropdown.style.display !== 'none') {
+                            const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                            if (unitComboboxSelectedIndex >= 0 && items[unitComboboxSelectedIndex]) {
+                                items[unitComboboxSelectedIndex].click();
+                                return;
+                            } else if (items.length > 0) {
+                                items[0].click();
+                                return;
+                            }
+                        }
+                        // If dropdown is hidden or no items, confirm current selection and focus quantity
+                        const unitSelect = document.getElementById('saleUnit');
+                        if (unitSelect && unitSelect.value) {
+                            if (dropdown) dropdown.style.display = 'none';
+                            const qtyEl = document.getElementById('saleQuantity');
+                            if (qtyEl) {
+                                qtyEl.focus();
+                                if (typeof handleSaleQtyFocus === 'function') handleSaleQtyFocus(qtyEl);
+                                if (qtyEl.select) qtyEl.select();
+                            }
+                        }
+                        return;
+                    }
+
                     if (dropdown.style.display === 'none' && currentProductUnits.length > 0 && e.key !== 'Escape') {
                         dropdown.style.display = 'block';
                     }
@@ -18560,16 +18971,6 @@ input:focus, select:focus, textarea:focus, button:focus {
                         e.preventDefault();
                         unitComboboxSelectedIndex = Math.max(unitComboboxSelectedIndex - 1, -1);
                         updateUnitComboboxSelection(items);
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (unitComboboxSelectedIndex >= 0) {
-                            items[unitComboboxSelectedIndex].click();
-                        } else {
-                            // If exactly one match, select it
-                            if(items.length === 1) {
-                                items[0].click();
-                            }
-                        }
                     } else if (e.key === 'Escape') {
                         dropdown.style.display = 'none';
                     }
@@ -18766,13 +19167,53 @@ input:focus, select:focus, textarea:focus, button:focus {
             }
         }
 
+        let _saleQtySelectPending = false;
+        function handleSaleQtyFocus(el) {
+            _saleQtySelectPending = true;
+            setTimeout(() => {
+                if (el && typeof el.select === 'function') el.select();
+            }, 10);
+        }
+
+        function handleSaleQtyMouseUp(e, el) {
+            if (_saleQtySelectPending) {
+                _saleQtySelectPending = false;
+                e.preventDefault();
+                if (el && typeof el.select === 'function') el.select();
+            }
+        }
+
+        function handleSaleQtyKeyDown(e, el) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                addItemToCart(e);
+                return;
+            }
+
+            // If user types a digit (0-9) immediately after focusing when value is '1'
+            // or when all text is selected, replace it cleanly with the typed digit
+            if (!e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9]$/.test(e.key)) {
+                if (_saleQtySelectPending || el.value === '1' || (el.selectionStart === 0 && el.selectionEnd === el.value.length)) {
+                    _saleQtySelectPending = false;
+                    e.preventDefault();
+                    el.value = e.key;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    return;
+                }
+            }
+            _saleQtySelectPending = false;
+        }
+
         function selectBarcodeProduct(product, variant = null) {
-            // Set quantity to 1 explicitly
-            const qtyInput = document.getElementById('saleQuantity');
-            if (qtyInput) qtyInput.value = 1;
-            
-            // Re-use existing Add Item to Sale logic (sets Product, Price, Units, and moves focus to Units/Quantity)
+            // Re-use existing Add Item to Sale logic (sets Product, Price, Units, and moves focus to Quantity)
             onSaleProductChange(product.id, variant ? variant.id : null);
+            const qtyInput = document.getElementById('saleQuantity');
+            if (qtyInput) {
+                qtyInput.value = '1';
+                qtyInput.focus();
+                handleSaleQtyFocus(qtyInput);
+            }
         }
 
         // --- Stock Barcode Autocomplete ---
@@ -18934,6 +19375,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             document.getElementById('saleProductDropdown').style.display = 'none';
             document.getElementById('saleProductClear').style.display = 'none';
             document.getElementById('saleProductId').value = '';
+            window.selectedSaleVariant = null;
             
             // Clear all dependent fields
             document.getElementById('saleUnitSearch').value = '';
@@ -18942,7 +19384,7 @@ input:focus, select:focus, textarea:focus, button:focus {
             
             document.getElementById('saleUnit').innerHTML = '<option value="">Select Unit...</option>';
             document.getElementById('salePrice').value = '';
-            document.getElementById('saleQuantity').value = 1;
+            document.getElementById('saleQuantity').value = '1';
             
             if (!skipFocus) {
                 document.getElementById('saleProductSearch').focus();
@@ -19176,8 +19618,16 @@ input:focus, select:focus, textarea:focus, button:focus {
                 searchInput.value = displayName;
                 document.getElementById('saleProductClear').style.display = 'block';
 
-                // Focus the new Unit/Pack search box
-                document.getElementById('saleUnitSearch').focus();
+                if (packSizesToUse.length > 0) {
+                    document.getElementById('saleUnitSearch').focus();
+                } else {
+                    const qtyEl = document.getElementById('saleQuantity');
+                    if (qtyEl) {
+                        qtyEl.focus();
+                        if (typeof handleSaleQtyFocus === 'function') handleSaleQtyFocus(qtyEl);
+                        if (qtyEl.select) qtyEl.select();
+                    }
+                }
             } catch (error) {
                 console.error("Error in onSaleProductChange:", error);
                 showAlert("Error updating product details", "⚠️");
@@ -19187,10 +19637,12 @@ input:focus, select:focus, textarea:focus, button:focus {
         function onSaleUnitChange() {
             const unitSelect = document.getElementById('saleUnit');
             const priceInput = document.getElementById('salePrice');
+            if (!unitSelect || !priceInput) return;
             const selectedOption = unitSelect.options[unitSelect.selectedIndex];
 
-            if (selectedOption && selectedOption.value) {
-                priceInput.value = selectedOption.dataset.price;
+            if (selectedOption && selectedOption.value && selectedOption.dataset.price !== undefined && selectedOption.dataset.price !== '') {
+                const parsed = parseFloat(selectedOption.dataset.price);
+                priceInput.value = isNaN(parsed) ? '' : (parsed % 1 === 0 ? parsed : parsed.toFixed(2));
             } else {
                 priceInput.value = '';
             }
@@ -19386,7 +19838,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (!activeId) return;
                 
                 const sequences = [
-                    ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice'],
+                    ['saleProductSearch', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnAddItemSale'],
                     ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethod']
                 ];
                 
@@ -19523,28 +19975,13 @@ input:focus, select:focus, textarea:focus, button:focus {
             const payMethod = document.getElementById('paymentMethod');
             const custAmount = document.getElementById('customerAmount'); // For Cash
 
-            // 1. Search Input Keydown (Only handle jumping to Shopping Cart if empty)
+            // 1. Search Input Keydown
             searchInput.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     if (!searchInput.value.trim()) {
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        // NEW: Jump to first cart row Qty if cart is not empty
-                        if (typeof cart !== 'undefined' && cart.length > 0) {
-                            window.setCartRowHighlight(0);
-                            const firstQty = document.getElementById('cart-qty-0');
-                            if (firstQty) {
-                                firstQty.focus();
-                                firstQty.select();
-                            }
-                        } else {
-                            const customerSearch = document.getElementById('saleCustomerSearch');
-                            if (customerSearch) {
-                                customerSearch.focus();
-                                customerSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                        }
+                        return;
                     }
                 }
             });
@@ -20340,9 +20777,9 @@ input:focus, select:focus, textarea:focus, button:focus {
         }
         
         // Add to window load so it gets evaluated immediately and overrides any cached values
-        window.addEventListener('DOMContentLoaded', resetSaleDateToToday);
-
+        let _isCompletingSale = false;
         function completeSale() {
+            if (_isCompletingSale) return;
 
             if (typeof isDemoMode === 'function' && isDemoMode()) {
                 const systemDateStr = new Date().toISOString().slice(0, 10);
@@ -20525,8 +20962,31 @@ input:focus, select:focus, textarea:focus, button:focus {
 
             // Confirm Completion
             showConfirm(`Complete sale for ₹${totalReceived.toFixed(2)}?`, async () => {
-                // Generate receipt number in format: {saleNumber}-{month}{year}
-                const receiptNumber = generateReceiptNumber();
+                if (_isCompletingSale) return;
+                _isCompletingSale = true;
+                const btnComplete = document.getElementById('btnCompleteSale') || document.querySelector('button[onclick*="completeSale"]');
+                if (btnComplete) {
+                    btnComplete.disabled = true;
+                    btnComplete.dataset.origText = btnComplete.innerText;
+                    btnComplete.innerText = '⏳ Processing...';
+                }
+
+                try {
+                    // Generate synchronized receipt number
+                    let receiptNumber = '';
+                    if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales && window.electronAPI.sqlite.sales.getNextReceiptNumber) {
+                        try {
+                            const rRes = await window.electronAPI.sqlite.sales.getNextReceiptNumber();
+                            if (rRes && rRes.success && rRes.data) {
+                                receiptNumber = rRes.data;
+                            } else if (typeof rRes === 'string') {
+                                receiptNumber = rRes;
+                            }
+                        } catch(e) {}
+                    }
+                    if (!receiptNumber) {
+                        receiptNumber = generateReceiptNumber();
+                    }
 
                 let saleDate = new Date().toISOString();
                 const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
@@ -20610,12 +21070,17 @@ input:focus, select:focus, textarea:focus, button:focus {
                 };
 
                 let newSaleId;
+                let finalReceiptNumber = receiptNumber;
                 try {
                     const createRes = await window.electronAPI.sqlite.sales.create(saleData);
                     if (createRes && createRes.success === false) {
                         throw new Error(createRes.error ? (createRes.error.message || createRes.error) : "Failed to record sale in SQLite");
                     }
-                    newSaleId = (createRes && createRes.success && createRes.data !== undefined) ? createRes.data : createRes;
+                    const resData = (createRes && createRes.success && createRes.data !== undefined) ? createRes.data : createRes;
+                    newSaleId = (typeof resData === 'object' && resData.id !== undefined) ? resData.id : resData;
+                    if (typeof resData === 'object' && (resData.receipt_number || resData.receiptNumber)) {
+                        finalReceiptNumber = resData.receipt_number || resData.receiptNumber;
+                    }
                 } catch (e) {
                     console.error("Sale creation failed:", e);
                     showAlert('❌ Sale creation failed: ' + (e.message || e), 'error');
@@ -20633,7 +21098,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                         const sale = {
                             id: newSaleId + saleItems.length,
                             saleId: newSaleId, 
-                            receiptNumber: receiptNumber, 
+                            receiptNumber: finalReceiptNumber, 
                             isDemo: (typeof isDemoMode === 'function' && isDemoMode()),
                             userId: currentUser.id || '',
                             username: currentUser.username || currentUser.name || '',
@@ -20693,7 +21158,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                 const currentUserObj = JSON.parse(sessionStorage.getItem('currentUser') || 'null') || {};
                 lastSaleData = {
                     saleId: newSaleId,
-                    receiptNumber: receiptNumber,
+                    receiptNumber: finalReceiptNumber,
                     date: saleDate,
                     counterCode: currentUserObj.userCode || '-',
                     items: saleItems, 
@@ -20796,6 +21261,14 @@ input:focus, select:focus, textarea:focus, button:focus {
                 if (typeof renderFavoritesPanel === 'function') renderFavoritesPanel();
 
                 showReceipt();
+                } finally {
+                    _isCompletingSale = false;
+                    const btnComplete = document.getElementById('btnCompleteSale') || document.querySelector('button[onclick*="completeSale"]');
+                    if (btnComplete) {
+                        btnComplete.disabled = false;
+                        if (btnComplete.dataset.origText) btnComplete.innerText = btnComplete.dataset.origText;
+                    }
+                }
             });
         }
 
@@ -33024,100 +33497,139 @@ input:focus, select:focus, textarea:focus, button:focus {
             window.URL.revokeObjectURL(url);
         }
 
-        // --- Receivables & Payables Logic ---
+        // --- Party-wise Receivables & Payables Management ---
+        let _activePartyAccount = null;
+
         function renderReceivablesTable() {
             const tbody = document.getElementById('receivablesTableBody');
             if (!tbody) return;
-            
-            if (typeof isDataLoaded !== 'undefined' && !isDataLoaded && sales.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Loading receivables...</td></tr>`;
-                return;
-            }
-            
-            const search = (document.getElementById('receivablesSearch').value || '').toLowerCase();
-            const statusFilter = document.getElementById('receivablesStatusFilter').value;
 
-            // Group sales by receiptNumber to get total bill amounts for credit sales
+            // Auto-fetch sales if in SQLite mode and currently empty
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales && (!sales || sales.length === 0)) {
+                window.electronAPI.sqlite.sales.getAll().then(res => {
+                    const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                    if (list.length > 0) {
+                        sales = list;
+                        renderReceivablesTable();
+                    }
+                }).catch(() => {});
+            }
+
+            const search = (document.getElementById('receivablesSearch')?.value || '').toLowerCase().trim();
+
+            // 1. Group sales into invoices
             const creditBills = {};
-            sales.forEach(sale => {
-                const hasCredit = sale.paymentStatus && sale.paymentStatus !== 'fully_paid' || (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
+            (sales || []).forEach(sale => {
+                if (!sale) return;
+                const recNo = sale.receiptNumber || sale.receipt_number || sale.id;
+                const hasCredit = (sale.paymentStatus && sale.paymentStatus !== 'fully_paid') || (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
                 const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
                 
                 if (isCredit) {
-                    if (!creditBills[sale.receiptNumber]) {
-                        creditBills[sale.receiptNumber] = {
+                    if (!creditBills[recNo]) {
+                        creditBills[recNo] = {
                             date: sale.date,
-                            invoice: sale.receiptNumber || '',
-                            customer: sale.customerName || 'Unknown',
-                            customerId: sale.customerId || '',
+                            invoice: recNo,
+                            customer: sale.customerName || sale.customer_name || 'Walk-in Customer',
+                            customerId: sale.customerId || sale.customer_id || '',
                             totalAmount: 0,
-                            amountPaid: sale.amountPaid || 0,
-                            outstandingAmount: sale.outstandingAmount || 0,
-                            dueDate: sale.dueDate || '',
-                            paymentStatus: sale.paymentStatus || 'unpaid',
-                            rawSale: sale
+                            amountPaid: parseFloat(sale.amountPaid || sale.amount_paid || 0),
+                            outstandingAmount: parseFloat(sale.outstandingAmount !== undefined ? sale.outstandingAmount : (sale.outstanding_amount !== undefined ? sale.outstanding_amount : 0)),
+                            dueDate: sale.dueDate || sale.due_date || '',
+                            paymentStatus: sale.paymentStatus || sale.payment_status || 'unpaid'
                         };
                     }
-                    creditBills[sale.receiptNumber].totalAmount = sale.totalAmount || sale.subtotal + sale.totalTax; // approximate total if not explicitly set
-                    // Recompute total accurately based on price*qty
-                    if(sale.total) {
-                        creditBills[sale.receiptNumber].totalAmount = 0; // reset and sum
-                    }
-                }
-            });
-            
-            // Second pass for accurate total
-            sales.forEach(sale => {
-                const hasCredit = sale.paymentStatus && sale.paymentStatus !== 'fully_paid' || (sale.paymentHistory && sale.paymentHistory.some(h => h.method === 'credit'));
-                const isCredit = (sale.outstandingAmount !== undefined && sale.outstandingAmount > 0) || sale.paymentMethod === 'credit' || hasCredit;
-                
-                if (isCredit && creditBills[sale.receiptNumber]) {
-                    creditBills[sale.receiptNumber].totalAmount += sale.total;
-                    // Keep the latest payment tracking fields
-                    creditBills[sale.receiptNumber].amountPaid = sale.amountPaid;
-                    creditBills[sale.receiptNumber].outstandingAmount = sale.outstandingAmount;
-                    creditBills[sale.receiptNumber].paymentStatus = sale.paymentStatus;
+                    creditBills[recNo].totalAmount += parseFloat(sale.total || (sale.subtotal + sale.totalTax) || 0);
+                    if (sale.amountPaid !== undefined) creditBills[recNo].amountPaid = parseFloat(sale.amountPaid);
+                    if (sale.outstandingAmount !== undefined) creditBills[recNo].outstandingAmount = parseFloat(sale.outstandingAmount);
+                    if (sale.paymentStatus) creditBills[recNo].paymentStatus = sale.paymentStatus;
                 }
             });
 
-            let filtered = Object.values(creditBills).filter(bill => {
-                const matchSearch = String(bill.customer || '').toLowerCase().includes(search) || String(bill.invoice || '').toLowerCase().includes(search);
-                let matchStatus = true;
-                if (statusFilter === 'unpaid') {
-                    matchStatus = bill.paymentStatus !== 'fully_paid';
-                } else if (statusFilter === 'fully_paid') {
-                    matchStatus = bill.paymentStatus === 'fully_paid';
+            // 2. Group by Customer Party
+            const partiesMap = {};
+            const custList = (_sqliteCustomerCache && _sqliteCustomerCache.length) ? _sqliteCustomerCache : (typeof customers !== 'undefined' ? customers : []);
+
+            Object.values(creditBills).forEach(bill => {
+                const key = bill.customerId || bill.customer;
+                if (!partiesMap[key]) {
+                    const custObj = custList.find(c => c.id === bill.customerId || c.name === bill.customer);
+                    partiesMap[key] = {
+                        key: key,
+                        id: bill.customerId || (custObj ? custObj.id : ''),
+                        name: custObj ? custObj.name : bill.customer,
+                        phone: custObj ? custObj.phone : '',
+                        gstin: custObj ? custObj.gstin : '',
+                        address: custObj ? custObj.address : '',
+                        totalOutstanding: 0,
+                        activeInvoicesCount: 0,
+                        bills: []
+                    };
                 }
-                return matchSearch && matchStatus;
+                const outAmt = bill.outstandingAmount > 0 ? bill.outstandingAmount : Math.max(0, bill.totalAmount - bill.amountPaid);
+                if (bill.paymentStatus !== 'fully_paid' && outAmt > 0.009) {
+                    partiesMap[key].totalOutstanding += outAmt;
+                    partiesMap[key].activeInvoicesCount++;
+                }
+                partiesMap[key].bills.push({ ...bill, outstandingAmount: outAmt });
             });
 
-            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // 3. Compute Top Summary Cards
+            let overallOutstanding = 0;
+            let overallPartiesCount = 0;
+            let overallInvoicesCount = 0;
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center">No receivables found.</td></tr>`;
+            Object.values(partiesMap).forEach(party => {
+                if (party.totalOutstanding > 0.009) {
+                    overallOutstanding += party.totalOutstanding;
+                    overallPartiesCount++;
+                    overallInvoicesCount += party.activeInvoicesCount;
+                }
+            });
+
+            const recTotEl = document.getElementById('recSummaryTotal');
+            if (recTotEl) recTotEl.textContent = '₹' + overallOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const recPartiesEl = document.getElementById('recSummaryParties');
+            if (recPartiesEl) recPartiesEl.textContent = overallPartiesCount + (overallPartiesCount === 1 ? ' Customer' : ' Customers');
+            const recInvoicesEl = document.getElementById('recSummaryInvoices');
+            if (recInvoicesEl) recInvoicesEl.textContent = overallInvoicesCount + (overallInvoicesCount === 1 ? ' Invoice' : ' Invoices');
+
+            // 4. Filter parties by search input
+            let partyList = Object.values(partiesMap).filter(p => {
+                const matchSearch = !search ||
+                    p.name.toLowerCase().includes(search) ||
+                    (p.phone && p.phone.toLowerCase().includes(search)) ||
+                    (p.gstin && p.gstin.toLowerCase().includes(search));
+                return matchSearch && (p.totalOutstanding > 0.009 || search);
+            });
+
+            partyList.sort((a, b) => b.totalOutstanding - a.totalOutstanding);
+
+            if (partyList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 24px;">No customer receivables found.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(bill => {
-                const d = new Date(bill.date).toLocaleDateString();
-                const statusBadge = bill.paymentStatus === 'fully_paid' ? 
-                    '<span class="badge" style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Paid</span>' : 
-                    (bill.paymentStatus === 'partially_paid' ? '<span class="badge" style="background: #ffc107; color: black; padding: 4px 8px; border-radius: 4px;">Partial</span>' : 
-                    '<span class="badge" style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px;">Unpaid</span>');
+            tbody.innerHTML = partyList.map(party => {
+                const subtextParts = [];
+                if (party.phone) subtextParts.push(`📞 ${escapeHtml(party.phone)}`);
+                if (party.gstin) subtextParts.push(`GSTIN: ${escapeHtml(party.gstin)}`);
+                if (party.activeInvoicesCount > 0) subtextParts.push(`${party.activeInvoicesCount} Active ${party.activeInvoicesCount === 1 ? 'Invoice' : 'Invoices'}`);
+                const subtext = subtextParts.length > 0 ? `<div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">${subtextParts.join(' • ')}</div>` : '';
 
                 return `
-                    <tr>
-                        <td>${d}</td>
-                        <td>${bill.invoice}</td>
-                        <td>${bill.customer}</td>
-                        <td>₹${bill.totalAmount.toFixed(2)}</td>
-                        <td>₹${bill.amountPaid.toFixed(2)}</td>
-                        <td style="color: #c53030; font-weight: bold;">₹${bill.outstandingAmount.toFixed(2)}</td>
-                        <td>${bill.dueDate || '-'}</td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="openPaymentModal('sale', '${bill.invoice}')" ${bill.paymentStatus === 'fully_paid' ? 'disabled' : ''}>Pay / View</button>
-                            ${bill.customerId ? `<button class="btn btn-sm btn-secondary" onclick="openPartyLedger('${bill.customerId}', 'customer')">📖 View Ledger</button>` : ''}
+                    <tr style="cursor: pointer;" onclick="openPartyAccountView('${escapeHtml(party.key)}', 'customer')">
+                        <td style="padding: 10px 14px;">
+                            <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;">${escapeHtml(party.name)}</div>
+                            ${subtext}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; font-size: 14.5px; font-weight: 800; color: #16a34a;">
+                            ₹${party.totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openPartyAccountView('${escapeHtml(party.key)}', 'customer')" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 6px;">
+                                Open Account
+                            </button>
                         </td>
                     </tr>
                 `;
@@ -33127,79 +33639,713 @@ input:focus, select:focus, textarea:focus, button:focus {
         function renderPayablesTable() {
             const tbody = document.getElementById('payablesTableBody');
             if (!tbody) return;
-            
-            if (typeof isDataLoaded !== 'undefined' && !isDataLoaded && purchases.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center">Loading payables...</td></tr>`;
-                return;
-            }
-            
-            const search = (document.getElementById('payablesSearch').value || '').toLowerCase();
-            const statusFilter = document.getElementById('payablesStatusFilter').value;
 
-            let filtered = purchases.filter(p => {
-                if (!p) return false;
-                const status = p.paymentStatus || p.payment_status || '';
+            // Auto-fetch suppliers or purchases if in SQLite mode and currently empty
+            if (window.electronAPI && window.electronAPI.sqlite) {
+                if ((!purchases || purchases.length === 0) && window.electronAPI.sqlite.purchases) {
+                    window.electronAPI.sqlite.purchases.getAll().then(res => {
+                        const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                        if (list.length > 0) {
+                            purchases = list;
+                            renderPayablesTable();
+                        }
+                    }).catch(() => {});
+                }
+                if ((!suppliers || suppliers.length === 0) && window.electronAPI.sqlite.suppliers) {
+                    window.electronAPI.sqlite.suppliers.getAll().then(res => {
+                        const list = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+                        if (list.length > 0) {
+                            suppliers = list;
+                            renderPayablesTable();
+                        }
+                    }).catch(() => {});
+                }
+            }
+
+            const search = (document.getElementById('payablesSearch')?.value || '').toLowerCase().trim();
+
+            // 1. Group purchases into bills
+            const creditBills = {};
+            (purchases || []).forEach(p => {
+                if (!p) return;
+                const billKey = (p.id !== undefined && p.id !== null) ? ('p_' + p.id) : (p.invoiceNumber || p.invoice_number || Math.random());
+                const invNo = p.invoiceNumber || p.invoice_number || ('PUR-' + (p.id || ''));
+                const status = (p.paymentStatus || p.payment_status || '').toLowerCase();
                 const outAmt = parseFloat(p.outstandingAmount !== undefined ? p.outstandingAmount : (p.outstanding_amount !== undefined ? p.outstanding_amount : 0)) || 0;
                 const totAmt = parseFloat(p.totalAmount !== undefined ? p.totalAmount : (p.total !== undefined ? p.total : 0)) || 0;
                 const paidAmt = parseFloat(p.amountPaid !== undefined ? p.amountPaid : (p.amount_paid !== undefined ? p.amount_paid : 0)) || 0;
                 const method = (p.paymentMethod || p.payment_method || '').toLowerCase();
+
+                // Exclude cash/bank purchases that have no outstanding liability
+                if (method !== 'credit' && outAmt <= 0.009) return;
+                if (status === 'fully_paid' && outAmt <= 0.009) return;
+
                 const hasCredit = (status && status !== 'fully_paid') || (p.paymentHistory && p.paymentHistory.some(h => h.method === 'credit'));
                 const isCredit = (outAmt > 0) || method === 'credit' || hasCredit;
-                if (!isCredit && totAmt > 0 && totAmt === paidAmt) return false;
+                if (!isCredit && totAmt > 0 && Math.abs(totAmt - paidAmt) <= 0.009) return;
 
-                const sup = String(p.supplier || p.supplier_name || '').toLowerCase();
-                const inv = String(p.invoiceNumber || p.invoice_number || '').toLowerCase();
-                const matchSearch = sup.includes(search) || inv.includes(search);
+                const supplierName = p.supplier || p.supplier_name || 'General Supplier';
+                const supplierId = p.supplierId || p.supplier_id || '';
 
-                let matchStatus = true;
-                if (statusFilter === 'unpaid') {
-                    matchStatus = status !== 'fully_paid';
-                } else if (statusFilter === 'fully_paid') {
-                    matchStatus = status === 'fully_paid';
+                if (!creditBills[billKey]) {
+                    creditBills[billKey] = {
+                        id: p.id,
+                        date: p.date,
+                        invoice: invNo,
+                        supplier: supplierName,
+                        supplierId: supplierId,
+                        totalAmount: totAmt,
+                        amountPaid: paidAmt,
+                        outstandingAmount: outAmt > 0 ? outAmt : Math.max(0, parseFloat((totAmt - paidAmt).toFixed(2))),
+                        dueDate: p.dueDate || p.due_date || '',
+                        paymentStatus: status || (outAmt <= 0.009 ? 'fully_paid' : (paidAmt > 0 ? 'partially_paid' : 'unpaid'))
+                    };
                 }
-
-                return matchSearch && matchStatus;
             });
 
-            filtered.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            // 2. Group by Supplier Party
+            const partiesMap = {};
+            const supList = (suppliers || []);
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center">No payables found.</td></tr>`;
+            Object.values(creditBills).forEach(bill => {
+                const key = bill.supplierId || bill.supplier;
+                if (!partiesMap[key]) {
+                    const supObj = supList.find(s => s.id === bill.supplierId || s.name === bill.supplier);
+                    partiesMap[key] = {
+                        key: key,
+                        id: bill.supplierId || (supObj ? supObj.id : ''),
+                        name: supObj ? supObj.name : bill.supplier,
+                        phone: supObj ? supObj.phone : '',
+                        gstin: supObj ? supObj.gstin : '',
+                        address: supObj ? supObj.address : '',
+                        totalOutstanding: 0,
+                        activeInvoicesCount: 0,
+                        bills: []
+                    };
+                }
+                const outAmt = bill.outstandingAmount > 0 ? bill.outstandingAmount : Math.max(0, parseFloat((bill.totalAmount - bill.amountPaid).toFixed(2)));
+                if (bill.paymentStatus !== 'fully_paid' && outAmt > 0.009) {
+                    partiesMap[key].totalOutstanding += outAmt;
+                    partiesMap[key].activeInvoicesCount++;
+                }
+                partiesMap[key].bills.push({ ...bill, outstandingAmount: outAmt });
+            });
+
+            // 3. Compute Top Summary Cards
+            let overallOutstanding = 0;
+            let overallPartiesCount = 0;
+            let overallInvoicesCount = 0;
+
+            Object.values(partiesMap).forEach(party => {
+                if (party.totalOutstanding > 0.009) {
+                    overallOutstanding += party.totalOutstanding;
+                    overallPartiesCount++;
+                    overallInvoicesCount += party.activeInvoicesCount;
+                }
+            });
+
+            const payTotEl = document.getElementById('paySummaryTotal');
+            if (payTotEl) payTotEl.textContent = '₹' + overallOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const payPartiesEl = document.getElementById('paySummaryParties');
+            if (payPartiesEl) payPartiesEl.textContent = overallPartiesCount + (overallPartiesCount === 1 ? ' Vendor' : ' Vendors');
+            const payInvoicesEl = document.getElementById('paySummaryInvoices');
+            if (payInvoicesEl) payInvoicesEl.textContent = overallInvoicesCount + (overallInvoicesCount === 1 ? ' Bill' : ' Bills');
+
+            // 4. Filter parties by search input
+            let partyList = Object.values(partiesMap).filter(p => {
+                const matchSearch = !search ||
+                    p.name.toLowerCase().includes(search) ||
+                    (p.phone && p.phone.toLowerCase().includes(search)) ||
+                    (p.gstin && p.gstin.toLowerCase().includes(search));
+                return matchSearch && (p.totalOutstanding > 0.009 || search);
+            });
+
+            partyList.sort((a, b) => b.totalOutstanding - a.totalOutstanding);
+
+            if (partyList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 24px;">No vendor payables found.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(bill => {
-                const d = new Date(bill.date || Date.now()).toLocaleDateString();
-                const inv = bill.invoiceNumber || bill.invoice_number || '-';
-                const sup = bill.supplier || bill.supplier_name || '-';
-                const tot = parseFloat(bill.totalAmount !== undefined ? bill.totalAmount : (bill.total !== undefined ? bill.total : 0)) || 0;
-                const paid = parseFloat(bill.amountPaid !== undefined ? bill.amountPaid : (bill.amount_paid !== undefined ? bill.amount_paid : 0)) || 0;
-                const out = parseFloat(bill.outstandingAmount !== undefined ? bill.outstandingAmount : (bill.outstanding_amount !== undefined ? bill.outstanding_amount : 0)) || 0;
-                const due = bill.dueDate || bill.due_date || '-';
-                const status = bill.paymentStatus || bill.payment_status || (out <= 0 ? 'fully_paid' : (paid > 0 ? 'partially_paid' : 'unpaid'));
-
-                const statusBadge = status === 'fully_paid' ? 
-                    '<span class="badge" style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Paid</span>' : 
-                    (status === 'partially_paid' ? '<span class="badge" style="background: #ffc107; color: black; padding: 4px 8px; border-radius: 4px;">Partial</span>' : 
-                    '<span class="badge" style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px;">Unpaid</span>');
+            tbody.innerHTML = partyList.map(party => {
+                const subtextParts = [];
+                if (party.phone) subtextParts.push(`📞 ${escapeHtml(party.phone)}`);
+                if (party.gstin) subtextParts.push(`GSTIN: ${escapeHtml(party.gstin)}`);
+                if (party.activeInvoicesCount > 0) subtextParts.push(`${party.activeInvoicesCount} Active ${party.activeInvoicesCount === 1 ? 'Bill' : 'Bills'}`);
+                const subtext = subtextParts.length > 0 ? `<div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">${subtextParts.join(' • ')}</div>` : '';
 
                 return `
-                    <tr>
-                        <td>${d}</td>
-                        <td>${inv}</td>
-                        <td>${sup}</td>
-                        <td>₹${tot.toFixed(2)}</td>
-                        <td>₹${paid.toFixed(2)}</td>
-                        <td style="color: #c53030; font-weight: bold;">₹${out.toFixed(2)}</td>
-                        <td>${due}</td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="openPaymentModal('purchase', '${inv}')" ${status === 'fully_paid' ? 'disabled' : ''}>Pay / View</button>
-                            <button class="btn btn-sm btn-secondary" onclick="openPartyLedgerByName('${sup}', 'supplier')">📖 View Ledger</button>
+                    <tr style="cursor: pointer;" onclick="openPartyAccountView('${escapeHtml(party.key)}', 'supplier')">
+                        <td style="padding: 10px 14px;">
+                            <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;">${escapeHtml(party.name)}</div>
+                            ${subtext}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: right; font-size: 14.5px; font-weight: 800; color: #dc2626;">
+                            ₹${party.totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openPartyAccountView('${escapeHtml(party.key)}', 'supplier')" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 6px;">
+                                Open Account
+                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        function returnToPartySummary(moduleName) {
+            if (moduleName === 'receivables' || moduleName === 'customer') {
+                const accView = document.getElementById('receivablesAccountView');
+                const sumView = document.getElementById('receivablesSummaryView');
+                if (accView) accView.style.display = 'none';
+                if (sumView) sumView.style.display = 'block';
+                renderReceivablesTable();
+            } else {
+                const accView = document.getElementById('payablesAccountView');
+                const sumView = document.getElementById('payablesSummaryView');
+                if (accView) accView.style.display = 'none';
+                if (sumView) sumView.style.display = 'block';
+                renderPayablesTable();
+            }
+        }
+
+        async function openPartyAccountView(partyKey, type) {
+            _activePartyAccount = {
+                partyKey: partyKey,
+                type: type,
+                filterRange: 'all',
+                fromDate: '',
+                toDate: '',
+                searchQuery: ''
+            };
+
+            if (type === 'customer') {
+                const sumView = document.getElementById('receivablesSummaryView');
+                const accView = document.getElementById('receivablesAccountView');
+                if (sumView) sumView.style.display = 'none';
+                if (accView) accView.style.display = 'block';
+            } else {
+                const sumView = document.getElementById('payablesSummaryView');
+                const accView = document.getElementById('payablesAccountView');
+                if (sumView) sumView.style.display = 'none';
+                if (accView) accView.style.display = 'block';
+            }
+
+            await renderPartyAccountView();
+        }
+
+        async function renderPartyAccountView() {
+            if (!_activePartyAccount) return;
+            const { partyKey, type, filterRange, fromDate, toDate, searchQuery } = _activePartyAccount;
+            const targetContainer = document.getElementById(type === 'customer' ? 'receivablesAccountView' : 'payablesAccountView');
+            if (!targetContainer) return;
+
+            // 1. Fetch Party Master
+            let party = null;
+            if (type === 'customer') {
+                const custList = (_sqliteCustomerCache && _sqliteCustomerCache.length) ? _sqliteCustomerCache : (typeof customers !== 'undefined' ? customers : []);
+                party = custList.find(c => c.id === partyKey || c.name === partyKey);
+                if (!party && window.electronAPI?.sqlite?.customers?.get) {
+                    try {
+                        const res = await window.electronAPI.sqlite.customers.get(partyKey);
+                        if (res) party = (res.data !== undefined) ? res.data : res;
+                    } catch(e) {}
+                }
+                if (!party) {
+                    const fallbackSale = (sales || []).find(s => s.customerId === partyKey || s.customerName === partyKey || s.customer_name === partyKey);
+                    party = {
+                        id: partyKey,
+                        name: fallbackSale ? (fallbackSale.customerName || fallbackSale.customer_name) : partyKey,
+                        phone: '',
+                        gstin: '',
+                        address: ''
+                    };
+                }
+            } else {
+                party = (suppliers || []).find(s => s.id === partyKey || s.name === partyKey);
+                if (!party && window.electronAPI?.sqlite?.suppliers?.get) {
+                    try {
+                        const res = await window.electronAPI.sqlite.suppliers.get(partyKey);
+                        if (res) party = (res.data !== undefined) ? res.data : res;
+                    } catch(e) {}
+                }
+                if (!party) {
+                    const fallbackPur = (purchases || []).find(p => p.supplierId === partyKey || p.supplier === partyKey || p.supplier_id === partyKey || p.supplier_name === partyKey);
+                    party = {
+                        id: partyKey,
+                        name: fallbackPur ? (fallbackPur.supplier || fallbackPur.supplier_name) : partyKey,
+                        phone: '',
+                        gstin: '',
+                        address: ''
+                    };
+                }
+            }
+
+            // 2. Fetch all bills for this party
+            let allBills = [];
+            if (type === 'customer') {
+                const billMap = {};
+                (sales || []).forEach(s => {
+                    if (s.customerId === party.id || s.customerId === party.name || s.customerName === party.name || s.customer_name === party.name) {
+                        const invNo = s.receiptNumber || s.receipt_number || s.id;
+                        if (!billMap[invNo]) {
+                            billMap[invNo] = {
+                                date: s.date,
+                                invoice: invNo,
+                                total: 0,
+                                amountPaid: parseFloat(s.amountPaid || s.amount_paid || 0),
+                                outstanding: parseFloat(s.outstandingAmount !== undefined ? s.outstandingAmount : (s.outstanding_amount !== undefined ? s.outstanding_amount : 0)),
+                                status: s.paymentStatus || s.payment_status || 'unpaid',
+                                dueDate: s.dueDate || s.due_date || '',
+                                itemsCount: 0
+                            };
+                        }
+                        billMap[invNo].total += parseFloat(s.total || (s.subtotal + s.totalTax) || 0);
+                        billMap[invNo].itemsCount++;
+                    }
+                });
+
+                allBills = Object.values(billMap).map(b => {
+                    const out = b.outstanding > 0 ? b.outstanding : Math.max(0, b.total - b.amountPaid);
+                    return {
+                        ...b,
+                        outstanding: out,
+                        status: out <= 0.009 ? 'fully_paid' : (b.amountPaid > 0 ? 'partially_paid' : 'unpaid')
+                    };
+                });
+            } else {
+                const billMap = {};
+                (purchases || []).forEach(p => {
+                    if (p.supplierId === party.id || p.supplierId === party.name || p.supplier === party.name || p.supplier_id === party.id || p.supplier_name === party.name) {
+                        const billKey = (p.id !== undefined && p.id !== null) ? ('p_' + p.id) : (p.invoiceNumber || p.invoice_number || Math.random());
+                        const invNo = p.invoiceNumber || p.invoice_number || ('PUR-' + (p.id || ''));
+                        if (!billMap[billKey]) {
+                            billMap[billKey] = {
+                                id: p.id,
+                                date: p.date,
+                                invoice: invNo,
+                                total: parseFloat(p.totalAmount !== undefined ? p.totalAmount : (p.total !== undefined ? p.total : 0)) || 0,
+                                amountPaid: parseFloat(p.amountPaid !== undefined ? p.amountPaid : (p.amount_paid !== undefined ? p.amount_paid : 0)) || 0,
+                                outstanding: parseFloat(p.outstandingAmount !== undefined ? p.outstandingAmount : (p.outstanding_amount !== undefined ? p.outstanding_amount : 0)) || 0,
+                                status: p.paymentStatus || p.payment_status || 'unpaid',
+                                dueDate: p.dueDate || p.due_date || '',
+                                itemsCount: 0
+                            };
+                        }
+                        billMap[billKey].itemsCount++;
+                    }
+                });
+
+                allBills = Object.values(billMap).map(b => {
+                    const out = b.outstanding > 0 ? b.outstanding : Math.max(0, b.total - b.amountPaid);
+                    return {
+                        ...b,
+                        outstanding: out,
+                        status: out <= 0.009 ? 'fully_paid' : (b.amountPaid > 0 ? 'partially_paid' : 'unpaid')
+                    };
+                });
+            }
+
+            // 3. Filter bills by date range and search query
+            let filteredBills = allBills.filter(bill => {
+                let matchDate = true;
+                if (fromDate) {
+                    const d = new Date(bill.date);
+                    const f = new Date(fromDate);
+                    f.setHours(0,0,0,0);
+                    if (d < f) matchDate = false;
+                }
+                if (toDate) {
+                    const d = new Date(bill.date);
+                    const t = new Date(toDate);
+                    t.setHours(23,59,59,999);
+                    if (d > t) matchDate = false;
+                }
+                let matchSearch = true;
+                if (searchQuery) {
+                    matchSearch = String(bill.invoice || '').toLowerCase().includes(searchQuery.toLowerCase());
+                }
+                return matchDate && matchSearch;
+            });
+
+            filteredBills.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+            // 4. Calculate Financial Summaries
+            let totalBilled = 0;
+            let totalPaid = 0;
+            let totalOutstanding = 0;
+
+            allBills.forEach(b => {
+                totalBilled += b.total;
+                totalPaid += b.amountPaid;
+                totalOutstanding += b.outstanding;
+            });
+
+            // 5. Render HTML
+            const moduleName = type === 'customer' ? 'Receivable' : 'Payable';
+            const moduleKey = type === 'customer' ? 'receivables' : 'payables';
+            const icon = type === 'customer' ? '👤' : '🏢';
+            const outColor = type === 'customer' ? '#16a34a' : '#dc2626';
+
+            targetContainer.innerHTML = `
+                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <!-- Header Bar -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="returnToPartySummary('${moduleKey}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px; border-radius: 6px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;">
+                                <span>⬅</span> Back to ${moduleName}
+                            </button>
+                            <div>
+                                <div style="font-size: 18px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                    <span>${icon}</span> ${escapeHtml(party.name)}
+                                </div>
+                                <div style="font-size: 12.5px; color: #64748b; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                    ${party.phone ? `<span>📞 ${escapeHtml(party.phone)}</span>` : ''}
+                                    ${party.gstin ? `<span>GSTIN: <strong style="color: #0f172a;">${escapeHtml(party.gstin)}</strong></span>` : ''}
+                                    ${party.address ? `<span>📍 ${escapeHtml(party.address)}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportPartyAccountStatementCSV('${type}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 12px; border-radius: 6px;">
+                                📊 Export CSV
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="printPartyAccountStatement('${type}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px; border-radius: 6px;">
+                                🖨️ Print Statement
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total ${type === 'customer' ? 'Invoiced' : 'Billed'}</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 2px;">₹${totalBilled.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Paid</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 2px;">₹${totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Net Outstanding</div>
+                            <div style="font-size: 20px; font-weight: 800; color: ${outColor}; margin-top: 2px;">₹${totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Strip -->
+                    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <div class="btn-group" role="group" style="display: flex; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+                                <button type="button" class="btn btn-sm ${filterRange === 'all' ? 'btn-primary' : 'btn-light'}" onclick="setPartyAccountFilterRange('all')" style="font-size: 12px; font-weight: 600; padding: 4px 10px;">All Time</button>
+                                <button type="button" class="btn btn-sm ${filterRange === 'today' ? 'btn-primary' : 'btn-light'}" onclick="setPartyAccountFilterRange('today')" style="font-size: 12px; font-weight: 600; padding: 4px 10px;">Today</button>
+                                <button type="button" class="btn btn-sm ${filterRange === 'week' ? 'btn-primary' : 'btn-light'}" onclick="setPartyAccountFilterRange('week')" style="font-size: 12px; font-weight: 600; padding: 4px 10px;">This Week</button>
+                                <button type="button" class="btn btn-sm ${filterRange === 'month' ? 'btn-primary' : 'btn-light'}" onclick="setPartyAccountFilterRange('month')" style="font-size: 12px; font-weight: 600; padding: 4px 10px;">This Month</button>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <input type="date" id="partyAccFromDate" class="pp-form-control" style="font-size: 12px; padding: 4px 8px; width: auto;" value="${fromDate}" onchange="setPartyAccountCustomDate()">
+                                <span style="font-size: 12px; color: #64748b;">to</span>
+                                <input type="date" id="partyAccToDate" class="pp-form-control" style="font-size: 12px; padding: 4px 8px; width: auto;" value="${toDate}" onchange="setPartyAccountCustomDate()">
+                            </div>
+                        </div>
+                        <div style="min-width: 200px;">
+                            <input type="text" id="partyAccSearch" class="pp-form-control" placeholder="🔍 Search invoice #..." value="${escapeHtml(searchQuery)}" oninput="setPartyAccountSearch(this.value)" style="font-size: 12.5px; padding: 5px 10px;">
+                        </div>
+                    </div>
+
+                    <!-- Invoices & Transaction History Table -->
+                    <div class="pp-table-container">
+                        <table class="pp-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding: 7px 12px;">Date</th>
+                                    <th style="text-align: left; padding: 7px 12px;">Invoice #</th>
+                                    <th style="text-align: right; padding: 7px 12px;">Total (₹)</th>
+                                    <th style="text-align: right; padding: 7px 12px;">Paid (₹)</th>
+                                    <th style="text-align: right; padding: 7px 12px; color: ${outColor};">Outstanding (₹)</th>
+                                    <th style="text-align: center; padding: 7px 12px;">Status</th>
+                                    <th style="text-align: center; padding: 7px 12px; width: 170px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filteredBills.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 24px;">No invoices found for this period.</td></tr>` : 
+                                    filteredBills.map(bill => {
+                                        const d = new Date(bill.date || Date.now()).toLocaleDateString();
+                                        const statusBadge = bill.status === 'fully_paid' ?
+                                            '<span class="badge" style="background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Paid</span>' :
+                                            (bill.status === 'partially_paid' ? '<span class="badge" style="background: #ffc107; color: black; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Partial</span>' :
+                                            '<span class="badge" style="background: #dc3545; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Unpaid</span>');
+
+                                        return `
+                                            <tr>
+                                                <td style="padding: 9px 12px;">${d}</td>
+                                                <td style="padding: 9px 12px; font-family: monospace; font-weight: 700;">${escapeHtml(bill.invoice)}</td>
+                                                <td style="padding: 9px 12px; text-align: right;">₹${bill.total.toFixed(2)}</td>
+                                                <td style="padding: 9px 12px; text-align: right; color: #2563eb;">₹${bill.amountPaid.toFixed(2)}</td>
+                                                <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: ${outColor};">₹${bill.outstanding.toFixed(2)}</td>
+                                                <td style="padding: 9px 12px; text-align: center;">${statusBadge}</td>
+                                                <td style="padding: 9px 12px; text-align: center;">
+                                                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                                        ${bill.outstanding > 0.009 ? `
+                                                            <button class="btn btn-sm btn-success" onclick="openFocusedPaymentModal('${type === 'customer' ? 'sale' : 'purchase'}', '${escapeHtml(bill.invoice)}', ${bill.outstanding})" style="padding: 3px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; background: #16a34a; border-color: #16a34a; color: white;">
+                                                                💰 Payment
+                                                            </button>
+                                                        ` : ''}
+                                                        ${type === 'customer' ? `
+                                                            <button class="btn btn-sm btn-outline-secondary" onclick="viewReceipt('${escapeHtml(bill.invoice)}')" style="padding: 3px 8px; font-size: 11.5px; border-radius: 6px;">
+                                                                👁️ View
+                                                            </button>
+                                                        ` : ''}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setPartyAccountFilterRange(range) {
+            if (!_activePartyAccount) return;
+            _activePartyAccount.filterRange = range;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            if (range === 'all') {
+                _activePartyAccount.fromDate = '';
+                _activePartyAccount.toDate = '';
+            } else if (range === 'today') {
+                _activePartyAccount.fromDate = today.toISOString().split('T')[0];
+                _activePartyAccount.toDate = today.toISOString().split('T')[0];
+            } else if (range === 'week') {
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - today.getDay());
+                _activePartyAccount.fromDate = startOfWeek.toISOString().split('T')[0];
+                _activePartyAccount.toDate = today.toISOString().split('T')[0];
+            } else if (range === 'month') {
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                _activePartyAccount.fromDate = startOfMonth.toISOString().split('T')[0];
+                _activePartyAccount.toDate = today.toISOString().split('T')[0];
+            }
+            renderPartyAccountView();
+        }
+
+        function setPartyAccountCustomDate() {
+            if (!_activePartyAccount) return;
+            _activePartyAccount.fromDate = document.getElementById('partyAccFromDate')?.value || '';
+            _activePartyAccount.toDate = document.getElementById('partyAccToDate')?.value || '';
+            _activePartyAccount.filterRange = 'custom';
+            renderPartyAccountView();
+        }
+
+        function setPartyAccountSearch(query) {
+            if (!_activePartyAccount) return;
+            _activePartyAccount.searchQuery = query || '';
+            renderPartyAccountView();
+        }
+
+        function openFocusedPaymentModal(type, invoice, outstanding) {
+            document.getElementById('fpmType').value = type;
+            document.getElementById('fpmInvoice').value = invoice;
+            document.getElementById('fpmInvoiceNo').textContent = invoice;
+            
+            const bal = parseFloat(outstanding) || 0;
+            document.getElementById('fpmMaxBalance').value = bal;
+            document.getElementById('fpmRemainingBalance').textContent = '₹' + bal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('fpmTitle').textContent = type === 'sale' ? 'Record Customer Payment' : 'Record Vendor Payment';
+            
+            const amtInput = document.getElementById('fpmAmount');
+            amtInput.value = bal > 0 ? bal.toFixed(2) : '';
+            
+            document.getElementById('fpmDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('fpmMethod').value = 'cash';
+            document.getElementById('fpmReference').value = '';
+            document.getElementById('fpmNotes').value = '';
+            
+            const errEl = document.getElementById('fpmAmountError');
+            if (errEl) {
+                errEl.style.display = 'none';
+                errEl.textContent = '';
+            }
+
+            document.getElementById('focusedPaymentModal').style.display = 'flex';
+            setTimeout(() => {
+                amtInput.focus();
+                amtInput.select();
+            }, 60);
+        }
+
+        function closeFocusedPaymentModal() {
+            document.getElementById('focusedPaymentModal').style.display = 'none';
+        }
+
+        async function submitFocusedPayment() {
+            const type = document.getElementById('fpmType').value;
+            const invoice = document.getElementById('fpmInvoice').value;
+            const maxBal = parseFloat(document.getElementById('fpmMaxBalance').value) || 0;
+            const amountStr = document.getElementById('fpmAmount').value;
+            const amount = parseFloat(amountStr);
+            const date = document.getElementById('fpmDate').value;
+            const method = document.getElementById('fpmMethod').value;
+            const reference = document.getElementById('fpmReference').value;
+            const notes = document.getElementById('fpmNotes').value;
+
+            const errEl = document.getElementById('fpmAmountError');
+            if (errEl) {
+                errEl.style.display = 'none';
+                errEl.textContent = '';
+            }
+
+            if (!amountStr || isNaN(amount) || amount <= 0) {
+                if (errEl) {
+                    errEl.textContent = 'Please enter a valid amount greater than ₹0.';
+                    errEl.style.display = 'block';
+                } else {
+                    showAlert('Please enter a valid amount greater than ₹0.', '⚠️');
+                }
+                return;
+            }
+
+            if (maxBal > 0 && amount > (maxBal + 0.01)) {
+                if (errEl) {
+                    errEl.textContent = `Amount cannot exceed remaining balance of ₹${maxBal.toFixed(2)}`;
+                    errEl.style.display = 'block';
+                } else {
+                    showAlert(`Amount cannot exceed remaining balance of ₹${maxBal.toFixed(2)}`, '⚠️');
+                }
+                return;
+            }
+
+            if (!date) {
+                showAlert('Payment Date is required.', '⚠️');
+                return;
+            }
+
+            const submitBtn = document.getElementById('fpmSubmitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const data = {
+                invoice: invoice,
+                amount: amount,
+                method: method,
+                reference: reference,
+                notes: notes,
+                date: date
+            };
+
+            try {
+                if (type === 'sale') {
+                    const res = await window.electronAPI.sqlite.payments.createSalePayment(data);
+                    if (!res || !res.success) throw new Error(res?.error || 'Failed to record sale payment');
+                    const allSales = await window.electronAPI.sqlite.sales.getAll();
+                    sales = (allSales && Array.isArray(allSales.data)) ? allSales.data : (Array.isArray(allSales) ? allSales : sales);
+                    try {
+                        const allCust = await window.electronAPI.sqlite.customers.getAll();
+                        if (allCust && allCust.success && Array.isArray(allCust.data)) customers = allCust.data;
+                    } catch(e) {}
+                } else {
+                    const res = await window.electronAPI.sqlite.payments.createPurchasePayment(data);
+                    if (!res || !res.success) throw new Error(res?.error || 'Failed to record purchase payment');
+                    const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
+                    purchases = (allPurchases && Array.isArray(allPurchases.data)) ? allPurchases.data : (Array.isArray(allPurchases) ? allPurchases : purchases);
+                    try {
+                        const allSupp = await window.electronAPI.sqlite.suppliers.getAll();
+                        if (allSupp && allSupp.success && Array.isArray(allSupp.data)) suppliers = allSupp.data;
+                    } catch(e) {}
+                }
+
+                closeFocusedPaymentModal();
+                showAlert('Payment recorded successfully!', '✅');
+
+                if (_activePartyAccount) {
+                    await renderPartyAccountView();
+                }
+                updatePPSummary();
+                if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                if (typeof renderPurchaseHistory === 'function') renderPurchaseHistory();
+            } catch (err) {
+                console.error('Error submitting payment:', err);
+                showAlert(err.message || 'Error recording payment', 'error');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        }
+
+        function exportPartyAccountStatementCSV(type) {
+            if (!_activePartyAccount) return;
+            const targetContainer = document.getElementById(type === 'customer' ? 'receivablesAccountView' : 'payablesAccountView');
+            if (!targetContainer) return;
+
+            const rows = targetContainer.querySelectorAll('table tbody tr');
+            if (!rows || rows.length === 0) {
+                showAlert('No transactions to export', '⚠️');
+                return;
+            }
+
+            let csvContent = 'Date,Invoice,Total (INR),Paid (INR),Outstanding (INR),Status\n';
+            rows.forEach(tr => {
+                const cols = tr.querySelectorAll('td');
+                if (cols.length >= 6) {
+                    const date = cols[0].innerText.trim();
+                    const inv = cols[1].innerText.trim();
+                    const total = cols[2].innerText.replace('₹', '').trim();
+                    const paid = cols[3].innerText.replace('₹', '').trim();
+                    const out = cols[4].innerText.replace('₹', '').trim();
+                    const status = cols[5].innerText.trim();
+                    csvContent += `"${date}","${inv}","${total}","${paid}","${out}","${status}"\n`;
+                }
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${_activePartyAccount.partyKey}_statement.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function printPartyAccountStatement(type) {
+            if (!_activePartyAccount) return;
+            const targetContainer = document.getElementById(type === 'customer' ? 'receivablesAccountView' : 'payablesAccountView');
+            if (!targetContainer) return;
+
+            const printContents = targetContainer.innerHTML;
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                window.print();
+                return;
+            }
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Statement - ${_activePartyAccount.partyKey}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; color: #1e293b; }
+                        button { display: none !important; }
+                        input { display: none !important; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+                        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; }
+                        th { background: #f8fafc; font-weight: 700; text-align: left; }
+                        .badge { border: 1px solid #64748b; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+                    </style>
+                </head>
+                <body>
+                    ${printContents}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 300);
         }
 
         async function openPaymentModal(type, invoice) {
@@ -33363,12 +34509,12 @@ input:focus, select:focus, textarea:focus, button:focus {
                     // Wait, OneBook needs the arrays to be accurate for renderReceivablesTable()
                     // Let's just reload sales from SQLite!
                     const allSales = await window.electronAPI.sqlite.sales.getAll();
-                    sales = allSales;
+                    sales = (allSales && Array.isArray(allSales.data)) ? allSales.data : (Array.isArray(allSales) ? allSales : sales);
                     // SQLite is source of truth
                     renderReceivablesTable();
                 } else {
                     const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
-                    purchases = allPurchases;
+                    purchases = (allPurchases && Array.isArray(allPurchases.data)) ? allPurchases.data : (Array.isArray(allPurchases) ? allPurchases : purchases);
                     // SQLite is source of truth
                     renderPayablesTable();
                 }
@@ -33396,8 +34542,9 @@ input:focus, select:focus, textarea:focus, button:focus {
             try {
                 if (type === 'sale') {
                     // Need to find sale_id first
-                    const existingSale = await window.electronAPI.sqlite.sales.search(invoice);
-                    const exactSale = existingSale && Array.isArray(existingSale) ? existingSale.find(s => s.receipt_number === invoice) : null;
+                    const searchRes = await window.electronAPI.sqlite.sales.search(invoice);
+                    const existingSale = (searchRes && Array.isArray(searchRes.data)) ? searchRes.data : (Array.isArray(searchRes) ? searchRes : []);
+                    const exactSale = existingSale.find(s => s.receipt_number === invoice || String(s.id) === invoice);
                     if (!exactSale) return showAlert('Sale not found', 'error');
                     
                     const history = await window.electronAPI.sqlite.payments.getSalePayments(exactSale.id);
@@ -33411,12 +34558,13 @@ input:focus, select:focus, textarea:focus, button:focus {
                     
                     // Sync
                     const allSales = await window.electronAPI.sqlite.sales.getAll();
-                    sales = allSales;
+                    sales = (allSales && Array.isArray(allSales.data)) ? allSales.data : (Array.isArray(allSales) ? allSales : sales);
                     // SQLite is source of truth
                     renderReceivablesTable();
                 } else if (type === 'purchase') {
-                    const existingPurchase = await window.electronAPI.sqlite.purchases.search(invoice);
-                    const exactPurchase = existingPurchase && Array.isArray(existingPurchase) ? existingPurchase.find(p => p.invoice_number === invoice) : null;
+                    const searchRes = await window.electronAPI.sqlite.purchases.search(invoice);
+                    const existingPurchase = (searchRes && Array.isArray(searchRes.data)) ? searchRes.data : (Array.isArray(searchRes) ? searchRes : []);
+                    const exactPurchase = existingPurchase.find(p => p.invoice_number === invoice || String(p.id) === invoice);
                     if (!exactPurchase) return showAlert('Purchase not found', 'error');
                     
                     const history = await window.electronAPI.sqlite.payments.getPurchasePayments(exactPurchase.id);
@@ -33429,7 +34577,7 @@ input:focus, select:focus, textarea:focus, button:focus {
                     
                     // Sync
                     const allPurchases = await window.electronAPI.sqlite.purchases.getAll();
-                    purchases = allPurchases;
+                    purchases = (allPurchases && Array.isArray(allPurchases.data)) ? allPurchases.data : (Array.isArray(allPurchases) ? allPurchases : purchases);
                     // SQLite is source of truth
                     renderPayablesTable();
                 }
@@ -35604,7 +36752,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
                 if (!atBoundary) return;
                 
                 const sequences = [
-                    ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'],
+                    ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnAddItemSale'],
                     ['saleCustomerSearch', 'discountAmount', 'courierCharges', 'paymentMethod']
                 ];
                 
@@ -35629,7 +36777,7 @@ document.addEventListener('keydown', function(e) { if (e.defaultPrevented) retur
             // ARROW DOWN / UP (VERTICAL)
             // -------------------------------------------------------------
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                const addItemIds = ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnSaleAddItem'];
+                const addItemIds = ['saleProductSearch', 'btnScanBarcode', 'saleUnitSearch', 'saleQuantity', 'salePrice', 'btnAddItemSale'];
                 if (addItemIds.includes(activeId)) {
                     if (e.key === 'ArrowDown') {
                         e.preventDefault();

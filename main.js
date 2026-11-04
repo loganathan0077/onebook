@@ -1340,6 +1340,7 @@ ipcMain.handle('sqlite:sales:create', (e, args) => handleAuthorizedSqlite(e, arg
 ipcMain.handle('sqlite:sales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSales(args?.dateStr !== undefined ? args.dateStr : args)));
 ipcMain.handle('sqlite:sales:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.searchSales(args?.query !== undefined ? args.query : args)));
 ipcMain.handle('sqlite:sales:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSaleById(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:sales:getNextReceiptNumber', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.generateInvoiceNumber()));
 ipcMain.handle('sqlite:sales:cancel', (e, args, arg2) => {
     const sessionToken = args?.sessionToken || arg2;
     const saleId = (args && typeof args === 'object' && args.id !== undefined) ? args.id : (args?.saleId || args);

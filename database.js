@@ -287,6 +287,7 @@ function createSchema() {
             amount REAL NOT NULL,
             method TEXT,
             reference TEXT,
+            notes TEXT,
             date DATETIME DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'ACTIVE',
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
@@ -562,6 +563,36 @@ function createSchema() {
     if (!salesCols.includes('customer_state')) db.exec('ALTER TABLE sales ADD COLUMN customer_state TEXT');
     if (!salesCols.includes('tax_type')) db.exec("ALTER TABLE sales ADD COLUMN tax_type TEXT DEFAULT 'intra'");
     if (!salesCols.includes('place_of_supply')) db.exec('ALTER TABLE sales ADD COLUMN place_of_supply TEXT');
+
+    // Runtime column migration for purchases
+    const purchaseCols = db.prepare('PRAGMA table_info(purchases)').all().map(c => c.name);
+    if (!purchaseCols.includes('payment_status')) db.exec("ALTER TABLE purchases ADD COLUMN payment_status TEXT DEFAULT 'fully_paid'");
+    if (!purchaseCols.includes('amount_paid')) db.exec('ALTER TABLE purchases ADD COLUMN amount_paid REAL DEFAULT 0');
+    if (!purchaseCols.includes('outstanding_amount')) db.exec('ALTER TABLE purchases ADD COLUMN outstanding_amount REAL DEFAULT 0');
+    if (!purchaseCols.includes('due_date')) db.exec('ALTER TABLE purchases ADD COLUMN due_date DATETIME');
+
+    // Runtime column migration for party_payments
+    const ppCols = db.prepare('PRAGMA table_info(party_payments)').all().map(c => c.name);
+    if (!ppCols.includes('notes')) db.exec('ALTER TABLE party_payments ADD COLUMN notes TEXT');
+
+    // Sync outstanding amount for existing credit purchases based on party_payments
+    try {
+        db.exec(`
+            UPDATE purchases SET 
+                amount_paid = COALESCE((SELECT SUM(amount) FROM party_payments WHERE purchase_id = purchases.id AND status != 'CANCELLED'), 0),
+                outstanding_amount = CASE 
+                    WHEN payment_method = 'credit' OR payment_method IS NULL OR payment_status != 'fully_paid'
+                    THEN total - COALESCE((SELECT SUM(amount) FROM party_payments WHERE purchase_id = purchases.id AND status != 'CANCELLED'), 0)
+                    ELSE 0 
+                END,
+                payment_status = CASE 
+                    WHEN (total - COALESCE((SELECT SUM(amount) FROM party_payments WHERE purchase_id = purchases.id AND status != 'CANCELLED'), 0)) <= 0.01 THEN 'fully_paid'
+                    WHEN COALESCE((SELECT SUM(amount) FROM party_payments WHERE purchase_id = purchases.id AND status != 'CANCELLED'), 0) > 0 THEN 'partially_paid'
+                    ELSE 'unpaid'
+                END
+            WHERE (outstanding_amount = 0 OR outstanding_amount IS NULL) AND (amount_paid = 0 OR amount_paid IS NULL) AND payment_method = 'credit' AND total > 0;
+        `);
+    } catch(e) {}
 
     // Runtime column migration for cash_transactions & bank_transactions (Phase 4E.11)
     const cashCols = db.prepare('PRAGMA table_info(cash_transactions)').all().map(c => c.name);

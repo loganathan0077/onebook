@@ -68,25 +68,27 @@ class PurchaseService {
             const subtotal = purchaseData.subtotal || 0;
             const discount = purchaseData.discount || 0;
             const other_charges = purchaseData.otherCharges || 0;
-            const total = purchaseData.totalAmount || 0;
+            const total = parseFloat(purchaseData.totalAmount !== undefined ? purchaseData.totalAmount : (purchaseData.total !== undefined ? purchaseData.total : 0)) || 0;
             const payment_method = purchaseData.paymentMethod || 'cash';
-            const amount_paid = purchaseData.amountPaid !== undefined ? purchaseData.amountPaid : total;
-            const outstanding_amount = purchaseData.outstandingAmount || 0;
             const due_date = purchaseData.dueDate || null;
-            const payment_status = purchaseData.paymentStatus || 'fully_paid';
+            const amount_paid = purchaseData.amountPaid !== undefined ? Number(purchaseData.amountPaid) : (payment_method === 'credit' ? 0 : total);
+            const outstanding_amount = purchaseData.outstandingAmount !== undefined ? Number(purchaseData.outstandingAmount) : (payment_method === 'credit' ? total : 0);
+            const payment_status = purchaseData.paymentStatus || (outstanding_amount <= 0.01 ? 'fully_paid' : (amount_paid > 0 ? 'partially_paid' : 'unpaid'));
             const tax_type = purchaseData.taxType || 'intra';
             const gst_applied = purchaseData.gstApplied ? 1 : 0;
 
             const insertPurchase = db.prepare(`
                 INSERT INTO purchases (
                     invoice_number, date, supplier_id, subtotal, discount,
-                    taxable_value, cgst, sgst, igst, total_tax, total, payment_method, status
-                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED')
+                    taxable_value, cgst, sgst, igst, total_tax, total, payment_method, status,
+                    payment_status, amount_paid, outstanding_amount, due_date
+                ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?, ?, ?)
             `);
             
             const purchaseInfo = insertPurchase.run(
                 invoiceNum, date, supplier_id, subtotal, discount,
-                purchaseData.taxableValue || 0, purchaseData.cgst || 0, purchaseData.sgst || 0, purchaseData.igst || 0, purchaseData.totalTax || 0, total, payment_method
+                purchaseData.taxableValue || 0, purchaseData.cgst || 0, purchaseData.sgst || 0, purchaseData.igst || 0, purchaseData.totalTax || 0, total, payment_method,
+                payment_status, amount_paid, outstanding_amount, due_date
             );
             
             const purchaseId = purchaseInfo.lastInsertRowid;
@@ -123,6 +125,24 @@ class PurchaseService {
                 const method = (payment_method || 'cash').toLowerCase();
                 const accType = (method === 'cash') ? 'cash' : 'bank';
                 cashBankService.recordPaymentMovement(accType, 'OUT', amount_paid, purchaseId, 'PURCHASE', 'Purchase Payment #' + invoiceNum, date, method, invoiceNum);
+
+                // Insert into party_payments so invoice payment history and subsequent balance calculations are complete
+                try {
+                    db.prepare(`
+                        INSERT INTO party_payments (supplier_id, purchase_id, amount, method, reference, notes, date, status)
+                        VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), 'ACTIVE')
+                    `).run(
+                        supplier_id || 'GENERAL_SUPPLIER',
+                        purchaseId,
+                        amount_paid,
+                        method === 'credit' ? 'cash' : method,
+                        invoiceNum || '',
+                        payment_method === 'credit' ? 'Down payment on credit purchase' : 'Full payment at purchase creation',
+                        date
+                    );
+                } catch(e) {
+                    console.warn('[PurchaseService] Could not insert initial party_payment:', e.message);
+                }
             }
 
             // Update supplier/vendor balance for credit / outstanding amount
@@ -162,6 +182,8 @@ class PurchaseService {
         if (dateStr) {
             purchases = db.prepare(`
                 SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                       COALESCE(s.gstin, c.gstin) as supplier_gstin,
+                       COALESCE(s.state, c.state) as supplier_state,
                        CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
                 FROM purchases p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.id 
@@ -172,11 +194,13 @@ class PurchaseService {
         } else {
             purchases = db.prepare(`
                 SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                       COALESCE(s.gstin, c.gstin) as supplier_gstin,
+                       COALESCE(s.state, c.state) as supplier_state,
                        CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
                 FROM purchases p 
                 LEFT JOIN suppliers s ON p.supplier_id = s.id 
                 LEFT JOIN customers c ON p.supplier_id = c.id
-                ORDER BY p.date DESC LIMIT 100
+                ORDER BY p.date DESC
             `).all();
         }
         
@@ -192,6 +216,8 @@ class PurchaseService {
         const q = '%' + query + '%';
         const purchases = db.prepare(`
             SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                   COALESCE(s.gstin, c.gstin) as supplier_gstin,
+                   COALESCE(s.state, c.state) as supplier_state,
                    CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
             FROM purchases p 
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
@@ -211,6 +237,10 @@ class PurchaseService {
         const db = dbManager.getDatabase();
         const purchase = db.prepare(`
             SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
+                   COALESCE(s.gstin, c.gstin) as supplier_gstin,
+                   COALESCE(s.state, c.state) as supplier_state,
+                   COALESCE(s.phone, c.phone) as supplier_phone,
+                   COALESCE(s.address, c.address) as supplier_address,
                    CASE WHEN c.id IS NOT NULL THEN 'customer' ELSE 'supplier' END as vendor_type
             FROM purchases p 
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
@@ -256,6 +286,28 @@ class PurchaseService {
                     }
                     db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(item.quantity, item.product_id);
                     stockService.adjustStock(item.product_id, item.variant_id, -item.quantity, 'PURCHASE_CANCELLED', 'PURCHASE', purchaseId);
+                } else if (item.product_id) {
+                    db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(item.quantity, item.product_id);
+                    stockService.adjustStock(item.product_id, null, -item.quantity, 'PURCHASE_CANCELLED', 'PURCHASE', purchaseId);
+                }
+            }
+
+            // Revert supplier / customer balance if purchase was on credit or had outstanding amount
+            const dueBalance = (purchase.outstanding_amount > 0) ? purchase.outstanding_amount : (purchase.payment_method === 'credit' ? purchase.total : 0);
+            if (purchase.supplier_id && dueBalance > 0) {
+                const isCustomer = (purchase.vendor_type === 'customer') || (String(purchase.supplier_id).startsWith('cus'));
+                if (isCustomer) {
+                    try {
+                        db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, purchase.supplier_id);
+                    } catch(e) {
+                        console.warn('[PurchaseService] Could not revert customer balance:', e.message);
+                    }
+                } else {
+                    try {
+                        db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, purchase.supplier_id);
+                    } catch(e) {
+                        console.warn('[PurchaseService] Could not revert supplier balance:', e.message);
+                    }
                 }
             }
 

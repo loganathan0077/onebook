@@ -82,6 +82,12 @@ class PaymentService {
                 WHERE id = ?
             `).run(newPaid, newOutstanding, newStatus, saleId);
 
+            if (customerId && customerId !== 'WALK-IN') {
+                try {
+                    db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(amount, customerId);
+                } catch(e) {}
+            }
+
             db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PAYMENT', ?)").run('SALE_PAYMENT_CREATED', paymentId);
 
             return { paymentId, saleId, newPaid, newOutstanding, newStatus };
@@ -124,6 +130,12 @@ class PaymentService {
                 WHERE id = ?
             `).run(currentPaid, newOutstanding, newStatus, sale.id);
 
+            if (sale.customer_id && sale.customer_id !== 'WALK-IN') {
+                try {
+                    db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(payment.amount, sale.customer_id);
+                } catch(e) {}
+            }
+
             db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PAYMENT', ?)").run('SALE_PAYMENT_CANCELLED', paymentId);
 
             return { paymentId, saleId: sale.id, newPaid: currentPaid, newOutstanding, newStatus, payment };
@@ -145,14 +157,24 @@ class PaymentService {
             const db = dbManager.getDatabase();
             
             // Validate purchase
-            const purchase = db.prepare('SELECT * FROM purchases WHERE invoice_number = ? OR id = ?').get(data.invoice, data.invoice);
+            const invOrId = (data.invoice !== undefined && data.invoice !== null && data.invoice !== '') ? data.invoice : data.purchaseId;
+            const purchase = db.prepare('SELECT * FROM purchases WHERE invoice_number = ? OR id = ?').get(invOrId, invOrId);
             if (!purchase) throw new Error('PURCHASE_NOT_FOUND');
             if (purchase.status === 'CANCELLED') throw new Error('PURCHASE_CANCELLED');
 
             const purchaseId = purchase.id;
-            const supplierId = purchase.supplier_id;
-            
-            if (!supplierId) throw new Error('SUPPLIER_REQUIRED_FOR_PAYMENT');
+            let supplierId = purchase.supplier_id;
+            if (!supplierId) {
+                if (purchase.supplier_name) {
+                    const sup = db.prepare('SELECT id FROM suppliers WHERE name = ?').get(purchase.supplier_name);
+                    if (sup) supplierId = sup.id;
+                    else {
+                        const cus = db.prepare('SELECT id FROM customers WHERE name = ?').get(purchase.supplier_name);
+                        if (cus) supplierId = cus.id;
+                    }
+                }
+            }
+            if (!supplierId) supplierId = 'GENERAL_SUPPLIER';
 
             const amount = parseFloat(data.amount);
             if (isNaN(amount) || amount <= 0) throw new Error('INVALID_AMOUNT');
@@ -208,6 +230,19 @@ class PaymentService {
                 WHERE id = ?
             `).run(newPaid, newOutstanding, newStatus, purchaseId);
 
+            if (supplierId) {
+                const isCustomer = (purchase.vendor_type === 'customer') || String(supplierId).startsWith('cus');
+                if (isCustomer) {
+                    try {
+                        db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(amount, supplierId);
+                    } catch(e) {}
+                } else {
+                    try {
+                        db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(amount, supplierId);
+                    } catch(e) {}
+                }
+            }
+
             db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PARTY_PAYMENT', ?)").run('PURCHASE_PAYMENT_CREATED', paymentId);
 
             return { paymentId, purchaseId, newPaid, newOutstanding, newStatus };
@@ -249,6 +284,19 @@ class PaymentService {
                     amount_paid = ?, outstanding_amount = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `).run(currentPaid, newOutstanding, newStatus, purchase.id);
+
+            if (purchase.supplier_id) {
+                const isCustomer = (purchase.vendor_type === 'customer') || String(purchase.supplier_id).startsWith('cus');
+                if (isCustomer) {
+                    try {
+                        db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(payment.amount, purchase.supplier_id);
+                    } catch(e) {}
+                } else {
+                    try {
+                        db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(payment.amount, purchase.supplier_id);
+                    } catch(e) {}
+                }
+            }
 
             db.prepare("INSERT INTO audit_log (action, record_type, record_id) VALUES (?, 'PARTY_PAYMENT', ?)").run('PURCHASE_PAYMENT_CANCELLED', paymentId);
 
