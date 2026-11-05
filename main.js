@@ -79,6 +79,78 @@ function createWindow() {
 
 // Set up IPC handlers
 
+ipcMain.handle('print-html', async (event, html, options = {}) => {
+    return new Promise((resolve) => {
+        try {
+            const senderWin = BrowserWindow.fromWebContents(event.sender);
+            const isLandscape = Boolean(options && options.landscape);
+            const pageSize = (options && options.pageSize) ? options.pageSize : 'A4';
+            const title = (options && options.title) ? options.title : 'Print Preview';
+
+            const printWin = new BrowserWindow({
+                width: isLandscape ? 1100 : 850,
+                height: isLandscape ? 750 : 900,
+                show: true,
+                title: title,
+                parent: senderWin || undefined,
+                autoHideMenuBar: true,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true
+                }
+            });
+
+            let finished = false;
+            const cleanup = (res) => {
+                if (!finished) {
+                    finished = true;
+                    try {
+                        if (!printWin.isDestroyed()) printWin.close();
+                    } catch (e) {}
+                    resolve(res);
+                }
+            };
+
+            printWin.on('closed', () => {
+                cleanup({ success: false, cancelled: true });
+            });
+
+            printWin.webContents.on('did-finish-load', () => {
+                setTimeout(() => {
+                    if (printWin.isDestroyed()) return cleanup({ success: false, error: 'Print window closed prematurely' });
+
+                    const printOptions = {
+                        silent: Boolean(options && options.silent),
+                        printBackground: true,
+                        landscape: isLandscape,
+                        pageSize: pageSize
+                    };
+
+                    printWin.webContents.print(printOptions, (success, failureReason) => {
+                        if (success) {
+                            cleanup({ success: true });
+                        } else {
+                            if (failureReason === 'cancelled' || failureReason === 'Print job-canceled' || failureReason === 'canceled') {
+                                cleanup({ success: false, cancelled: true });
+                            } else {
+                                cleanup({ success: false, error: failureReason || 'Print operation cancelled or failed' });
+                            }
+                        }
+                    });
+                }, 350);
+            });
+
+            printWin.webContents.on('did-fail-load', (e, code, desc) => {
+                cleanup({ success: false, error: `Failed to load print document: ${desc}` });
+            });
+
+            printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+        } catch (err) {
+            resolve({ success: false, error: err.message || 'Error initializing printing window' });
+        }
+    });
+});
+
 ipcMain.handle('surrender-license', async (event, licenseKey, contact) => {
     try {
         const p = getLicensePath();

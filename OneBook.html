@@ -33081,6 +33081,16 @@
             if (totalEl) totalEl.innerText = `₹${total.toFixed(2)}`;
         }
 
+        function escapePCHtml(str) {
+            if (!str && str !== 0) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function formatPCDisplayDate(dateStr) {
             if (!dateStr) return '';
             const parts = dateStr.split(/[-T ]/);
@@ -33614,55 +33624,39 @@
                 if (window.electronAPI && typeof window.electronAPI.printHTML === 'function') {
                     try {
                         const res = await window.electronAPI.printHTML(fullHtml, {
+                            title: title,
                             landscape: isLandscape,
                             pageSize: 'A4'
                         });
-                        if (res && res.success) {
+                        if (res && (res.success || res.cancelled)) {
                             return true;
                         }
-                        if (res && res.cancelled) {
-                            return false;
+                        if (res && res.error) {
+                            console.warn('[PettyCash Print] Native IPC returned error, attempting fallback window:', res.error);
                         }
-                        console.warn('[PettyCash Print] Native IPC returned failure, attempting fallback:', res?.error);
                     } catch (ipcErr) {
-                        console.warn('[PettyCash Print] Electron IPC threw error, attempting fallback:', ipcErr);
+                        console.warn('[PettyCash Print] Electron IPC threw error, attempting fallback window:', ipcErr);
                     }
                 }
 
-                // 2. Second attempt: Reliable in-DOM <iframe> print
-                let printFrame = document.getElementById('pcPrintHelperFrame');
-                if (printFrame) {
-                    try { document.body.removeChild(printFrame); } catch (e) { }
+                // 2. Second attempt: Reliable window.open popup (used across OneBook for receipts/reports)
+                const printWin = window.open('', '_blank', 'width=950,height=750');
+                if (printWin) {
+                    printWin.document.open();
+                    printWin.document.write(fullHtml);
+                    printWin.document.close();
+                    printWin.focus();
+                    setTimeout(() => {
+                        try {
+                            printWin.print();
+                        } catch (e) {
+                            console.error('[PettyCash Print] window.print error:', e);
+                        }
+                    }, 400);
+                    return true;
                 }
-                printFrame = document.createElement('iframe');
-                printFrame.id = 'pcPrintHelperFrame';
-                printFrame.style.position = 'fixed';
-                printFrame.style.right = '0';
-                printFrame.style.bottom = '0';
-                printFrame.style.width = '10px';
-                printFrame.style.height = '10px';
-                printFrame.style.opacity = '0';
-                printFrame.style.pointerEvents = 'none';
-                printFrame.style.border = 'none';
-                printFrame.style.zIndex = '-9999';
-                document.body.appendChild(printFrame);
 
-                const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-                frameDoc.open();
-                frameDoc.write(fullHtml);
-                frameDoc.close();
-
-                await new Promise(r => setTimeout(r, 400));
-                printFrame.contentWindow.focus();
-                printFrame.contentWindow.print();
-
-                setTimeout(() => {
-                    try {
-                        if (printFrame && printFrame.parentNode) printFrame.parentNode.removeChild(printFrame);
-                    } catch (e) { }
-                }, 8000);
-
-                return true;
+                throw new Error('Could not open print window. Please check printer settings.');
             } catch (err) {
                 console.error('[PettyCash Print] Printing failed:', err);
                 showAlert('Failed to open print dialog: ' + (err.message || err), '❌');
@@ -33671,10 +33665,35 @@
         }
 
         async function printPCVoucher(id) {
-            const t = pcTransactions.find(x => String(x.id) === String(id) || String(x.original_id) === String(id));
+            const t = pcTransactions.find(x => String(x.id) === String(id) || String(x.original_id) === String(id) || String(x.sqlite_id) === String(id));
             if (!t) return showAlert('Transaction not found', '⚠️');
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {});
             const bName = settings.businessName || 'SUZHI';
+            const bAddress = settings.address || '';
+            const bMobile = settings.mobile || settings.phone || '';
+            const bEmail = settings.email || '';
+            const bGstin = settings.gstin || '';
+
+            let contactParts = [];
+            if (bAddress) contactParts.push(escapePCHtml(bAddress));
+            if (bMobile) contactParts.push('Phone: ' + escapePCHtml(bMobile));
+            if (bEmail) contactParts.push('Email: ' + escapePCHtml(bEmail));
+            if (bGstin) contactParts.push('GSTIN: ' + escapePCHtml(bGstin));
+            const contactInfoHtml = contactParts.length > 0 ? `<div style="font-size: 11.5px; color: #64748b; margin-top: 4px; line-height: 1.4;">${contactParts.join(' &bull; ')}</div>` : '';
+
+            const typeLabel = (t.type || '').toUpperCase();
+            const typeColor = t.type === 'expense' ? '#dc2626' : (t.type === 'income' ? '#16a34a' : '#2563eb');
+            const typeBg = t.type === 'expense' ? '#fee2e2' : (t.type === 'income' ? '#dcfce7' : '#dbeafe');
+
+            let paymentAccountText = '';
+            if (t.type === 'transfer') {
+                const from = (t.fromAccount || 'Cash').toUpperCase();
+                const to = (t.toAccount || 'Bank').toUpperCase();
+                paymentAccountText = `${from} ➔ ${to}`;
+            } else {
+                paymentAccountText = (t.account || 'Cash').toUpperCase();
+            }
+
             const html = `<!DOCTYPE html>
                 <html>
                 <head>
@@ -33682,17 +33701,19 @@
                     <title>Petty Cash Voucher - ${t.voucherNo || ''}</title>
                     <style>
                         @page { size: A4 portrait; margin: 15mm; }
-                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; }
-                        .voucher-box { max-width: 720px; margin: 0 auto; border: 1.5px solid #334155; border-radius: 6px; padding: 30px; box-sizing: border-box; }
-                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
-                        .header h2 { margin: 0 0 4px 0; color: #1e3a8a; font-size: 22px; text-transform: uppercase; }
-                        .header h3 { margin: 0; font-size: 14px; color: #475569; letter-spacing: 1px; }
-                        .meta-row { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 13px; font-weight: 600; color: #334155; }
+                        * { box-sizing: border-box; }
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; background: #ffffff; }
+                        .voucher-box { max-width: 720px; margin: 0 auto; border: 2px solid #334155; border-radius: 8px; padding: 30px; box-sizing: border-box; }
+                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 20px; }
+                        .header h2 { margin: 0 0 4px 0; color: #1e3a8a; font-size: 22px; text-transform: uppercase; letter-spacing: 0.5px; }
+                        .header h3 { margin: 0; font-size: 14px; color: #475569; letter-spacing: 1px; font-weight: 700; }
+                        .meta-row { display: flex; justify-content: space-between; margin-bottom: 22px; font-size: 13px; font-weight: 600; color: #334155; padding: 8px 12px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                        table td { padding: 10px 12px; border: 1px solid #cbd5e1; font-size: 13px; }
-                        table td.lbl { width: 32%; background: #f8fafc; font-weight: 700; color: #1e293b; }
-                        .amount-val { font-size: 18px; font-weight: 800; color: #0f172a; }
-                        .sig-grid { display: flex; justify-content: space-between; margin-top: 60px; }
+                        table td { padding: 11px 14px; border: 1px solid #cbd5e1; font-size: 13px; }
+                        table td.lbl { width: 30%; background: #f8fafc; font-weight: 700; color: #1e293b; }
+                        .type-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 11.5px; letter-spacing: 0.5px; background: ${typeBg}; color: ${typeColor}; }
+                        .amount-val { font-size: 20px; font-weight: 800; color: #0f172a; }
+                        .sig-grid { display: flex; justify-content: space-between; margin-top: 55px; }
                         .sig-box { text-align: center; border-top: 1.5px solid #0f172a; width: 180px; padding-top: 6px; font-size: 12px; font-weight: 600; color: #475569; }
                     </style>
                 </head>
@@ -33701,27 +33722,29 @@
                         <div class="header">
                             <h2>${escapePCHtml(bName)}</h2>
                             <h3>PETTY CASH / TRANSACTION VOUCHER</h3>
+                            ${contactInfoHtml}
                         </div>
                         <div class="meta-row">
-                            <div>Voucher No: <span style="color: #0f172a;">${t.voucherNo || '-'}</span></div>
-                            <div>Date: <span style="color: #0f172a;">${formatPCDisplayDate(t.date)}</span></div>
+                            <div>Voucher No: <span style="color: #0f172a; font-weight: 700;">${escapePCHtml(t.voucherNo || '-')}</span></div>
+                            <div>Date: <span style="color: #0f172a; font-weight: 700;">${formatPCDisplayDate(t.date)}</span></div>
                         </div>
                         <table>
-                            <tr><td class="lbl">Transaction Type</td><td style="font-weight: 700; text-transform: uppercase; color: ${t.type === 'expense' ? '#dc2626' : (t.type === 'income' ? '#16a34a' : '#2563eb')};">${t.type}</td></tr>
-                            ${t.category ? `<tr><td class="lbl">Category</td><td>${escapePCHtml(t.category)}</td></tr>` : ''}
-                            <tr><td class="lbl">Account / Mode</td><td>${t.type === 'transfer' ? `${(t.fromAccount || 'Cash').toUpperCase()} ➔ ${(t.toAccount || 'Bank').toUpperCase()}` : (t.account || 'Cash').toUpperCase()}</td></tr>
+                            <tr><td class="lbl">Transaction Type</td><td><span class="type-badge">${typeLabel}</span></td></tr>
+                            ${t.category ? `<tr><td class="lbl">Category</td><td style="font-weight: 600;">${escapePCHtml(t.category)}</td></tr>` : ''}
+                            <tr><td class="lbl">Payment Account</td><td style="font-weight: 600;">${escapePCHtml(paymentAccountText)}</td></tr>
                             <tr><td class="lbl">Description</td><td>${escapePCHtml(t.description || '-')}</td></tr>
-                            <tr><td class="lbl">Remarks / Ref</td><td>${escapePCHtml(t.remarks || '-')}</td></tr>
-                            <tr><td class="lbl">Amount</td><td class="amount-val">₹${t.amount.toFixed(2)}</td></tr>
+                            <tr><td class="lbl">Remarks / Reference</td><td>${escapePCHtml(t.remarks || '-')}</td></tr>
+                            <tr><td class="lbl">Amount</td><td class="amount-val">₹${Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
                         </table>
                         <div class="sig-grid">
                             <div class="sig-box">Prepared By</div>
+                            <div class="sig-box">Checked By</div>
                             <div class="sig-box">Authorised Signatory</div>
                         </div>
                     </div>
                 </body>
                 </html>`;
-            await executePCPrintDocument(html, `Petty Cash Voucher - ${t.voucherNo || ''}`, false);
+            return await executePCPrintDocument(html, `Petty Cash Voucher - ${t.voucherNo || ''}`, false);
         }
 
 
@@ -33993,6 +34016,16 @@
 
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || (typeof getDefaultSettings === 'function' ? getDefaultSettings() : {});
             const bName = settings.businessName || 'SUZHI';
+            const bAddress = settings.address || '';
+            const bMobile = settings.mobile || settings.phone || '';
+            const bEmail = settings.email || '';
+            const bGstin = settings.gstin || '';
+            let reportContactParts = [];
+            if (bAddress) reportContactParts.push(escapePCHtml(bAddress));
+            if (bMobile) reportContactParts.push('Phone: ' + escapePCHtml(bMobile));
+            if (bEmail) reportContactParts.push('Email: ' + escapePCHtml(bEmail));
+            if (bGstin) reportContactParts.push('GSTIN: ' + escapePCHtml(bGstin));
+            const reportContactHtml = reportContactParts.length > 0 ? `<div style="font-size: 10px; color: #64748b; margin-top: 2px;">${reportContactParts.join(' &bull; ')}</div>` : '';
 
             const now = new Date();
             const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -34325,6 +34358,7 @@
                     <!-- Report Header -->
                     <div class="pc-print-header">
                         <div class="pc-print-biz-name">${escapePCHtml(bName)}</div>
+                        ${reportContactHtml}
                         <div class="pc-print-title">PETTY CASH &amp; EXPENSES REPORT</div>
                         <div class="pc-print-meta">
                             <span><strong>${periodText}</strong></span>
@@ -34455,7 +34489,7 @@
             `;
 
             const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Petty Cash & Expenses Report</title>${printStyles}</head><body>${html}</body></html>`;
-            await executePCPrintDocument(fullHtml, 'Petty Cash & Expenses Report', true);
+            return await executePCPrintDocument(fullHtml, 'Petty Cash & Expenses Report', true);
         }
 
         // Continuous Barcode Scanning Logic
