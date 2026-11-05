@@ -5799,18 +5799,6 @@
                                                 + Add
                                             </button>
                                         </div>
-                                        <!-- Selected Product Feedback Strip -->
-                                        <div id="purchaseSelectedProduct"
-                                            style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 12px; align-items: center; justify-content: space-between; font-size: 12px; color: #166534;">
-                                            <div>
-                                                <strong>Selected:</strong> <span id="purchaseProductName">Product
-                                                    Name</span>
-                                                <span style="color: #64748b; margin-left: 10px;">Current Stock: <strong
-                                                        id="purchaseCurrentStock">0</strong></span>
-                                            </div>
-                                            <button type="button" onclick="cancelPurchaseSelection()"
-                                                style="background: transparent; border: none; color: #dc2626; cursor: pointer; font-size: 14px; font-weight: bold;">✕</button>
-                                        </div>
                                     </div>
 
                                     <!-- Items Table (8 Exactly Aligned Columns) -->
@@ -15738,6 +15726,16 @@
                     }
                 }
 
+                // If a product is already selected and search dropdown is not open, advance to Quantity
+                if (selectedPurchaseProduct && (!resultsDiv || resultsDiv.style.display === 'none')) {
+                    const qEl = document.getElementById('purchaseQty');
+                    if (qEl) {
+                        qEl.focus();
+                        if (qEl.select) qEl.select();
+                    }
+                    return;
+                }
+
                 // 2. Fallback: Lookup by input value (barcode, product code, or name)
                 const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
                 if (q) {
@@ -15851,12 +15849,16 @@
         }
 
         function updatePurchaseSearchHighlight(items) {
-            items.forEach(item => item.classList.remove('highlighted'));
-            if (purchaseSearchHighlightIndex >= 0 && purchaseSearchHighlightIndex < items.length) {
-                const activeItem = items[purchaseSearchHighlightIndex];
-                activeItem.classList.add('highlighted');
-                activeItem.scrollIntoView({ block: 'nearest' });
-            }
+            items.forEach((item, idx) => {
+                if (idx === purchaseSearchHighlightIndex) {
+                    item.classList.add('highlighted');
+                    item.style.backgroundColor = '#eff6ff';
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('highlighted');
+                    item.style.backgroundColor = '';
+                }
+            });
         }
 
         let currentPurchaseSearchResults = [];
@@ -15876,8 +15878,6 @@
             if (selectedPurchaseProduct) {
                 selectedPurchaseProduct = null;
                 window.selectedPurchaseVariant = null;
-                const selFeedback = document.getElementById('purchaseSelectedProduct');
-                if (selFeedback) selFeedback.style.display = 'none';
             }
 
             const prodList = (typeof products !== 'undefined' && Array.isArray(products)) ? products : [];
@@ -15927,7 +15927,7 @@
                 const varParam = item.variant ? `'${item.variant.id}'` : 'null';
                 return `
                 <div class="search-result-item ${index === 0 ? 'highlighted' : ''}" id="ps-result-${index}" 
-                     style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px;"
+                     style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px; ${index === 0 ? 'background-color: #eff6ff;' : ''}"
                      onmouseenter="setPurchaseSearchHighlight(${index})"
                      onclick="selectPurchaseProduct('${item.parent.id}', ${varParam})">
                     <div style="font-weight: 600; color: #0f172a;">${item.displayName}</div>
@@ -15982,14 +15982,6 @@
             selectedPurchaseProduct = parent;
             window.selectedPurchaseVariant = variant;
 
-            // Populate toolbar feedback strip
-            const pNameEl = document.getElementById('purchaseProductName');
-            if (pNameEl) pNameEl.textContent = displayName;
-            const pStockEl = document.getElementById('purchaseCurrentStock');
-            if (pStockEl) pStockEl.textContent = currentStock;
-            const selStrip = document.getElementById('purchaseSelectedProduct');
-            if (selStrip) selStrip.style.display = 'flex';
-
             // Populate Add Product toolbar input controls
             const qtyInput = document.getElementById('purchaseQty');
             if (qtyInput) qtyInput.value = 1;
@@ -16003,11 +15995,15 @@
                 if (!gstSelect.value) gstSelect.value = '18';
             }
 
-            // Hide search dropdown & clear input
+            // Show the selected product name only in the search input until it is added
             const searchInput = document.getElementById('purchaseSearchInput');
-            if (searchInput) searchInput.value = '';
+            if (searchInput) searchInput.value = displayName;
+
+            // Hide search dropdown & reset suggestion states
             const resultsDiv = document.getElementById('purchaseSearchResults');
             if (resultsDiv) resultsDiv.style.display = 'none';
+            currentPurchaseSearchResults = [];
+            purchaseSearchHighlightIndex = -1;
 
             // Focus Qty field in the Add Product input row
             const focusQty = () => {
@@ -16186,6 +16182,7 @@
         }
 
         function addPurchaseItem() {
+            if (window._isAddingPurchaseItem) return;
             if (!selectedPurchaseProduct) {
                 showAlert('Please select a product from search', '⚠️');
                 const searchInput = document.getElementById('purchaseSearchInput');
@@ -16195,6 +16192,8 @@
                 }
                 return;
             }
+            window._isAddingPurchaseItem = true;
+
             const qty = parseFloat(document.getElementById('purchaseQty').value);
             const price = parseFloat(document.getElementById('purchaseItemPrice').value) || 0;
             const gstEl = document.getElementById('purchaseItemGST');
@@ -16202,6 +16201,9 @@
 
             if (isNaN(qty) || qty <= 0) {
                 showAlert('Please enter a valid quantity greater than 0', '⚠️');
+                window._isAddingPurchaseItem = false;
+                const qEl = document.getElementById('purchaseQty');
+                if (qEl) { qEl.focus(); qEl.select(); }
                 return;
             }
 
@@ -16233,18 +16235,32 @@
 
             updatePurchaseTable();
 
-            // Clear current selection
-            document.getElementById('purchaseSelectedProduct').style.display = 'none';
+            // Clear current selection and input fields
             selectedPurchaseProduct = null;
             window.selectedPurchaseVariant = null;
 
-            // Keyboard workflow step 9: Automatically return focus to product search field
             const searchInput = document.getElementById('purchaseSearchInput');
+            if (searchInput) searchInput.value = '';
+
+            const qtyInput = document.getElementById('purchaseQty');
+            if (qtyInput) qtyInput.value = 1;
+
+            const priceInput = document.getElementById('purchaseItemPrice');
+            if (priceInput) priceInput.value = '0.00';
+
+            const gstSelect = document.getElementById('purchaseItemGST');
+            if (gstSelect) gstSelect.value = '18';
+
+            const selStrip = document.getElementById('purchaseSelectedProduct');
+            if (selStrip) selStrip.style.display = 'none';
+
+            // Automatically return focus to product search field
             if (searchInput) {
-                searchInput.value = '';
                 searchInput.focus();
                 setTimeout(() => { searchInput.focus(); }, 30);
             }
+
+            setTimeout(() => { window._isAddingPurchaseItem = false; }, 120);
         }
 
         function updatePurchaseItemQty(index, newQty) {
@@ -16289,11 +16305,18 @@
         }
 
         function cancelPurchaseSelection() {
-            document.getElementById('purchaseSelectedProduct').style.display = 'none';
             selectedPurchaseProduct = null;
             window.selectedPurchaseVariant = null;
+            const selStrip = document.getElementById('purchaseSelectedProduct');
+            if (selStrip) selStrip.style.display = 'none';
             const searchInput = document.getElementById('purchaseSearchInput');
             if (searchInput) searchInput.value = '';
+            const qtyInput = document.getElementById('purchaseQty');
+            if (qtyInput) qtyInput.value = '1';
+            const priceInput = document.getElementById('purchaseItemPrice');
+            if (priceInput) priceInput.value = '0.00';
+            const gstSelect = document.getElementById('purchaseItemGST');
+            if (gstSelect) gstSelect.value = '18';
         }
 
         function updatePurchaseTable() {
@@ -18554,16 +18577,6 @@
 
                     hidePurchaseAddNewProductForm();
 
-                    // Show selection area
-                    const selectionArea = document.getElementById('purchaseSelectedProduct');
-                    if (selectionArea) selectionArea.style.display = 'flex';
-
-                    const prodNameDisplay = document.getElementById('purchaseProductName');
-                    if (prodNameDisplay) prodNameDisplay.textContent = newProd.name;
-
-                    const stockDisplay = document.getElementById('purchaseCurrentStock');
-                    if (stockDisplay) stockDisplay.textContent = newProd.stock || 0;
-
                     const priceInput = document.getElementById('purchaseItemPrice');
                     // Default to Cost Price
                     if (priceInput) priceInput.value = newProd.costPrice || 0;
@@ -18573,6 +18586,17 @@
 
                     const qtyInput = document.getElementById('purchaseQty');
                     if (qtyInput) qtyInput.value = 1;
+
+                    // Automatically focus Quantity field
+                    const focusQty = () => {
+                        const qEl = document.getElementById('purchaseQty');
+                        if (qEl) {
+                            qEl.focus();
+                            if (qEl.select) qEl.select();
+                        }
+                    };
+                    focusQty();
+                    setTimeout(focusQty, 50);
 
                     showAlert('Product Created & Selected!', '✅');
 
@@ -38907,8 +38931,7 @@
                     'purchaseSearchInput'
                 ];
 
-                const productRow = document.getElementById('purchaseSelectedProduct');
-                if (productRow && productRow.style.display !== 'none') {
+                if (typeof selectedPurchaseProduct !== 'undefined' && selectedPurchaseProduct) {
                     explicitOrder.push('purchaseQty', 'purchaseItemPrice', 'purchaseItemGST', 'purchaseAddBtn');
                 }
 
