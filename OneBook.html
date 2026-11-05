@@ -305,8 +305,25 @@
                     await refreshUI();
                 }
 
-                if (!document.querySelector('.tab-content.active')) {
-                    if (typeof switchTab === 'function') switchTab('dashboard');
+                const savedTab = sessionStorage.getItem('onebook_active_tab') || 'dashboard';
+                const savedPPModule = sessionStorage.getItem('onebook_pp_module');
+                const savedParty = sessionStorage.getItem('onebook_active_party');
+
+                if (typeof switchTab === 'function') {
+                    switchTab(savedTab);
+                    if (savedTab === 'purchaseparties' && savedPPModule && typeof switchPPModule === 'function') {
+                        await switchPPModule(savedPPModule);
+                        if (savedParty) {
+                            try {
+                                const p = JSON.parse(savedParty);
+                                if (p && p.partyKey && p.type && typeof openPartyAccountView === 'function') {
+                                    setTimeout(() => { openPartyAccountView(p.partyKey, p.type); }, 120);
+                                }
+                            } catch (err) {
+                                console.error('Error restoring active party account:', err);
+                            }
+                        }
+                    }
                 }
             } else {
                 // Redirect to the dedicated login page
@@ -15599,6 +15616,13 @@
                 moduleName = 'entry';
             }
 
+            try {
+                sessionStorage.setItem('onebook_pp_module', moduleName);
+                if (moduleName !== 'receivables' && moduleName !== 'payables') {
+                    sessionStorage.removeItem('onebook_active_party');
+                }
+            } catch (e) {}
+
             // 1. Highlight selected left-side button
             document.querySelectorAll('.pp-nav-item').forEach(item => {
                 const itemMod = item.getAttribute('data-module');
@@ -20003,6 +20027,10 @@
             }
 
             // Hide all tabs
+            try {
+                sessionStorage.setItem('onebook_active_tab', tabName);
+            } catch (e) {}
+
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
                 tab.style.display = 'none'; // Ensure hidden
@@ -20130,8 +20158,9 @@
                     if (typeof loadPurchasePartiesData === 'function') loadPurchasePartiesData();
                     if (typeof updatePPSummary === 'function') updatePPSummary();
                     if (typeof switchPPModule === 'function') {
+                        const savedMod = sessionStorage.getItem('onebook_pp_module');
                         const activeItem = document.querySelector('.pp-nav-item.active');
-                        const mod = activeItem ? (activeItem.getAttribute('data-module') || 'entry') : 'entry';
+                        const mod = savedMod || (activeItem ? (activeItem.getAttribute('data-module') || 'entry') : 'entry');
                         switchPPModule(mod);
                     }
                 } else if (tabName === 'receivables') {
@@ -36766,6 +36795,10 @@
         }
 
         function returnToPartySummary(moduleName) {
+            try {
+                sessionStorage.removeItem('onebook_active_party');
+            } catch (e) {}
+
             if (moduleName === 'receivables' || moduleName === 'customer') {
                 const accView = document.getElementById('receivablesAccountView');
                 const sumView = document.getElementById('receivablesSummaryView');
@@ -36790,6 +36823,10 @@
                 toDate: '',
                 searchQuery: ''
             };
+
+            try {
+                sessionStorage.setItem('onebook_active_party', JSON.stringify({ partyKey, type }));
+            } catch (e) {}
 
             if (type === 'customer') {
                 const sumView = document.getElementById('receivablesSummaryView');
@@ -39441,8 +39478,21 @@
         };
     </script>
     <script>
+        // Prevent accidental data loss on refresh/close when cart or purchase bill has unsaved items
+        window.addEventListener('beforeunload', function (e) {
+            const hasUnsavedPurchase = typeof purchaseCart !== 'undefined' && Array.isArray(purchaseCart) && purchaseCart.length > 0;
+            const hasUnsavedSale = typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0;
+            if (hasUnsavedPurchase || hasUnsavedSale) {
+                const message = 'You have unsaved bill items that will be lost. Are you sure you want to reload?';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
+
         document.addEventListener('keydown', function (e) {
             if (e.defaultPrevented) return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
             const purchaseTab = document.getElementById('purchaseparties');
             if (!purchaseTab || !purchaseTab.classList.contains('active')) return;
 
@@ -39486,6 +39536,7 @@
     <script>
         document.addEventListener('keydown', function (e) {
             if (e.defaultPrevented) return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
 
             // SETTINGS SHORTCUTS
             const settingsTab = document.getElementById('settings');

@@ -49,9 +49,28 @@ function createWindow() {
 
     
     win.webContents.on('before-input-event', (event, input) => {
-        if (input.type === 'keyDown' && input.key === 'F12') {
-            win.webContents.reload();
-            event.preventDefault();
+        if (input.type === 'keyDown') {
+            const isR = input.key.toLowerCase() === 'r';
+            const isCmdOrCtrl = Boolean(input.control || input.meta);
+            if (isCmdOrCtrl && isR) {
+                if (input.shift) {
+                    win.webContents.reloadIgnoringCache();
+                } else {
+                    win.webContents.reload();
+                }
+                event.preventDefault();
+                return;
+            }
+            if (input.key === 'F5') {
+                win.webContents.reload();
+                event.preventDefault();
+                return;
+            }
+            if (input.key === 'F12') {
+                win.webContents.reload();
+                event.preventDefault();
+                return;
+            }
         }
     });
 
