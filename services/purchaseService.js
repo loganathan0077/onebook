@@ -18,40 +18,115 @@ class PurchaseService {
     createPurchase(purchaseData, testFailure = false) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
-            
-            // Validate all items
+
+            // Validate, resolve or auto-create all products and variants atomically
             for (let item of purchaseData.items) {
-                if (!item.variantId) {
-                    const defaultVariant = db.prepare('SELECT id FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 1').get(item.productId);
-                    if (defaultVariant) {
-                        item.variantId = defaultVariant.id;
-                    } else {
-                        const prod = db.prepare('SELECT name, barcode, cost_price, price, stock FROM products WHERE id = ?').get(item.productId);
-                        if (prod) {
-                            const newVar = db.prepare(`
-                                INSERT INTO product_variants (product_id, variant_name, sku, barcode, buying_price, selling_price, stock)
-                                VALUES (?, 'Standard', '', ?, ?, ?, ?)
-                            `).run(item.productId, prod.barcode || '', prod.cost_price || 0, prod.price || 0, prod.stock || 0);
-                            item.variantId = newVar.lastInsertRowid;
-                        }
-                    }
+                let prod = null;
+
+                // 1. Try finding existing product by numeric SQLite ID
+                if (item.productId && (typeof item.productId === 'number' || (!isNaN(item.productId) && Number.isInteger(Number(item.productId))))) {
+                    const numericId = Number(item.productId);
+                    prod = db.prepare('SELECT id, name, barcode, category, unit, price, cost_price, stock, hsn, gst_rate FROM products WHERE id = ?').get(numericId);
                 }
 
-                const variant = db.prepare('SELECT id, product_id FROM product_variants WHERE id = ?').get(item.variantId);
+                // 2. If not found by ID (e.g. temporary ID or name provided), lookup by name
+                const itemName = (item.name || item.productName || '').trim();
+                if (!prod && itemName) {
+                    prod = db.prepare('SELECT id, name, barcode, category, unit, price, cost_price, stock, hsn, gst_rate FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(itemName);
+                }
+
+                // 3. If product does not exist, auto-create it inside this transaction
+                if (!prod) {
+                    const costPrice = parseFloat(item.price !== undefined ? item.price : (item.rate !== undefined ? item.rate : 0)) || 0;
+                    const sellingPrice = parseFloat(item.sellingPrice || item.price || item.rate || 0) || costPrice;
+                    const barcode = item.barcode || ('BAR-' + Date.now().toString().slice(-6));
+                    const category = item.category || 'General';
+                    const unit = item.unit || 'Piece';
+                    const hsn = item.hsn || '';
+                    const gstRate = parseFloat(item.gst !== undefined ? item.gst : (item.gstRate !== undefined ? item.gstRate : 0)) || 0;
+
+                    const insProd = db.prepare(`
+                        INSERT INTO products (name, barcode, category, unit, price, cost_price, stock, min_stock, description, hsn, gst_rate)
+                        VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)
+                    `).run(
+                        itemName || 'New Product',
+                        barcode,
+                        category,
+                        unit,
+                        sellingPrice,
+                        costPrice,
+                        item.description || null,
+                        hsn,
+                        gstRate
+                    );
+                    const newProdId = insProd.lastInsertRowid;
+                    prod = {
+                        id: newProdId,
+                        name: itemName,
+                        barcode: barcode,
+                        category: category,
+                        unit: unit,
+                        price: sellingPrice,
+                        cost_price: costPrice,
+                        stock: 0,
+                        hsn: hsn,
+                        gst_rate: gstRate
+                    };
+                }
+
+                // Set item.productId to the guaranteed SQLite integer ID
+                item.productId = prod.id;
+
+                // 4. Resolve or auto-create variant
+                let variant = null;
+                // If variantId is a valid number, look it up for this product
+                if (item.variantId && (typeof item.variantId === 'number' || (!isNaN(item.variantId) && Number.isInteger(Number(item.variantId))))) {
+                    variant = db.prepare('SELECT id, product_id, stock FROM product_variants WHERE id = ? AND product_id = ?').get(Number(item.variantId), prod.id);
+                }
+                // If not found, match by variant name
+                if (!variant && item.variantName && typeof item.variantName === 'string' && item.variantName.trim()) {
+                    variant = db.prepare('SELECT id, product_id, stock FROM product_variants WHERE product_id = ? AND LOWER(TRIM(variant_name)) = LOWER(TRIM(?))').get(prod.id, item.variantName.trim());
+                }
+                // If still not found, check if product has any existing variant
                 if (!variant) {
-                    let err = new Error('VARIANT_NOT_FOUND');
-                    err.code = 'VARIANT_NOT_FOUND';
-                    throw err;
+                    variant = db.prepare('SELECT id, product_id, stock FROM product_variants WHERE product_id = ? ORDER BY id ASC LIMIT 1').get(prod.id);
                 }
-                if (variant.product_id !== item.productId) {
-                    let err = new Error('VARIANT_PRODUCT_MISMATCH');
-                    err.code = 'VARIANT_PRODUCT_MISMATCH';
-                    throw err;
+                // If no variant exists at all, auto-create a standard variant
+                if (!variant) {
+                    const costPrice = parseFloat(item.price !== undefined ? item.price : (item.rate !== undefined ? item.rate : 0)) || 0;
+                    const sellingPrice = parseFloat(item.sellingPrice || item.price || item.rate || 0) || costPrice;
+                    const varName = (item.variantName && typeof item.variantName === 'string' && item.variantName.trim()) ? item.variantName.trim() : 'Standard';
+                    const newVar = db.prepare(`
+                        INSERT INTO product_variants (product_id, variant_name, sku, barcode, buying_price, selling_price, stock)
+                        VALUES (?, ?, '', ?, ?, ?, 0)
+                    `).run(prod.id, varName, prod.barcode || '', costPrice, sellingPrice);
+                    variant = {
+                        id: newVar.lastInsertRowid,
+                        product_id: prod.id,
+                        stock: 0
+                    };
                 }
+
+                item.variantId = variant.id;
             }
 
             const invoiceNum = purchaseData.invoiceNumber || this.generateInvoiceNumber();
-            const supplier_id = purchaseData.supplierId || null;
+            const supplier_name = purchaseData.supplier || 'Unknown Supplier';
+            let supplier_id = purchaseData.supplierId || null;
+
+            // Validate supplier_id against suppliers table to prevent foreign key errors
+            if (supplier_id) {
+                const supExists = db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplier_id);
+                if (!supExists) {
+                    const supByName = db.prepare('SELECT id FROM suppliers WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(supplier_name);
+                    supplier_id = supByName ? supByName.id : null;
+                }
+            } else if (supplier_name) {
+                const supByName = db.prepare('SELECT id FROM suppliers WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))').get(supplier_name);
+                if (supByName) {
+                    supplier_id = supByName.id;
+                }
+            }
 
             if (invoiceNum && supplier_id) {
                 const duplicate = db.prepare("SELECT id FROM purchases WHERE invoice_number = ? AND supplier_id = ? AND status != 'CANCELLED'").get(invoiceNum, supplier_id);
@@ -61,9 +136,8 @@ class PurchaseService {
                     throw err;
                 }
             }
-            
+
             // Map the fields
-            const supplier_name = purchaseData.supplier || 'Unknown Supplier';
             const date = purchaseData.date;
             const subtotal = purchaseData.subtotal || 0;
             const discount = purchaseData.discount || 0;
@@ -84,13 +158,13 @@ class PurchaseService {
                     payment_status, amount_paid, outstanding_amount, due_date
                 ) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?, ?, ?)
             `);
-            
+
             const purchaseInfo = insertPurchase.run(
                 invoiceNum, date, supplier_id, subtotal, discount,
                 purchaseData.taxableValue || 0, purchaseData.cgst || 0, purchaseData.sgst || 0, purchaseData.igst || 0, purchaseData.totalTax || 0, total, payment_method,
                 payment_status, amount_paid, outstanding_amount, due_date
             );
-            
+
             const purchaseId = purchaseInfo.lastInsertRowid;
 
             const insertItem = db.prepare(`
@@ -99,27 +173,27 @@ class PurchaseService {
                     taxable_value, cgst, sgst, igst
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            
+
             for (let item of purchaseData.items) {
                 const qtyToAdd = parseFloat(item.qty || item.quantity || 0);
-                const price = item.price !== undefined ? parseFloat(item.price) : 0;
-                const itemTotal = item.total || (qtyToAdd * price);
-                
+                const price = parseFloat(item.price !== undefined ? item.price : (item.rate !== undefined ? item.rate : 0)) || 0;
+                const itemTotal = item.total !== undefined ? parseFloat(item.total) : (qtyToAdd * price);
+
                 insertItem.run(
-                    purchaseId, item.productId, item.name || item.productName || 'Unknown Product', item.variantId, 
+                    purchaseId, item.productId, item.name || item.productName || 'Unknown Product', item.variantId,
                     qtyToAdd, price, item.discount || 0, itemTotal,
                     item.taxableValue || 0, item.cgst || 0, item.sgst || 0, item.igst || 0
                 );
 
                 // Update product variant stock and buying price
                 db.prepare('UPDATE product_variants SET buying_price = ? WHERE id = ?').run(price, item.variantId);
-                
+
                 // Also update product cost_price and stock
                 db.prepare('UPDATE products SET cost_price = ?, stock = stock + ? WHERE id = ?').run(price, qtyToAdd, item.productId);
 
                 stockService.adjustStock(item.productId, item.variantId, qtyToAdd, 'PURCHASE', 'PURCHASE', purchaseId, date);
             }
-            
+
             // Record Cash / Bank movement for immediate payment
             if (amount_paid > 0) {
                 const method = (payment_method || 'cash').toLowerCase();
@@ -140,7 +214,7 @@ class PurchaseService {
                         payment_method === 'credit' ? 'Down payment on credit purchase' : 'Full payment at purchase creation',
                         date
                     );
-                } catch(e) {
+                } catch (e) {
                     console.warn('[PurchaseService] Could not insert initial party_payment:', e.message);
                 }
             }
@@ -152,13 +226,13 @@ class PurchaseService {
                 if (isCustomer) {
                     try {
                         db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
-                    } catch(e) {
+                    } catch (e) {
                         console.warn('[PurchaseService] Could not update customer balance:', e.message);
                     }
                 } else {
                     try {
                         db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, supplier_id);
-                    } catch(e) {
+                    } catch (e) {
                         console.warn('[PurchaseService] Could not update supplier balance:', e.message);
                     }
                 }
@@ -203,7 +277,7 @@ class PurchaseService {
                 ORDER BY p.date DESC
             `).all();
         }
-        
+
         const getItems = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?');
         for (let p of purchases) {
             p.items = getItems.all(p.id);
@@ -225,7 +299,7 @@ class PurchaseService {
             WHERE p.invoice_number LIKE ? OR p.date LIKE ? OR COALESCE(s.name, c.name) LIKE ? OR p.status LIKE ? 
             ORDER BY p.date DESC LIMIT 50
         `).all(q, q, q, q);
-        
+
         const getItems = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?');
         for (let p of purchases) {
             p.items = getItems.all(p.id);
@@ -261,7 +335,7 @@ class PurchaseService {
     cancelPurchase(purchaseId) {
         return dbManager.transaction(() => {
             const db = dbManager.getDatabase();
-            
+
             const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(purchaseId);
             if (!purchase) {
                 let err = new Error('PURCHASE_NOT_FOUND');
@@ -275,7 +349,7 @@ class PurchaseService {
             }
 
             const items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(purchaseId);
-            
+
             for (let item of items) {
                 if (item.variant_id) {
                     const variant = db.prepare('SELECT id, product_id FROM product_variants WHERE id = ?').get(item.variant_id);
@@ -304,13 +378,13 @@ class PurchaseService {
                 if (isCustomer) {
                     try {
                         db.prepare('UPDATE customers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, purchase.supplier_id);
-                    } catch(e) {
+                    } catch (e) {
                         console.warn('[PurchaseService] Could not revert customer balance:', e.message);
                     }
                 } else {
                     try {
                         db.prepare('UPDATE suppliers SET balance = COALESCE(balance, 0) - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(dueBalance, purchase.supplier_id);
-                    } catch(e) {
+                    } catch (e) {
                         console.warn('[PurchaseService] Could not revert supplier balance:', e.message);
                     }
                 }
@@ -319,7 +393,7 @@ class PurchaseService {
             db.prepare("UPDATE purchases SET status = 'CANCELLED' WHERE id = ?").run(purchaseId);
             cashBankService.cancelLinkedMovement('PURCHASE', purchaseId);
             db.prepare('INSERT INTO audit_log (action, record_type, record_id) VALUES (?, ?, ?)').run('PURCHASE_CANCELLED', 'PURCHASE', purchaseId);
-            
+
             return true;
         });
     }

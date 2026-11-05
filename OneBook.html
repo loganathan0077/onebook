@@ -17625,7 +17625,7 @@
                 const preparedItems = purchaseCart.map(item => {
                     const qty = parseFloat(item.qty !== undefined ? item.qty : (item.quantity !== undefined ? item.quantity : 1)) || 1;
                     const price = parseFloat(item.price !== undefined ? item.price : (item.rate !== undefined ? item.rate : 0)) || 0;
-                    const gstRate = parseFloat(item.gst !== undefined ? item.gst : 0) || 0;
+                    const gstRate = parseFloat(item.gst !== undefined ? item.gst : (item.gstRate !== undefined ? item.gstRate : 0)) || 0;
                     const lineTaxable = parseFloat((qty * price).toFixed(2));
                     const lineTax = parseFloat((lineTaxable * (gstRate / 100)).toFixed(2));
 
@@ -17748,7 +17748,11 @@
 
                 const createRes = await window.electronAPI.sqlite.purchases.create(purchaseData);
                 if (createRes && createRes.success === false) {
-                    throw new Error(createRes.error || 'Failed to save purchase in database');
+                    const errorDetails = (createRes.error && typeof createRes.error === 'object')
+                        ? (createRes.error.message || createRes.error.code || JSON.stringify(createRes.error))
+                        : (createRes.error || 'Failed to save purchase in database');
+                    console.error('SQLite purchase creation failed:', createRes.error);
+                    throw new Error(errorDetails);
                 }
                 const purchaseId = (createRes && createRes.data) ? (createRes.data.id || createRes.data) : createRes;
 
@@ -17852,7 +17856,23 @@
 
             } catch (err) {
                 console.error("Purchase error:", err);
-                showAlert("Error saving purchase: " + (err.message || err), 'error');
+                let errorMsg = 'Unknown error';
+                if (err) {
+                    if (typeof err === 'string') {
+                        errorMsg = err;
+                    } else if (err.message) {
+                        errorMsg = err.message;
+                    } else if (err.code) {
+                        errorMsg = err.code;
+                    } else {
+                        try {
+                            errorMsg = JSON.stringify(err);
+                        } catch (e) {
+                            errorMsg = String(err);
+                        }
+                    }
+                }
+                showAlert("Error saving purchase: " + errorMsg, 'error');
                 return false;
             } finally {
                 window._isSavingPurchase = false;
@@ -18479,8 +18499,36 @@
                                 }]
                             };
                             const createdRes = await window.electronAPI.sqlite.products.create(sqlPayload);
-                            if (createdRes && (createdRes.id || typeof createdRes === 'number')) {
-                                newProd.id = createdRes.id || createdRes;
+                            let savedProductId = null;
+                            if (createdRes) {
+                                if (createdRes.data !== undefined) {
+                                    savedProductId = (typeof createdRes.data === 'object' && createdRes.data !== null) ? createdRes.data.id : createdRes.data;
+                                } else if (createdRes.id !== undefined) {
+                                    savedProductId = createdRes.id;
+                                } else if (typeof createdRes === 'number') {
+                                    savedProductId = createdRes;
+                                }
+                            }
+                            if (savedProductId) {
+                                newProd.id = savedProductId;
+                                try {
+                                    if (window.electronAPI.sqlite.products.get) {
+                                        const pRes = await window.electronAPI.sqlite.products.get(savedProductId);
+                                        const fetched = (pRes && pRes.data) ? pRes.data : pRes;
+                                        if (fetched && Array.isArray(fetched.variants) && fetched.variants.length > 0) {
+                                            newProd.variants = fetched.variants;
+                                            window.selectedPurchaseVariant = fetched.variants[0];
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('Could not fetch variants for new product:', e);
+                                }
+                            } else if (createdRes && createdRes.success === false) {
+                                const errMsg = (createdRes.error && typeof createdRes.error === 'object')
+                                    ? (createdRes.error.message || createdRes.error.code)
+                                    : createdRes.error;
+                                console.error('Error creating product in SQLite:', createdRes.error);
+                                showAlert('Error creating product: ' + (errMsg || 'Database error'), 'error');
                             }
                         } catch (err) {
                             console.error('Error creating product in SQLite:', err);
@@ -18491,7 +18539,10 @@
                     console.log('Product saved:', newProd);
                     updateProductsTable();
 
-
+                    // Ensure variant is selected if present
+                    if (newProd.variants && newProd.variants.length > 0 && !window.selectedPurchaseVariant) {
+                        window.selectedPurchaseVariant = newProd.variants[0];
+                    }
 
                     // Select this product for purchase
                     selectedPurchaseProduct = newProd;
