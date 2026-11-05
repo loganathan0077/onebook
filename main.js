@@ -75,11 +75,7 @@ function createWindow() {
     });
 
     win.maximize();
-
-
 }
-
-
 
 // Set up IPC handlers
 
