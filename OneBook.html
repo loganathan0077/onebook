@@ -6101,7 +6101,7 @@
                                                     <th style="text-align: left;">GSTIN</th>
                                                     <th style="text-align: left;">State</th>
                                                     <th style="text-align: left;">Phone</th>
-                                                    <th style="text-align: center;">Actions</th>
+                                                    <th style="text-align: center; width: 120px;">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="customerTableBody"></tbody>
@@ -6153,7 +6153,7 @@
                                                     <th style="text-align: left;">GSTIN</th>
                                                     <th style="text-align: left;">State</th>
                                                     <th style="text-align: left;">Phone</th>
-                                                    <th style="text-align: center;">Actions</th>
+                                                    <th style="text-align: center; width: 120px;">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="supplierTableBody"></tbody>
@@ -16736,9 +16736,8 @@
                     <td>${s.gstin || '-'}</td>
                     <td>${s.state || '-'}</td>
                     <td>${s.phone || '-'}</td>
-                    <td style="text-align: center;"><div class="pp-action-group">
+                    <td style="text-align: center; width: 120px;"><div class="pp-action-group">
                         <button class="pp-action-btn pp-action-btn-view" onclick="viewSupplier('${s.id}')" title="View Details">👁️</button>
-                        <button class="pp-action-btn pp-action-btn-ledger" onclick="openPartyLedger('${s.id}', 'supplier')" title="View Ledger">📖</button>
                         <button class="pp-action-btn pp-action-btn-edit" onclick="openAddSupplierModal(null, '${s.id}')" title="Edit Supplier">✏️</button>
                         ${window.hasPermission('delete') ? `<button class="pp-action-btn pp-action-btn-delete" onclick="deleteSupplier('${s.id}')" title="Delete Supplier">🗑️</button>` : ''}
                     </div></td>
@@ -17160,9 +17159,8 @@
                     '<td>' + (c.gstin || '-') + '</td>' +
                     '<td>' + (c.state || '-') + '</td>' +
                     '<td>' + (c.phone || '-') + '</td>' +
-                    '<td style="text-align: center;"><div class="pp-action-group">' +
+                    '<td style="text-align: center; width: 120px;"><div class="pp-action-group">' +
                     '<button class="pp-action-btn pp-action-btn-view" onclick="viewCustomer(\'' + c.id + '\')" title="View Details">👁️</button>' +
-                    '<button class="pp-action-btn pp-action-btn-ledger" onclick="openPartyLedger(\'' + c.id + '\', \'customer\')" title="View Ledger">📖</button>' +
                     '<button class="pp-action-btn pp-action-btn-edit" onclick="openAddCustomerModal(null, \'' + c.id + '\')" title="Edit Customer">✏️</button>' +
                     (window.hasPermission('delete') ? '<button class="pp-action-btn pp-action-btn-delete" onclick="deleteCustomer(\'' + c.id + '\')" title="Delete Customer">🗑️</button>' : '') +
                     '</div></td>' +
