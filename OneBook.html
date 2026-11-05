@@ -5061,8 +5061,39 @@
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
-                            border-bottom: 1px solid #f1f5f9;
-                            padding-bottom: 14px;
+                            border-bottom: 1px solid #e2e8f0;
+                            position: sticky;
+                            top: 0;
+                            z-index: 30;
+                            background: #ffffff;
+                            margin: -20px -20px 0 -20px;
+                            padding: 14px 20px;
+                            border-top-left-radius: 12px;
+                            border-top-right-radius: 12px;
+                            min-height: 64px;
+                            box-sizing: border-box;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+                        }
+
+                        .pp-account-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            border-bottom: 1px solid #e2e8f0;
+                            position: sticky;
+                            top: 0;
+                            z-index: 30;
+                            background: #ffffff;
+                            margin: -20px -20px 16px -20px;
+                            padding: 12px 20px;
+                            border-top-left-radius: 12px;
+                            border-top-right-radius: 12px;
+                            height: 64px;
+                            min-height: 64px;
+                            box-sizing: border-box;
+                            flex-wrap: nowrap;
+                            gap: 12px;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
                         }
 
                         .pp-card-title-area {
@@ -5163,16 +5194,14 @@
                         .pp-table-container {
                             border: 1px solid #e2e8f0;
                             border-radius: 8px;
-                            overflow-y: auto !important;
-                            overflow-x: auto !important;
-                            max-height: calc(100vh - 290px);
-                            min-height: 220px;
+                            overflow: visible !important;
                             background: #ffffff;
                             position: relative;
                         }
 
                         .pp-table {
                             width: 100%;
+                            overflow: visible !important;
                             border-collapse: separate !important;
                             border-spacing: 0 !important;
                             font-size: 13px;
@@ -5181,13 +5210,13 @@
 
                         .pp-table thead {
                             position: sticky;
-                            top: 0;
-                            z-index: 10;
+                            top: 64px;
+                            z-index: 25;
                         }
 
                         .pp-table thead th {
                             position: sticky !important;
-                            top: 0 !important;
+                            top: 64px !important;
                             background: #f8fafc !important;
                             color: #475569 !important;
                             font-size: 12px;
@@ -5196,9 +5225,19 @@
                             border-top: none !important;
                             border-bottom: 2px solid #cbd5e1 !important;
                             white-space: nowrap;
-                            z-index: 10 !important;
+                            z-index: 25 !important;
                             height: 34px;
                             box-shadow: inset 0 -2px 0 #cbd5e1, 0 1px 2px rgba(0, 0, 0, 0.04);
+                        }
+
+                        #receivablesAccountView .pp-table thead,
+                        #payablesAccountView .pp-table thead {
+                            top: 64px;
+                        }
+
+                        #receivablesAccountView .pp-table thead th,
+                        #payablesAccountView .pp-table thead th {
+                            top: 64px !important;
                         }
 
                         .pp-table tbody tr {
@@ -5953,6 +5992,11 @@
                                                 <p>View, search and manage purchase bills.</p>
                                             </div>
                                         </div>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="btn btn-success btn-sm" onclick="exportPurchaseHistory()"
+                                                style="height: 36px; padding: 0 14px; border-radius: 8px; background: #16a34a; border-color: #16a34a; color: white; font-weight: 600;">📥
+                                                Export CSV</button>
+                                        </div>
                                     </div>
 
                                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -5991,9 +6035,7 @@
                                             style="flex: 1; min-width: 200px;">
                                         <button class="btn btn-secondary btn-sm" onclick="resetPurchaseHistoryFilters()"
                                             style="height: 38px; padding: 0 12px; border-radius: 8px;">↺ Reset</button>
-                                        <button class="btn btn-success btn-sm" onclick="exportPurchaseHistory()"
-                                            style="height: 38px; padding: 0 14px; border-radius: 8px; background: #16a34a; border-color: #16a34a; color: white; font-weight: 600;">📥
-                                            Export CSV</button>
+
                                         <div
                                             style="font-weight: 700; font-size: 15px; margin-left: auto; color: #16a34a;">
                                             Total: ₹<span id="phTotalAmount">0.00</span></div>
@@ -36975,25 +37017,25 @@
             const outColor = type === 'customer' ? '#16a34a' : '#dc2626';
 
             targetContainer.innerHTML = `
-                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="background: transparent;">
                     <!-- Header Bar -->
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 12px;">
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="returnToPartySummary('${moduleKey}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px; border-radius: 6px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;">
+                    <div class="pp-account-header">
+                        <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="returnToPartySummary('${moduleKey}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px; border-radius: 6px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; flex-shrink: 0;">
                                 <span>⬅</span> Back to ${moduleName}
                             </button>
-                            <div>
-                                <div style="font-size: 18px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                                    <span>${icon}</span> ${escapeHtml(party.name)}
+                            <div style="min-width: 0;">
+                                <div style="font-size: 17px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <span>${icon}</span> <span>${escapeHtml(party.name)}</span>
                                 </div>
-                                <div style="font-size: 12.5px; color: #64748b; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap;">
+                                <div style="font-size: 12px; color: #64748b; margin-top: 1px; display: flex; gap: 12px; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     ${party.phone ? `<span>📞 ${escapeHtml(party.phone)}</span>` : ''}
                                     ${party.gstin ? `<span>GSTIN: <strong style="color: #0f172a;">${escapeHtml(party.gstin)}</strong></span>` : ''}
                                     ${party.address ? `<span>📍 ${escapeHtml(party.address)}</span>` : ''}
                                 </div>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="exportPartyAccountStatementCSV('${type}')" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 12px; border-radius: 6px;">
                                 📊 Export CSV
                             </button>
