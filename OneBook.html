@@ -3173,7 +3173,7 @@
                     <!-- Sticky Top Sale Entry Toolbar -->
                     <div id="salesStickyToolbar"
                         style="position: sticky; top: -20px; z-index: 200; background: #f8f9fa; padding: 10px 15px; border-bottom: 2px solid #ddd; border-radius: 8px; margin: -20px -20px 15px -20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                        <form id="addItemForm" onsubmit="event.preventDefault();"
+                        <form id="addItemForm" onsubmit="event.preventDefault(); return false;"
                             style="margin: 0; display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: nowrap;">
                             <!-- 1. Sale Date (far left) -->
                             <div id="customSaleDateContainer"
@@ -3195,7 +3195,7 @@
 
                             <!-- 2. Product Search with Barcode Scanner Icon -->
                             <div style="flex: 3; min-width: 180px; position: relative;">
-                                <div class="combobox-container" style="position: relative; width: 100%;">
+                                <div class="combobox-container" onclick="if(event.target===this){const el=document.getElementById('saleProductSearch');if(el)el.focus();}" style="position: relative; width: 100%;">
                                     <input type="text" id="saleProductSearch" class="combobox-input"
                                         placeholder="Type to search product or scan barcode..." autocomplete="off"
                                         oninput="filterSaleProducts()"
@@ -21798,25 +21798,30 @@
                     }
 
                     const dropdown = document.getElementById('saleProductDropdown');
+
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         e.stopPropagation();
-                    }
-                    if (dropdown.style.display === 'none') return;
+                        e.stopImmediatePropagation();
 
-                    const items = dropdown.querySelectorAll('.custom-dropdown-item');
-                    if (items.length === 0) return;
-
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        comboboxSelectedIndex = Math.min(comboboxSelectedIndex + 1, items.length - 1);
-                        updateComboboxSelection(items);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        comboboxSelectedIndex = Math.max(comboboxSelectedIndex - 1, 0);
-                        updateComboboxSelection(items);
-                    } else if (e.key === 'Enter') {
                         const query = (searchInput.value || '').trim();
+                        if (!query) {
+                            if (dropdown) dropdown.style.display = 'none';
+                            if (typeof cart !== 'undefined' && cart.length > 0) {
+                                if (typeof window.setCartRowHighlight === 'function') {
+                                    window.setCartRowHighlight(0);
+                                }
+                                const firstQty = document.getElementById('cart-qty-0');
+                                if (firstQty) {
+                                    firstQty.focus();
+                                    if (typeof firstQty.select === 'function') firstQty.select();
+                                    return;
+                                }
+                            }
+                            searchInput.focus();
+                            return;
+                        }
+
                         // If exact barcode match exists in candidate products, prioritize selecting it
                         let exactBarcodeMatch = null;
                         for (let p of products) {
@@ -21833,16 +21838,40 @@
                             }
                         }
                         if (exactBarcodeMatch) {
-                            dropdown.style.display = 'none';
+                            if (dropdown) dropdown.style.display = 'none';
                             selectBarcodeProduct(exactBarcodeMatch.parent, exactBarcodeMatch.variant);
                             return;
                         }
 
-                        if (comboboxSelectedIndex >= 0 && items[comboboxSelectedIndex]) {
-                            items[comboboxSelectedIndex].click();
-                        } else if (items.length > 0) {
-                            items[0].click();
+                        if (dropdown && dropdown.style.display !== 'none') {
+                            const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                            if (comboboxSelectedIndex >= 0 && items[comboboxSelectedIndex]) {
+                                items[comboboxSelectedIndex].click();
+                                return;
+                            } else if (items.length > 0) {
+                                items[0].click();
+                                return;
+                            }
                         }
+
+                        // No matching product in dropdown, keep focus in search input
+                        searchInput.focus();
+                        return;
+                    }
+
+                    if (dropdown.style.display === 'none') return;
+
+                    const items = dropdown.querySelectorAll('.custom-dropdown-item');
+                    if (items.length === 0) return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        comboboxSelectedIndex = Math.min(comboboxSelectedIndex + 1, items.length - 1);
+                        updateComboboxSelection(items);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        comboboxSelectedIndex = Math.max(comboboxSelectedIndex - 1, 0);
+                        updateComboboxSelection(items);
                     } else if (e.key === 'Escape') {
                         dropdown.style.display = 'none';
                     }
@@ -22133,6 +22162,8 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
+                _saleQtySelectPending = false;
+                if (el && typeof el.blur === 'function') el.blur();
                 addItemToCart(e);
                 return;
             }
@@ -22754,10 +22785,26 @@
             // Reset fields and focus Product Search for sequential entry
             clearSaleProductSelection(true);
 
-            const searchProductInput = document.getElementById('saleProductSearch');
-            if (searchProductInput) {
-                searchProductInput.focus();
+            _saleQtySelectPending = false;
+            const qtyInputEl = document.getElementById('saleQuantity');
+            if (qtyInputEl && typeof qtyInputEl.blur === 'function') {
+                qtyInputEl.blur();
             }
+
+            if (typeof window.clearCartRowHighlight === 'function') {
+                window.clearCartRowHighlight();
+            }
+
+            const returnFocusToSearch = () => {
+                const searchProductInput = document.getElementById('saleProductSearch');
+                if (searchProductInput) {
+                    searchProductInput.focus();
+                    if (typeof searchProductInput.select === 'function') searchProductInput.select();
+                }
+            };
+            returnFocusToSearch();
+            requestAnimationFrame(returnFocusToSearch);
+            setTimeout(returnFocusToSearch, 20);
         }
 
         function handleContinueAdding() {
@@ -22928,6 +22975,19 @@
                     if (!searchInput.value.trim()) {
                         e.preventDefault();
                         e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        if (typeof cart !== 'undefined' && cart.length > 0) {
+                            if (typeof window.setCartRowHighlight === 'function') {
+                                window.setCartRowHighlight(0);
+                            }
+                            const firstQty = document.getElementById('cart-qty-0');
+                            if (firstQty) {
+                                firstQty.focus();
+                                if (typeof firstQty.select === 'function') firstQty.select();
+                                return;
+                            }
+                        }
+                        searchInput.focus();
                         return;
                     }
                 }
@@ -39863,7 +39923,8 @@
                 // -------------------------------------------------------------
                 if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.metaKey && typeof cart !== 'undefined' && cart.length > 0) {
                     const isInputOrButton = activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA' || activeElem.tagName === 'SELECT' || activeElem.tagName === 'BUTTON' || activeElem.isContentEditable);
-                    if (!isInputOrButton) {
+                    const isCartRow = activeElem && (activeElem.classList && activeElem.classList.contains('cart-row') || Boolean(activeElem.closest && activeElem.closest('.cart-row')));
+                    if (isCartRow && !isInputOrButton) {
                         let currentIdx = typeof window.focusedCartRowIndex !== 'undefined' && window.focusedCartRowIndex >= 0 ? window.focusedCartRowIndex : (typeof selectedCartRowIndex !== 'undefined' ? selectedCartRowIndex : -1);
                         if (currentIdx >= 0 && currentIdx < cart.length) {
                             e.preventDefault();
