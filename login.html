@@ -467,10 +467,10 @@
 
                 <form id="loginForm">
                     <div class="form-group">
-                        <label for="email">Email Address</label>
+                        <label for="email">Username or Email</label>
                         <div class="input-wrapper">
-                            <i class="fa-regular fa-envelope"></i>
-                            <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+                            <i class="fa-regular fa-user"></i>
+                            <input type="text" id="email" name="email" placeholder="Enter username or email" required autocomplete="username">
                         </div>
                     </div>
 
@@ -483,11 +483,18 @@
                         </div>
                     </div>
 
-                    <a href="#" class="forgot-password" onclick="alert('Please contact your administrator to reset your password.')">Forgot password?</a>
+                    <a href="#" class="forgot-password" onclick="openAuthRecoveryModal(event)">Forgot password?</a>
 
                     <button type="submit" id="loginBtn" class="btn-login">
                         Sign In <i class="fa-solid fa-arrow-right"></i>
                     </button>
+
+                    <div class="divider">or</div>
+
+                    <button type="button" id="demoLoginBtn" onclick="handleDemoLogin()" class="btn-demo" style="width: 100%; padding: 13px; background: #f0fdf4; color: #166534; border: 1.5px solid #bbf7d0; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                        <i class="fa-solid fa-flask" style="color: #16a34a;"></i> Continue with Demo Account
+                    </button>
+                    <p style="text-align: center; font-size: 11.5px; color: #64748b; margin-top: 8px;">Explore all features in Demo Mode without creating an Admin password.</p>
 
                     <div class="loading-spinner" id="loadingSpinner">
                         <div class="spinner"></div>
@@ -607,8 +614,416 @@
             });
         }
 
+        // --- Admin Account Setup & Password Recovery Client Workflow ---
+        let verifiedLicenseId = null;
+        let createdAdminUsername = null;
+
+        window.handleDemoLogin = async function() {
+            const demoBtn = document.getElementById('demoLoginBtn');
+            if (demoBtn) {
+                demoBtn.disabled = true;
+                demoBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entering Demo Mode...';
+            }
+
+            try {
+                if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.demoLogin) {
+                    const res = await window.electronAPI.auth.demoLogin();
+                    if (res && res.success && res.sessionToken && res.user) {
+                        sessionStorage.setItem('onebook_session_token', res.sessionToken);
+                        sessionStorage.setItem('currentUser', JSON.stringify(res.user));
+                        if (window.electronAPI.sqlite && window.electronAPI.sqlite.setSessionToken) {
+                            window.electronAPI.sqlite.setSessionToken(res.sessionToken);
+                        }
+                        window.location.href = 'OneBook.html';
+                        return;
+                    } else {
+                        showError(res?.error || 'Could not initialize demo session.');
+                    }
+                } else {
+                    showError('Electron auth API unavailable.');
+                }
+            } catch (err) {
+                console.error('Demo login error:', err);
+                showError('Demo login error: ' + err.message);
+            } finally {
+                if (demoBtn) {
+                    demoBtn.disabled = false;
+                    demoBtn.innerHTML = '<i class="fa-solid fa-flask" style="color: #16a34a;"></i> Continue with Demo Account';
+                }
+            }
+        };
+
+        window.openAuthRecoveryModal = function(e) {
+            if (e) e.preventDefault();
+            const modal = document.getElementById('authRecoveryModal');
+            showStep1();
+            setRecoveryAlert(null);
+
+            // Pre-fill licence key if previously entered or saved locally
+            try {
+                if (window.electronAPI && window.electronAPI.getLicenseSync) {
+                    const lic = window.electronAPI.getLicenseSync();
+                    if (lic && lic.license && lic.license.licenseKey) {
+                        document.getElementById('recoveryLicenseInput').value = lic.license.licenseKey;
+                    }
+                }
+            } catch(e){}
+
+            modal.style.display = 'flex';
+            setTimeout(() => { document.getElementById('recoveryLicenseInput').focus(); }, 100);
+        };
+
+        window.closeAuthRecoveryModal = function() {
+            document.getElementById('authRecoveryModal').style.display = 'none';
+        };
+
+        function setRecoveryAlert(msg, type = 'error') {
+            const box = document.getElementById('recoveryAlertBox');
+            if (!msg) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+                return;
+            }
+            box.style.display = 'block';
+            if (type === 'error') {
+                box.style.background = '#fef2f2';
+                box.style.border = '1px solid #fecaca';
+                box.style.color = '#991b1b';
+                box.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
+            } else if (type === 'success') {
+                box.style.background = '#f0fdf4';
+                box.style.border = '1px solid #bbf7d0';
+                box.style.color = '#166534';
+                box.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+            }
+        }
+
+        window.showStep1 = function() {
+            document.getElementById('step1LicenceSection').style.display = 'block';
+            document.getElementById('step2CreateSection').style.display = 'none';
+            document.getElementById('step2RecoverSection').style.display = 'none';
+            document.getElementById('step3SuccessSection').style.display = 'none';
+            document.getElementById('recoveryModalTitle').textContent = 'Admin Account Setup & Recovery';
+            document.getElementById('recoveryModalSubtitle').textContent = 'Verify your licence key to manage Admin credentials';
+            setRecoveryAlert(null);
+        };
+
+        window.submitVerifyLicense = async function() {
+            const keyInput = document.getElementById('recoveryLicenseInput');
+            const key = keyInput.value.trim().toUpperCase();
+            if (!key) {
+                setRecoveryAlert('Please enter your OneBook licence key.');
+                keyInput.focus();
+                return;
+            }
+
+            const btn = document.getElementById('btnVerifyLicense');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+            setRecoveryAlert(null);
+
+            try {
+                if (!window.electronAPI || !window.electronAPI.auth || !window.electronAPI.auth.verifyLicenseForSetup) {
+                    throw new Error('Licence verification service unavailable.');
+                }
+
+                const res = await window.electronAPI.auth.verifyLicenseForSetup(key);
+                if (res && res.success) {
+                    verifiedLicenseId = res.licenseId;
+
+                    if (res.eligible && !res.alreadyConfigured) {
+                        // Case A: Create Admin Credentials (First-time / No account configured yet)
+                        document.getElementById('step1LicenceSection').style.display = 'none';
+                        document.getElementById('step2CreateSection').style.display = 'block';
+                        document.getElementById('step2RecoverSection').style.display = 'none';
+                        document.getElementById('step3SuccessSection').style.display = 'none';
+
+                        document.getElementById('recoveryModalTitle').textContent = 'Create Admin Account';
+                        document.getElementById('recoveryModalSubtitle').textContent = 'Set up your permanent production Admin credentials';
+                        setTimeout(() => { document.getElementById('newAdminUsername').focus(); }, 100);
+                    } else if (res.alreadyConfigured) {
+                        // Case B: Existing Admin Account Password Recovery (Requires Recovery Code)
+                        document.getElementById('step1LicenceSection').style.display = 'none';
+                        document.getElementById('step2CreateSection').style.display = 'none';
+                        document.getElementById('step2RecoverSection').style.display = 'block';
+                        document.getElementById('step3SuccessSection').style.display = 'none';
+
+                        document.getElementById('recoveryAccountBadge').textContent = res.maskedUser || 'Admin Account';
+                        document.getElementById('recoveryModalTitle').textContent = 'Reset Admin Password';
+                        document.getElementById('recoveryModalSubtitle').textContent = 'Ownership verification required';
+                        setTimeout(() => { document.getElementById('inputRecoveryCode').focus(); }, 100);
+                    }
+                } else {
+                    setRecoveryAlert(res?.error || 'Licence verification failed. Please check your key.');
+                }
+            } catch (err) {
+                console.error('Verify licence error:', err);
+                setRecoveryAlert(err.message || 'Error communicating with licence service.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Verify Licence</span> <i class="fa-solid fa-arrow-right"></i>';
+            }
+        };
+
+        window.submitCreateAdmin = async function() {
+            const username = document.getElementById('newAdminUsername').value.trim();
+            const password = document.getElementById('newAdminPassword').value;
+            const confirm = document.getElementById('newAdminPasswordConfirm').value;
+
+            if (!username) {
+                setRecoveryAlert('Please enter an Admin username or email.');
+                document.getElementById('newAdminUsername').focus();
+                return;
+            }
+            if (!password || password.length < 6) {
+                setRecoveryAlert('Password must be at least 6 characters long.');
+                document.getElementById('newAdminPassword').focus();
+                return;
+            }
+            if (password !== confirm) {
+                setRecoveryAlert('Passwords do not match. Please re-enter.');
+                document.getElementById('newAdminPasswordConfirm').focus();
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveAdmin');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Securing with Argon2id...';
+            setRecoveryAlert(null);
+
+            try {
+                const res = await window.electronAPI.auth.createAdminAccount({
+                    username,
+                    password,
+                    licenseId: verifiedLicenseId
+                });
+
+                if (res && res.success) {
+                    createdAdminUsername = res.username;
+                    // Advance to Step 3 (Display Recovery Code)
+                    document.getElementById('step2CreateSection').style.display = 'none';
+                    document.getElementById('step3SuccessSection').style.display = 'block';
+
+                    document.getElementById('step3SuccessTitle').textContent = 'Admin Account Created!';
+                    document.getElementById('step3SuccessSubtitle').textContent = 'Your Admin account is secured with Argon2id and bound to this licence. Save your recovery code below.';
+                    document.getElementById('displayRecoveryCodeText').textContent = res.recoveryCode;
+                } else {
+                    setRecoveryAlert(res?.error || 'Failed to create Admin account.');
+                }
+            } catch (err) {
+                console.error('Create admin error:', err);
+                setRecoveryAlert(err.message || 'Error saving Admin account.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Save Account</span> <i class="fa-solid fa-check"></i>';
+            }
+        };
+
+        window.submitResetPassword = async function() {
+            const code = document.getElementById('inputRecoveryCode').value.trim();
+            const password = document.getElementById('resetNewPassword').value;
+            const confirm = document.getElementById('resetNewPasswordConfirm').value;
+
+            if (!code) {
+                setRecoveryAlert('Please enter your 16-character secure recovery code.');
+                document.getElementById('inputRecoveryCode').focus();
+                return;
+            }
+            if (!password || password.length < 6) {
+                setRecoveryAlert('New password must be at least 6 characters long.');
+                document.getElementById('resetNewPassword').focus();
+                return;
+            }
+            if (password !== confirm) {
+                setRecoveryAlert('Passwords do not match. Please re-enter.');
+                document.getElementById('resetNewPasswordConfirm').focus();
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitReset');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+            setRecoveryAlert(null);
+
+            try {
+                const res = await window.electronAPI.auth.resetAdminPassword({
+                    licenseId: verifiedLicenseId,
+                    recoveryCode: code,
+                    newPassword: password
+                });
+
+                if (res && res.success) {
+                    createdAdminUsername = res.username;
+                    document.getElementById('step2RecoverSection').style.display = 'none';
+                    document.getElementById('step3SuccessSection').style.display = 'block';
+
+                    document.getElementById('step3SuccessTitle').textContent = 'Password Reset Successfully!';
+                    document.getElementById('step3SuccessSubtitle').textContent = 'Your previous sessions have been invalidated. A new recovery code has been generated for you below.';
+                    document.getElementById('displayRecoveryCodeText').textContent = res.newRecoveryCode;
+                } else {
+                    setRecoveryAlert(res?.error || 'Password reset failed.');
+                }
+            } catch (err) {
+                console.error('Reset password error:', err);
+                setRecoveryAlert(err.message || 'Error resetting password.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Reset Password</span> <i class="fa-solid fa-arrow-right"></i>';
+            }
+        };
+
+        window.copyRecoveryCode = function() {
+            const code = document.getElementById('displayRecoveryCodeText').textContent.trim();
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('btnCopyRecoveryCode');
+                btn.innerHTML = '<i class="fa-solid fa-check" style="color: #16a34a;"></i> Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
+                }, 2500);
+            }).catch(err => {
+                alert('Could not auto-copy code. Please select and copy manually.');
+            });
+        };
+
+        window.finishAuthSetup = function() {
+            closeAuthRecoveryModal();
+            if (createdAdminUsername) {
+                document.getElementById('email').value = createdAdminUsername;
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+            }
+        };
+
 
     </script>
+
+    <!-- Admin Account Setup & Password Recovery Modal -->
+    <div id="authRecoveryModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: white; border-radius: 20px; width: 100%; max-width: 520px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; border: 1px solid #e2e8f0; animation: modalPop 0.3s ease;">
+            <!-- Modal Header -->
+            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 22px 26px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        🔐
+                    </div>
+                    <div>
+                        <h2 id="recoveryModalTitle" style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">Admin Account Setup & Recovery</h2>
+                        <p id="recoveryModalSubtitle" style="margin: 3px 0 0 0; font-size: 12.5px; color: #94a3b8;">Verify your licence key to manage Admin credentials</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAuthRecoveryModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; padding: 4px; line-height: 1;">&times;</button>
+            </div>
+
+            <!-- Modal Body -->
+            <div style="padding: 24px 26px;">
+                <div id="recoveryAlertBox" style="display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 13px; line-height: 1.4;"></div>
+
+                <!-- Step 1: Licence Verification Form -->
+                <div id="step1LicenceSection">
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">OneBook Licence Key</label>
+                        <input type="text" id="recoveryLicenseInput" placeholder="OB-XXXX-XXXX-XXXX" style="width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-family: monospace; letter-spacing: 1.5px; text-transform: uppercase;">
+                        <small style="display: block; margin-top: 6px; color: #64748b; font-size: 12px;">Enter your valid OneBook licence key to verify ownership.</small>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" onclick="closeAuthRecoveryModal()" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13.5px; cursor: pointer;">Cancel</button>
+                        <button type="button" id="btnVerifyLicense" onclick="submitVerifyLicense()" style="padding: 10px 22px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <span>Verify Licence</span> <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2A: Create Admin Account -->
+                <div id="step2CreateSection" style="display: none;">
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 12.5px; color: #1e40af;">
+                        <i class="fa-solid fa-circle-check"></i> Licence verified. Please set up your local production Admin account.
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">Admin Username / Email</label>
+                        <input type="text" id="newAdminUsername" placeholder="e.g. admin or admin@company.com" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px;">
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">New Password</label>
+                        <input type="password" id="newAdminPassword" placeholder="Minimum 6 characters" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px;">
+                    </div>
+
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">Confirm Password</label>
+                        <input type="password" id="newAdminPasswordConfirm" placeholder="Re-enter new password" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px;">
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" onclick="showStep1()" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13.5px; cursor: pointer;">Back</button>
+                        <button type="button" id="btnSaveAdmin" onclick="submitCreateAdmin()" style="padding: 10px 22px; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <span>Save Account</span> <i class="fa-solid fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2B: Password Recovery (Existing Admin) -->
+                <div id="step2RecoverSection" style="display: none;">
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 12.5px; color: #92400e;">
+                        <div style="font-weight: 700; margin-bottom: 2px;">Licensed Admin Account Found: <span id="recoveryAccountBadge" style="font-family: monospace; color: #b45309;"></span></div>
+                        Enter your secure recovery code to verify ownership before resetting password.
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">Secure Recovery Code</label>
+                        <input type="text" id="inputRecoveryCode" placeholder="XXXX-XXXX-XXXX-XXXX" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; font-family: monospace; letter-spacing: 1.5px; text-transform: uppercase;">
+                        <small style="display: block; margin-top: 4px; color: #64748b; font-size: 11.5px;">16-character code generated during initial Admin setup.</small>
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">New Password</label>
+                        <input type="password" id="resetNewPassword" placeholder="Minimum 6 characters" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px;">
+                    </div>
+
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">Confirm New Password</label>
+                        <input type="password" id="resetNewPasswordConfirm" placeholder="Re-enter new password" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px;">
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px;">
+                        <button type="button" onclick="showStep1()" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13.5px; cursor: pointer;">Back</button>
+                        <button type="button" id="btnSubmitReset" onclick="submitResetPassword()" style="padding: 10px 22px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <span>Reset Password</span> <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Success & Recovery Code Presentation -->
+                <div id="step3SuccessSection" style="display: none; text-align: center;">
+                    <div style="width: 56px; height: 56px; background: #dcfce7; color: #15803d; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 16px auto;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+
+                    <h3 id="step3SuccessTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Credentials Secured</h3>
+                    <p id="step3SuccessSubtitle" style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 18px;">
+                        Your Admin account has been saved in the local database and hashed using Argon2id. Please save your <strong>Secure Recovery Code</strong> below.
+                    </p>
+
+                    <div style="background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+                        <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px;">Your Secure Recovery Code</div>
+                        <div id="displayRecoveryCodeText" style="font-size: 20px; font-family: monospace; font-weight: 800; letter-spacing: 2px; color: #0f172a; word-break: break-all;">XXXX-XXXX-XXXX-XXXX</div>
+                        <button type="button" id="btnCopyRecoveryCode" onclick="copyRecoveryCode()" style="margin-top: 10px; padding: 6px 14px; background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                            <i class="fa-regular fa-copy"></i> Copy Code
+                        </button>
+                    </div>
+
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; margin-bottom: 22px; font-size: 12px; color: #991b1b; text-align: left;">
+                        <strong>⚠️ Important:</strong> Store this recovery code in a safe place. If you ever forget your password, you will need both your licence key and this recovery code.
+                    </div>
+
+                    <button type="button" onclick="finishAuthSetup()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer;">
+                        Proceed to Login <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- First-Launch Database Setup & Unavailable Drive Modal -->
     <div id="dbSetupModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; padding: 20px;">

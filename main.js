@@ -941,7 +941,7 @@ async function handleSqlite(event, handlerFn) {
  * Validates session token from request args against trusted SQLite user_sessions.
  * Never trusts renderer-provided roles, permissions, or user IDs.
  */
-async function handleAuthorizedSqlite(event, sessionToken, requiredPermission, handlerFn) {
+async function handleAuthorizedSqlite(event, sessionToken, requiredPermission, handlerFn, options = {}) {
     try {
         if (!sqliteStatus.initialized || !dbManager.isDatabaseOpen()) {
             return { success: false, error: { code: 'DATABASE_NOT_INITIALIZED', message: 'Database is not initialized.' } };
@@ -961,8 +961,20 @@ async function handleAuthorizedSqlite(event, sessionToken, requiredPermission, h
             return { success: false, error: { code: 'USER_DISABLED', message: 'User account is disabled.' } };
         }
 
-        // Administrator role bypasses specific feature permission checks
-        const isAdmin = sessionUser.role === 'admin' || sessionUser.role === 'ADMIN';
+        const isDemo = Boolean(sessionUser.isDemo || sessionUser.id === 'demo_user' || sessionUser.username === 'demo');
+
+        // Security: Block all mutating operations in Demo Mode at the SQLite IPC layer
+        if (isDemo && options && options.isWrite) {
+            return { success: false, error: { code: 'DEMO_RESTRICTED', message: 'Database modifications are disabled in Demo Mode. An active OneBook license is required.' } };
+        }
+
+        // Security: Block leaking licensed business records in Demo Mode
+        if (isDemo && options && options.isDemoRestrictedRead) {
+            return { success: true, data: options.demoReadDefault !== undefined ? options.demoReadDefault : [] };
+        }
+
+        // Administrator role bypasses specific feature permission checks (for non-demo licensed users)
+        const isAdmin = !isDemo && (sessionUser.role === 'admin' || sessionUser.role === 'ADMIN');
 
         if (requiredPermission && requiredPermission !== 'authenticated') {
             if (!isAdmin) {
@@ -1017,6 +1029,187 @@ ipcMain.handle('sqlite:users:changePassword', (e, args) => handleAuthorizedSqlit
     }
     return userService.changePassword(args?.userId, args?.newPassword);
 }));
+
+function maskUsername(u) {
+    if (!u || typeof u !== 'string') return '';
+    if (u.includes('@')) {
+        const [name, domain] = u.split('@');
+        const visible = name.length > 2 ? name.slice(0, 2) : name.slice(0, 1);
+        return `${visible}***@${domain}`;
+    }
+    const visible = u.length > 2 ? u.slice(0, 2) : u.slice(0, 1);
+    return `${visible}***`;
+}
+
+// Secure Admin Account & Password Recovery IPC Handlers
+ipcMain.handle('auth:checkAdminStatus', async () => {
+    try {
+        const hasAdmin = userService.hasConfiguredAdmin();
+        const configuredAdmin = hasAdmin ? userService.getConfiguredAdmin() : null;
+        const mode = checkLicense();
+        return {
+            success: true,
+            hasAdmin,
+            mode,
+            isLicensed: mode === 'LICENSED',
+            deviceId: machineIdCache,
+            configuredUsername: configuredAdmin ? maskUsername(configuredAdmin.username) : null
+        };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('auth:verifyLicenseForSetup', async (event, licenseKey) => {
+    try {
+        const cleanKey = (licenseKey || '').trim().toUpperCase();
+        if (!cleanKey) {
+            return { success: false, error: 'Please enter a valid licence key.' };
+        }
+
+        // Check local license first
+        let activeLicense = null;
+        const p = getLicensePath();
+        if (fs.existsSync(p) && safeStorage.isEncryptionAvailable()) {
+            try {
+                const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+                const parsed = JSON.parse(decrypted);
+                if (verifyLicenseSignature(parsed.license, parsed.signature) && parsed.license.deviceId === machineIdCache) {
+                    if (parsed.license.licenseKey === cleanKey || (parsed.license.licenseId && cleanKey.includes(parsed.license.licenseId))) {
+                        activeLicense = parsed.license;
+                    }
+                }
+            } catch (err) {
+                console.warn('[AUTH SETUP] Error reading local license:', err);
+            }
+        }
+
+        // If not found locally, call activate-license
+        if (!activeLicense) {
+            const response = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/activate-license', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    licenseKey: cleanKey,
+                    deviceId: machineIdCache,
+                    deviceName: 'OneBook POS',
+                    operatingSystem: process.platform,
+                    appVersion: '1.0.0'
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                return { success: false, error: data.error || 'Licence activation failed.' };
+            }
+
+            if (!verifyLicenseSignature(data.license, data.signature)) {
+                return { success: false, error: 'Cryptographic signature verification failed from server.' };
+            }
+
+            const dataToSave = JSON.stringify({ license: data.license, signature: data.signature, keyId: data.keyId });
+            const encrypted = safeStorage.encryptString(dataToSave);
+            fs.writeFileSync(p, encrypted);
+            activeLicense = data.license;
+        }
+
+        const hasAdmin = userService.hasConfiguredAdmin();
+        const configuredAdmin = hasAdmin ? userService.getConfiguredAdmin() : null;
+
+        return {
+            success: true,
+            licenseId: activeLicense.licenseId,
+            eligible: !hasAdmin,
+            alreadyConfigured: hasAdmin,
+            maskedUser: configuredAdmin ? maskUsername(configuredAdmin.username) : null
+        };
+    } catch (e) {
+        console.error('[AUTH SETUP] License verify error:', e);
+        return { success: false, error: e.message || 'Licence verification failed.' };
+    }
+});
+
+ipcMain.handle('auth:createAdminAccount', async (event, args) => {
+    try {
+        const { username, password, licenseId } = args || {};
+        if (!username || !password || !licenseId) {
+            return { success: false, error: 'Username, password, and licence ID are required.' };
+        }
+
+        const p = getLicensePath();
+        if (!fs.existsSync(p) || !safeStorage.isEncryptionAvailable()) {
+            return { success: false, error: 'No validated licence found on this device.' };
+        }
+
+        const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+        const parsed = JSON.parse(decrypted);
+        if (!verifyLicenseSignature(parsed.license, parsed.signature) || parsed.license.deviceId !== machineIdCache) {
+            return { success: false, error: 'Licence verification failed: Device mismatch or invalid signature.' };
+        }
+
+        if (parsed.license.licenseId !== licenseId) {
+            return { success: false, error: 'Licence ID mismatch.' };
+        }
+
+        const res = await userService.createAdminAccount({
+            username,
+            password,
+            licenseId,
+            deviceId: machineIdCache
+        });
+
+        return { success: true, username: res.username, recoveryCode: res.recoveryCode };
+    } catch (e) {
+        console.error('[AUTH SETUP] Create admin error:', e);
+        return { success: false, error: e.message || 'Failed to create admin account.' };
+    }
+});
+
+ipcMain.handle('auth:resetAdminPassword', async (event, args) => {
+    try {
+        const { licenseId, recoveryCode, newPassword } = args || {};
+        if (!licenseId || !recoveryCode || !newPassword) {
+            return { success: false, error: 'Licence ID, recovery code, and new password are required.' };
+        }
+
+        const p = getLicensePath();
+        if (!fs.existsSync(p) || !safeStorage.isEncryptionAvailable()) {
+            return { success: false, error: 'No validated licence found on this device.' };
+        }
+
+        const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+        const parsed = JSON.parse(decrypted);
+        if (!verifyLicenseSignature(parsed.license, parsed.signature) || parsed.license.deviceId !== machineIdCache) {
+            return { success: false, error: 'Device mismatch or invalid licence signature.' };
+        }
+
+        if (parsed.license.licenseId !== licenseId) {
+            return { success: false, error: 'Licence ID mismatch.' };
+        }
+
+        const res = await userService.resetAdminPasswordWithRecovery({
+            licenseId,
+            deviceId: machineIdCache,
+            recoveryCode,
+            newPassword
+        });
+
+        return { success: true, username: res.username, newRecoveryCode: res.newRecoveryCode };
+    } catch (e) {
+        console.error('[AUTH SETUP] Reset admin password error:', e);
+        return { success: false, error: e.message || 'Password reset failed.' };
+    }
+});
+
+ipcMain.handle('auth:demoLogin', async () => {
+    try {
+        const res = await userService.loginDemo();
+        return { success: true, user: res.user, sessionToken: res.sessionToken };
+    } catch (e) {
+        console.error('[AUTH DEMO] Demo login error:', e);
+        return { success: false, error: e.message || 'Demo login failed.' };
+    }
+});
 
 // Helper to get database details (path, filename, size, status)
 function getDatabaseDetailsHelper() {
@@ -1389,69 +1582,74 @@ ipcMain.handle('sqlite:units:delete', (e, args) => handleAuthorizedSqlite(e, arg
 ipcMain.handle('sqlite:units:migrate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => unitService.migrateUnits(args?.items !== undefined ? args.items : args)));
 
 // Products
-ipcMain.handle('sqlite:products:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProducts()));
-ipcMain.handle('sqlite:products:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProduct(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:products:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => productService.createProduct(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:products:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProducts(), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:products:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getProduct(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:products:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => productService.createProduct(args?.data !== undefined ? args.data : args), { isWrite: true }));
 ipcMain.handle('sqlite:products:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => {
     const id = args?.id !== undefined ? args.id : args;
     const data = args?.data !== undefined ? args.data : arg2;
     return productService.updateProduct(id, data);
-}));
-ipcMain.handle('sqlite:products:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.searchProducts(args?.q !== undefined ? args.q : args)));
-ipcMain.handle('sqlite:products:lowStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getLowStockProducts()));
+}, { isWrite: true }));
+ipcMain.handle('sqlite:products:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.searchProducts(args?.q !== undefined ? args.q : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:products:lowStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getLowStockProducts(), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 
 // Stock
-ipcMain.handle('sqlite:stock:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getCurrentStock(args?.pId !== undefined ? args.pId : args)));
-ipcMain.handle('sqlite:stock:movements', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getStockMovements(args?.pId !== undefined ? args.pId : args)));
+ipcMain.handle('sqlite:stock:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getCurrentStock(args?.pId !== undefined ? args.pId : args), { isDemoRestrictedRead: true, demoReadDefault: 0 }));
+ipcMain.handle('sqlite:stock:movements', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getStockMovements(args?.pId !== undefined ? args.pId : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 ipcMain.handle('sqlite:stock:adjust', (e, args, ...rest) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => {
     if (args && typeof args === 'object' && args.productId !== undefined) {
         return stockService.adjustStock(args.productId, args.variantId, args.qty, args.reason, args.refType, args.refId, args.date, args.locationId);
     }
     return stockService.adjustStock(args, rest[0], rest[1], rest[2], rest[3], rest[4], rest[5], rest[6]);
-}));
+}, { isWrite: true }));
 
 // Customers
-ipcMain.handle('sqlite:customers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomers()));
-ipcMain.handle('sqlite:customers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomer(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:customers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.createCustomer(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:customers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomers(), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:customers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.getCustomer(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:customers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.createCustomer(args?.data !== undefined ? args.data : args), { isWrite: true }));
 ipcMain.handle('sqlite:customers:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => {
     const id = args?.id !== undefined ? args.id : args;
     const data = args?.data !== undefined ? args.data : arg2;
     return customerService.updateCustomer(id, data);
-}));
-ipcMain.handle('sqlite:customers:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => customerService.deleteCustomer(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:customers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.searchCustomers(args?.query !== undefined ? args.query : args)));
+}, { isWrite: true }));
+ipcMain.handle('sqlite:customers:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => customerService.deleteCustomer(args?.id !== undefined ? args.id : args), { isWrite: true }));
+ipcMain.handle('sqlite:customers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => customerService.searchCustomers(args?.query !== undefined ? args.query : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 
 // Sales
-ipcMain.handle('sqlite:sales:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.createSale(args?.data !== undefined ? args.data : args)));
-ipcMain.handle('sqlite:sales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSales(args?.dateStr !== undefined ? args.dateStr : args)));
-ipcMain.handle('sqlite:sales:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.searchSales(args?.query !== undefined ? args.query : args)));
-ipcMain.handle('sqlite:sales:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSaleById(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:sales:getNextReceiptNumber', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.generateInvoiceNumber()));
+ipcMain.handle('sqlite:sales:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.createSale(args?.data !== undefined ? args.data : args), { isWrite: true }));
+ipcMain.handle('sqlite:sales:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSales(args?.dateStr !== undefined ? args.dateStr : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:sales:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.searchSales(args?.query !== undefined ? args.query : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:sales:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', () => salesService.getSaleById(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:sales:getNextReceiptNumber', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'record_sale', (user) => {
+    if (user && (user.isDemo || user.id === 'demo_user' || user.username === 'demo')) {
+        return "Demo Sales – No Invoice Number";
+    }
+    return salesService.generateInvoiceNumber();
+}));
 ipcMain.handle('sqlite:sales:cancel', (e, args, arg2) => {
     const sessionToken = args?.sessionToken || arg2;
     const saleId = (args && typeof args === 'object' && args.id !== undefined) ? args.id : (args?.saleId || args);
-    return handleAuthorizedSqlite(e, sessionToken, 'delete', () => salesService.cancelSale(saleId));
+    return handleAuthorizedSqlite(e, sessionToken, 'delete', () => salesService.cancelSale(saleId), { isWrite: true });
 });
 
 // Purchases
-ipcMain.handle('sqlite:purchases:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.createPurchase(args?.data !== undefined ? args.data : args)));
-ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(typeof args?.dateStr === 'string' ? args.dateStr : (typeof args === 'string' ? args : null))));
-ipcMain.handle('sqlite:purchases:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.searchPurchases(args?.query !== undefined ? args.query : args)));
-ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchaseById(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:purchases:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseService.cancelPurchase(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:purchases:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.createPurchase(args?.data !== undefined ? args.data : args), { isWrite: true }));
+ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(typeof args?.dateStr === 'string' ? args.dateStr : (typeof args === 'string' ? args : null)), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:purchases:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.searchPurchases(args?.query !== undefined ? args.query : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchaseById(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:purchases:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseService.cancelPurchase(args?.id !== undefined ? args.id : args), { isWrite: true }));
 
 // Suppliers
-ipcMain.handle('sqlite:suppliers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSuppliers()));
-ipcMain.handle('sqlite:suppliers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSupplier(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:suppliers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.createSupplier(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:suppliers:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSuppliers(), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:suppliers:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.getSupplier(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:suppliers:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.createSupplier(args?.data !== undefined ? args.data : args), { isWrite: true }));
 ipcMain.handle('sqlite:suppliers:update', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => {
     const id = args?.id !== undefined ? args.id : args;
     const data = args?.data !== undefined ? args.data : arg2;
     return supplierService.updateSupplier(id, data);
-}));
-ipcMain.handle('sqlite:suppliers:archive', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.archiveSupplier(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:suppliers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.searchSuppliers(args?.query !== undefined ? args.query : args)));
+}, { isWrite: true }));
+ipcMain.handle('sqlite:suppliers:archive', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.archiveSupplier(args?.id !== undefined ? args.id : args), { isWrite: true }));
+ipcMain.handle('sqlite:suppliers:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => supplierService.searchSuppliers(args?.query !== undefined ? args.query : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 
 // Purchase Orders
 ipcMain.handle('sqlite:purchaseOrders:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseOrderService.createPO(args?.data !== undefined ? args.data : args)));
@@ -1509,32 +1707,32 @@ ipcMain.handle('sqlite:cashBank:setOpeningBalance', (e, args, arg2) => handleAut
 ipcMain.handle('sqlite:cashBank:transfer', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => cashBankService.transfer(args?.data !== undefined ? args.data : args)));
 
 // Petty Cash
-ipcMain.handle('sqlite:pettyCash:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getSummary()));
-ipcMain.handle('sqlite:pettyCash:getOpeningBalances', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getOpeningBalances()));
+ipcMain.handle('sqlite:pettyCash:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getSummary(), { isDemoRestrictedRead: true, demoReadDefault: { currentCash: 0, currentBank: 0, totalAvailable: 0 } }));
+ipcMain.handle('sqlite:pettyCash:getOpeningBalances', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getOpeningBalances(), { isDemoRestrictedRead: true, demoReadDefault: { cash: 0, bank: 0 } }));
 ipcMain.handle('sqlite:pettyCash:setOpeningBalances', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => {
     const cash = args?.cash !== undefined ? args.cash : args;
     const bank = args?.bank !== undefined ? args.bank : arg2;
     return pettyCashService.setOpeningBalances(cash, bank);
-}));
+}, { isWrite: true }));
 ipcMain.handle('sqlite:pettyCash:getCategories', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getCategories()));
-ipcMain.handle('sqlite:pettyCash:saveCategories', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => pettyCashService.saveCategories(args?.cats !== undefined ? args.cats : args)));
-ipcMain.handle('sqlite:pettyCash:getTransactions', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransactions(args?.filters !== undefined ? args.filters : args)));
-ipcMain.handle('sqlite:pettyCash:getTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransaction(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:pettyCash:createTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.createTransaction(args?.data !== undefined ? args.data : args)));
+ipcMain.handle('sqlite:pettyCash:saveCategories', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'admin', () => pettyCashService.saveCategories(args?.cats !== undefined ? args.cats : args), { isWrite: true }));
+ipcMain.handle('sqlite:pettyCash:getTransactions', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransactions(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:pettyCash:getTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.getTransaction(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:pettyCash:createTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => pettyCashService.createTransaction(args?.data !== undefined ? args.data : args), { isWrite: true }));
 ipcMain.handle('sqlite:pettyCash:updateTransaction', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'petty_cash', () => {
     const id = args?.id !== undefined ? args.id : args;
     const data = args?.data !== undefined ? args.data : arg2;
     return pettyCashService.updateTransaction(id, data);
-}));
-ipcMain.handle('sqlite:pettyCash:deleteTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.deleteTransaction(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:pettyCash:cancelTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.cancelTransaction(args?.id !== undefined ? args.id : args)));
+}, { isWrite: true }));
+ipcMain.handle('sqlite:pettyCash:deleteTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.deleteTransaction(args?.id !== undefined ? args.id : args), { isWrite: true }));
+ipcMain.handle('sqlite:pettyCash:cancelTransaction', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => pettyCashService.cancelTransaction(args?.id !== undefined ? args.id : args), { isWrite: true }));
 
 // Day Closing
-ipcMain.handle('sqlite:dayClosing:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getAllClosings(args?.filters !== undefined ? args.filters : args)));
-ipcMain.handle('sqlite:dayClosing:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosing(args?.id !== undefined ? args.id : args)));
-ipcMain.handle('sqlite:dayClosing:getByDate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosingByDate(args?.dateStr !== undefined ? args.dateStr : args)));
-ipcMain.handle('sqlite:dayClosing:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.saveClosing(args?.data !== undefined ? args.data : args)));
-ipcMain.handle('sqlite:dayClosing:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => dayClosingService.deleteClosing(args?.id !== undefined ? args.id : args)));
+ipcMain.handle('sqlite:dayClosing:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getAllClosings(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:dayClosing:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosing(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:dayClosing:getByDate', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.getClosingByDate(args?.dateStr !== undefined ? args.dateStr : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:dayClosing:save', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'day_closing', () => dayClosingService.saveClosing(args?.data !== undefined ? args.data : args), { isWrite: true }));
+ipcMain.handle('sqlite:dayClosing:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => dayClosingService.deleteClosing(args?.id !== undefined ? args.id : args), { isWrite: true }));
 
 // Calculator
 async function handleCalculatorSqlite(event, sessionToken, handlerFn) {
@@ -1570,11 +1768,11 @@ ipcMain.handle('sqlite:calculator:deleteHistory', (e, args) => handleCalculatorS
 ipcMain.handle('sqlite:calculator:clearAllHistory', (e, args) => handleCalculatorSqlite(e, args?.sessionToken, () => calculatorService.clearAllHistory()));
 
 // Reports
-ipcMain.handle('sqlite:reports:getReportSales', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getReportSales(args?.filters !== undefined ? args.filters : args)));
-ipcMain.handle('sqlite:reports:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getCustomReportSummary(args?.filters !== undefined ? args.filters : args)));
+ipcMain.handle('sqlite:reports:getReportSales', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getReportSales(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:reports:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getCustomReportSummary(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: { totalSales: 0, totalPurchases: 0, totalExpenses: 0, netProfit: 0 } }));
 
 // Dashboard
-ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'dashboard', () => dashboardService.getDashboardMetrics(args?.options !== undefined ? args.options : args)));
+ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'dashboard', () => dashboardService.getDashboardMetrics(args?.options !== undefined ? args.options : args), { isDemoRestrictedRead: true, demoReadDefault: { totalSales: 0, totalOrders: 0, lowStockCount: 0, pendingReceivables: 0 } }));
 
 
 // --- Backup & Google Drive IPC Handlers ---

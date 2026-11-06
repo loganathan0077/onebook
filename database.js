@@ -77,7 +77,7 @@ function createSchema() {
     
     // Initialize version if not exists
     db.prepare(`INSERT OR IGNORE INTO database_metadata (key, value) VALUES ('schema_version', '1')`).run();
-    db.prepare(`INSERT OR IGNORE INTO database_metadata (key, value) VALUES ('application_version', '1.0.1')`).run();
+    db.prepare(`INSERT OR REPLACE INTO database_metadata (key, value) VALUES ('application_version', '1.0.2')`).run();
 
     // Products
     db.exec(`
@@ -99,6 +99,26 @@ function createSchema() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+    `);
+
+    // Product Variants
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS product_variants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            variant_name TEXT NOT NULL,
+            legacy_variant_id TEXT,
+            sku TEXT,
+            barcode TEXT,
+            buying_price REAL DEFAULT 0,
+            selling_price REAL DEFAULT 0,
+            stock REAL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_pv_product_id ON product_variants(product_id);
+        CREATE INDEX IF NOT EXISTS idx_pv_barcode ON product_variants(barcode);
     `);
 
     // Categories
@@ -189,6 +209,7 @@ function createSchema() {
             sale_id INTEGER NOT NULL,
             product_id INTEGER,
             source_product_id INTEGER,
+            variant_id INTEGER,
             product_name TEXT NOT NULL,
             quantity REAL NOT NULL,
             base_quantity REAL,
@@ -234,6 +255,7 @@ function createSchema() {
             purchase_id INTEGER NOT NULL,
             product_id INTEGER,
             source_product_id INTEGER,
+            variant_id INTEGER,
             product_name TEXT NOT NULL,
             quantity REAL NOT NULL,
             price REAL NOT NULL,
@@ -456,21 +478,33 @@ function createSchema() {
                 if (!colNames.includes("status")) try { db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active"`); } catch(e){}
                 if (!colNames.includes("permissions_json")) try { db.exec(`ALTER TABLE users ADD COLUMN permissions_json TEXT NOT NULL DEFAULT "[]"`); } catch(e){}
                 if (!colNames.includes("updated_at")) try { db.exec(`ALTER TABLE users ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`); } catch(e){}
+                if (!colNames.includes("license_id")) try { db.exec(`ALTER TABLE users ADD COLUMN license_id TEXT`); } catch(e){}
+                if (!colNames.includes("device_id")) try { db.exec(`ALTER TABLE users ADD COLUMN device_id TEXT`); } catch(e){}
+                if (!colNames.includes("recovery_code_hash")) try { db.exec(`ALTER TABLE users ADD COLUMN recovery_code_hash TEXT`); } catch(e){}
+                if (!colNames.includes("recovery_attempts")) try { db.exec(`ALTER TABLE users ADD COLUMN recovery_attempts INTEGER DEFAULT 0`); } catch(e){}
+                if (!colNames.includes("recovery_locked_until")) try { db.exec(`ALTER TABLE users ADD COLUMN recovery_locked_until DATETIME`); } catch(e){}
+                if (!colNames.includes("last_password_change")) try { db.exec(`ALTER TABLE users ADD COLUMN last_password_change DATETIME`); } catch(e){}
             }
         } else {
             // Fresh installation: create users table directly
             db.exec(`
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL DEFAULT "",
+                    name TEXT NOT NULL DEFAULT '',
                     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
                     user_code TEXT,
                     password_hash TEXT NOT NULL,
-                    salt TEXT NOT NULL,
-                    hash_algorithm TEXT NOT NULL DEFAULT "scrypt",
-                    role TEXT NOT NULL DEFAULT "user" CHECK (role IN ("admin", "user", "manager", "cashier", "ADMIN", "USER")),
-                    status TEXT NOT NULL DEFAULT "active" CHECK (status IN ("active", "disabled")),
-                    permissions_json TEXT NOT NULL DEFAULT "[]",
+                    salt TEXT NOT NULL DEFAULT '',
+                    hash_algorithm TEXT NOT NULL DEFAULT 'argon2id',
+                    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'manager', 'cashier', 'ADMIN', 'USER')),
+                    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+                    permissions_json TEXT NOT NULL DEFAULT '[]',
+                    license_id TEXT,
+                    device_id TEXT,
+                    recovery_code_hash TEXT,
+                    recovery_attempts INTEGER DEFAULT 0,
+                    recovery_locked_until DATETIME,
+                    last_password_change DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
@@ -520,6 +554,19 @@ function createSchema() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS purchase_order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            po_id INTEGER NOT NULL,
+            product_id INTEGER,
+            variant_id INTEGER,
+            product_name TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            price REAL NOT NULL,
+            total REAL NOT NULL,
+            FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id)
         );
     `);
 
@@ -571,6 +618,12 @@ function createSchema() {
     if (!purchaseCols.includes('amount_paid')) db.exec('ALTER TABLE purchases ADD COLUMN amount_paid REAL DEFAULT 0');
     if (!purchaseCols.includes('outstanding_amount')) db.exec('ALTER TABLE purchases ADD COLUMN outstanding_amount REAL DEFAULT 0');
     if (!purchaseCols.includes('due_date')) db.exec('ALTER TABLE purchases ADD COLUMN due_date DATETIME');
+
+    // Runtime column migration for sale_items & purchase_items
+    const saleItemCols = db.prepare('PRAGMA table_info(sale_items)').all().map(c => c.name);
+    if (!saleItemCols.includes('variant_id')) db.exec('ALTER TABLE sale_items ADD COLUMN variant_id INTEGER');
+    const piCols = db.prepare('PRAGMA table_info(purchase_items)').all().map(c => c.name);
+    if (!piCols.includes('variant_id')) db.exec('ALTER TABLE purchase_items ADD COLUMN variant_id INTEGER');
 
     // Runtime column migration for party_payments
     const ppCols = db.prepare('PRAGMA table_info(party_payments)').all().map(c => c.name);

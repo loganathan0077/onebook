@@ -32,6 +32,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onLicenseBlockedReason: (callback) => ipcRenderer.on('license-blocked-reason', (_event, value) => callback(value)),
     onLicenseGraceWarning: (callback) => ipcRenderer.on('license-grace-warning', (_event, value) => callback(value)),
 
+    // Auth & Admin Setup APIs
+    auth: {
+        checkAdminStatus: () => ipcRenderer.invoke('auth:checkAdminStatus'),
+        verifyLicenseForSetup: (licenseKey) => ipcRenderer.invoke('auth:verifyLicenseForSetup', licenseKey),
+        createAdminAccount: (data) => ipcRenderer.invoke('auth:createAdminAccount', data),
+        resetAdminPassword: (data) => ipcRenderer.invoke('auth:resetAdminPassword', data),
+        demoLogin: () => ipcRenderer.invoke('auth:demoLogin')
+    },
+
     sqlite: {
         // Session token management
         setSessionToken: (token) => { currentSessionToken = (typeof token === 'string') ? token.trim() : null; },

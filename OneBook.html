@@ -2770,15 +2770,98 @@
         const DEMO_MAX_SALES_PER_DAY = 5;
 
         function isDemoMode() {
+            try {
+                const user = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+                if (user && (user.isDemo || user.id === 'demo_user' || user.username === 'demo')) {
+                    return true;
+                }
+            } catch (e) {}
+
             if (window.electronAPI && window.electronAPI.getLicenseInfoSync) {
                 try {
                     const info = window.electronAPI.getLicenseInfoSync();
-                    return info && info.mode === 'DEMO';
+                    if (info && info.mode === 'DEMO') return true;
                 } catch (e) {
                     console.error('License check error:', e);
                 }
             }
-            return true; // Default to DEMO if we can't verify
+
+            try {
+                const user = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+                if (user && !user.isDemo && user.id !== 'demo_user') {
+                    return false;
+                }
+            } catch (e) {}
+
+            return true; // Default to DEMO if unauthenticated or demo
+        }
+
+        const DEFAULT_DEMO_PRODUCTS = [
+            { id: 'demo_1', barcode: "8901030865278", name: "Blue Ballpoint Pen", category: "Pens", price: 10, sellingPrice: 10, costPrice: 5, stock: 100, minStock: 20, isDemo: true, unit: "Piece", description: "Smooth writing blue ink pen" },
+            { id: 'demo_2', barcode: "8901030865285", name: "HB Pencil", category: "Pencils", price: 5, sellingPrice: 5, costPrice: 2, stock: 150, minStock: 30, isDemo: true, unit: "Piece", description: "Standard HB graphite pencil" },
+            { id: 'demo_3', barcode: "8901030865292", name: "A4 Notebook (100 pages)", category: "Notebooks", price: 40, sellingPrice: 40, costPrice: 25, stock: 50, minStock: 10, isDemo: true, unit: "Piece", description: "Ruled notebook, 100 pages" },
+            { id: 'demo_4', barcode: "8901030865308", name: "Highlighter Set (4 colors)", category: "Art", price: 80, sellingPrice: 80, costPrice: 45, stock: 25, minStock: 5, isDemo: true, unit: "Piece", description: "Fluorescent highlighter set" },
+            { id: 'demo_5', barcode: "8901030865315", name: "Stapler", category: "Office", price: 120, sellingPrice: 120, costPrice: 70, stock: 15, minStock: 5, isDemo: true, unit: "Piece", description: "Heavy duty stapler" }
+        ];
+
+        function getDemoProducts() {
+            try {
+                const stored = localStorage.getItem('demo_products');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
+            } catch (e) {}
+            localStorage.setItem('demo_products', JSON.stringify(DEFAULT_DEMO_PRODUCTS));
+            return JSON.parse(JSON.stringify(DEFAULT_DEMO_PRODUCTS));
+        }
+
+        const DEFAULT_DEMO_CUSTOMERS = [
+            { id: 'demo_cust_1', name: 'Walk-in Customer', phone: '', address: '', state: '', isDemo: true, openingBalance: 0 },
+            { id: 'demo_cust_2', name: 'Demo Customer', phone: '9876543210', address: '123 Demo Street', state: 'Tamil Nadu', isDemo: true, openingBalance: 0 }
+        ];
+
+        function getDemoCustomers() {
+            try {
+                const stored = localStorage.getItem('demo_customers');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
+            } catch (e) {}
+            localStorage.setItem('demo_customers', JSON.stringify(DEFAULT_DEMO_CUSTOMERS));
+            return JSON.parse(JSON.stringify(DEFAULT_DEMO_CUSTOMERS));
+        }
+
+        const DEFAULT_DEMO_SUPPLIERS = [
+            { id: 'demo_sup_1', name: 'ABC Suppliers', phone: '9876543211', state: 'Tamil Nadu', isDemo: true, openingBalance: 0 },
+            { id: 'demo_sup_2', name: 'XYZ Trading', phone: '9876543212', state: 'Tamil Nadu', isDemo: true, openingBalance: 0 }
+        ];
+
+        function getDemoSuppliers() {
+            try {
+                const stored = localStorage.getItem('demo_suppliers');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
+            } catch (e) {}
+            localStorage.setItem('demo_suppliers', JSON.stringify(DEFAULT_DEMO_SUPPLIERS));
+            return JSON.parse(JSON.stringify(DEFAULT_DEMO_SUPPLIERS));
+        }
+
+        function loadDemoData() {
+            products = getDemoProducts();
+            customers = getDemoCustomers();
+            _sqliteCustomerCache = customers;
+            suppliers = getDemoSuppliers();
+            try {
+                sales = JSON.parse(localStorage.getItem('demo_sales') || '[]');
+            } catch (e) { sales = []; }
+            purchases = [];
+            dayClosings = [];
+            pcTransactions = [];
+            pcOpening = { cash: 0, bank: 0 };
         }
 
         function getDemoProductCount() { return products ? products.filter(p => p.isDemo).length : 0; }
@@ -13616,8 +13699,15 @@
         // Check authentication on page load
         checkAuth().then(async user => {
             if (user) {
-                // Display user email
-                document.getElementById('userEmail').textContent = user.username || user.email || 'User';
+                // Display user identifier clearly distinguishing Demo Account from licensed Admin
+                const emailEl = document.getElementById('userEmail');
+                if (emailEl) {
+                    if (user.isDemo || user.id === 'demo_user' || (typeof isDemoMode === 'function' && isDemoMode())) {
+                        emailEl.textContent = 'Demo Account';
+                    } else {
+                        emailEl.textContent = user.username || user.email || 'Admin';
+                    }
+                }
 
                 // Check if user is admin
                 window.isUserAdmin = await isAdmin();
@@ -13681,6 +13771,19 @@
         let realtimeSyncUnsubscribe = null;
 
         async function refreshUI() {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                loadDemoData();
+                isDataLoaded = true;
+                if (typeof updateDashboard === 'function') await updateDashboard();
+                if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
+                if (typeof renderPayablesTable === 'function') renderPayablesTable();
+                if (typeof populateSaleProductSelect === 'function') populateSaleProductSelect();
+                if (typeof updateProductsTable === 'function') updateProductsTable();
+                if (typeof updateDraftsDisplay === 'function') updateDraftsDisplay();
+                return;
+            }
+
             // MIGRATION / SQLITE HYDRATION: If SQLite is active, load records directly from SQLite
             if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite) {
                 try {
@@ -14045,7 +14148,7 @@
                 showFavorites: false,
                 showBarcode: false,
                 quickEditInventory: false,
-                adminPassword: 'Admin@2026',
+                adminPassword: '',
                 // Label Printing Settings
                 labelPreset: 'pen',
                 labelWidth: 50,
@@ -14092,6 +14195,10 @@
 
         // Global master loadProductsFromDatabase function
         window.loadProductsFromDatabase = async function () {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                products = getDemoProducts();
+                return;
+            }
             if (window.DATA_BACKEND === 'sqlite' && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.products) {
                 try {
                     const res = await window.electronAPI.sqlite.products.getAll();
@@ -16954,7 +17061,16 @@
             const supplierData = { name: normalizedName, gstin, phone, address, state, notes, openingBalance };
             let newSupplierId = editId;
 
-            if (window.electronAPI?.sqlite?.suppliers) {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                if (editId) {
+                    const index = suppliers.findIndex(s => s.id === editId);
+                    if (index !== -1) suppliers[index] = { ...suppliers[index], ...supplierData, isDemo: true };
+                } else {
+                    newSupplierId = 'demo_sup_' + Date.now();
+                    suppliers.push({ id: newSupplierId, ...supplierData, isDemo: true });
+                }
+                localStorage.setItem('demo_suppliers', JSON.stringify(suppliers));
+            } else if (window.electronAPI?.sqlite?.suppliers) {
                 try {
                     if (editId) {
                         const result = await window.electronAPI.sqlite.suppliers.update(editId, supplierData);
@@ -17067,6 +17183,11 @@
         let _sqliteCustomerCache = null; // null = not yet loaded
 
         async function _loadSqliteCustomers() {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                _sqliteCustomerCache = getDemoCustomers();
+                customers = _sqliteCustomerCache;
+                return _sqliteCustomerCache || [];
+            }
             try {
                 const result = await window.electronAPI.sqlite.customers.getAll();
                 if (result && result.success !== false) {
@@ -17351,28 +17472,41 @@
             const customerData = { name: normalizedName, gstin, phone, address, state, country, notes, openingBalance };
             let newCustomerId;
 
-            try {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
                 if (editId) {
-                    const result = await window.electronAPI.sqlite.customers.update(editId, customerData);
-                    if (result && result.error) throw new Error(result.error);
-                    newCustomerId = editId;
-                    // Keep legacy 'customers' array in sync for Sales/POS cross-module use
                     const idx = customers.findIndex(c => c.id === editId);
-                    if (idx !== -1) {
-                        customers[idx] = Object.assign({}, customers[idx], customerData);
+                    if (idx !== -1) customers[idx] = Object.assign({}, customers[idx], customerData, { isDemo: true });
+                    newCustomerId = editId;
+                } else {
+                    newCustomerId = 'demo_cust_' + Date.now();
+                    customers.push(Object.assign({ id: newCustomerId, isDemo: true }, customerData));
+                }
+                localStorage.setItem('demo_customers', JSON.stringify(customers));
+                _sqliteCustomerCache = customers;
+            } else {
+                try {
+                    if (editId) {
+                        const result = await window.electronAPI.sqlite.customers.update(editId, customerData);
+                        if (result && result.error) throw new Error(result.error);
+                        newCustomerId = editId;
+                        // Keep legacy 'customers' array in sync for Sales/POS cross-module use
+                        const idx = customers.findIndex(c => c.id === editId);
+                        if (idx !== -1) {
+                            customers[idx] = Object.assign({}, customers[idx], customerData);
+                            // SQLite is source of truth
+                        }
+                    } else {
+                        const result = await window.electronAPI.sqlite.customers.create(customerData);
+                        if (result && result.error) throw new Error(result.error);
+                        newCustomerId = typeof result === 'string' ? result : (result.id || result.data);
+                        // Push to legacy 'customers' array so Sales/POS can find it immediately
+                        customers.push(Object.assign({ id: newCustomerId }, customerData));
                         // SQLite is source of truth
                     }
-                } else {
-                    const result = await window.electronAPI.sqlite.customers.create(customerData);
-                    if (result && result.error) throw new Error(result.error);
-                    newCustomerId = typeof result === 'string' ? result : (result.id || result.data);
-                    // Push to legacy 'customers' array so Sales/POS can find it immediately
-                    customers.push(Object.assign({ id: newCustomerId }, customerData));
-                    // SQLite is source of truth
+                } catch (err) {
+                    showAlert('Failed to save customer: ' + (err.message || String(err)), '❌');
+                    return;
                 }
-            } catch (err) {
-                showAlert('Failed to save customer: ' + (err.message || String(err)), '❌');
-                return;
             }
 
             _sqliteCustomerCache = null;
@@ -20692,7 +20826,7 @@
             next30.setDate(today.getDate() + 30);
 
             let searchMatchedProducts = [];
-            if (window.DATA_BACKEND === 'sqlite') {
+            if (window.DATA_BACKEND === 'sqlite' && (!isDemoMode || !isDemoMode())) {
                 if (searchTerm) {
                     const res = await window.electronAPI.sqlite.products.search(searchTerm);
                     searchMatchedProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
@@ -23652,7 +23786,7 @@
 
         function generateReceiptNumber() {
             if (typeof isDemoMode === 'function' && isDemoMode()) {
-                return "DEMO SALE " + Math.random().toString().slice(2, 8);
+                return "Demo Sales – No Invoice Number";
             }
             const settings = JSON.parse(localStorage.getItem('settings') || 'null') || getDefaultSettings();
 
@@ -23981,7 +24115,9 @@
                 try {
                     // Generate synchronized receipt number
                     let receiptNumber = '';
-                    if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales && window.electronAPI.sqlite.sales.getNextReceiptNumber) {
+                    if (typeof isDemoMode === 'function' && isDemoMode()) {
+                        receiptNumber = "Demo Sales – No Invoice Number";
+                    } else if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.sales && window.electronAPI.sqlite.sales.getNextReceiptNumber) {
                         try {
                             const rRes = await window.electronAPI.sqlite.sales.getNextReceiptNumber();
                             if (rRes && rRes.success && rRes.data) {
@@ -24078,20 +24214,26 @@
 
                     let newSaleId;
                     let finalReceiptNumber = receiptNumber;
-                    try {
-                        const createRes = await window.electronAPI.sqlite.sales.create(saleData);
-                        if (createRes && createRes.success === false) {
-                            throw new Error(createRes.error ? (createRes.error.message || createRes.error) : "Failed to record sale in SQLite");
+
+                    if (typeof isDemoMode === 'function' && isDemoMode()) {
+                        newSaleId = 'demo_' + Date.now();
+                        finalReceiptNumber = "Demo Sales – No Invoice Number";
+                    } else {
+                        try {
+                            const createRes = await window.electronAPI.sqlite.sales.create(saleData);
+                            if (createRes && createRes.success === false) {
+                                throw new Error(createRes.error ? (createRes.error.message || createRes.error) : "Failed to record sale in SQLite");
+                            }
+                            const resData = (createRes && createRes.success && createRes.data !== undefined) ? createRes.data : createRes;
+                            newSaleId = (typeof resData === 'object' && resData.id !== undefined) ? resData.id : resData;
+                            if (typeof resData === 'object' && (resData.receipt_number || resData.receiptNumber)) {
+                                finalReceiptNumber = resData.receipt_number || resData.receiptNumber;
+                            }
+                        } catch (e) {
+                            console.error("Sale creation failed:", e);
+                            showAlert('❌ Sale creation failed: ' + (e.message || e), 'error');
+                            return; // abort completion
                         }
-                        const resData = (createRes && createRes.success && createRes.data !== undefined) ? createRes.data : createRes;
-                        newSaleId = (typeof resData === 'object' && resData.id !== undefined) ? resData.id : resData;
-                        if (typeof resData === 'object' && (resData.receipt_number || resData.receiptNumber)) {
-                            finalReceiptNumber = resData.receipt_number || resData.receiptNumber;
-                        }
-                    } catch (e) {
-                        console.error("Sale creation failed:", e);
-                        showAlert('❌ Sale creation failed: ' + (e.message || e), 'error');
-                        return; // abort completion
                     }
 
                     // The sale was created successfully in SQLite.
@@ -24259,7 +24401,13 @@
                     document.getElementById('creditDueDate').value = '';
 
                     // Re-hydrate canonical product memory from SQLite and refresh UI immediately
-                    if (window.DATA_BACKEND === 'sqlite' && typeof window.loadProductsFromDatabase === 'function') {
+                    if (typeof isDemoMode === 'function' && isDemoMode()) {
+                        let demoSales = [];
+                        try { demoSales = JSON.parse(localStorage.getItem('demo_sales') || '[]'); } catch(e){}
+                        demoSales.push(...saleItems);
+                        localStorage.setItem('demo_sales', JSON.stringify(demoSales));
+                        localStorage.setItem('demo_products', JSON.stringify(products));
+                    } else if (window.DATA_BACKEND === 'sqlite' && typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
                     }
                     updateTodaysSales();
@@ -25814,6 +25962,12 @@
 
         // SQLITE COMPATIBILITY FOR REPORTS (Phase 4E.15)
         async function loadReportSalesFromSQLite() {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                try {
+                    sales = JSON.parse(localStorage.getItem('demo_sales') || '[]');
+                } catch (e) { sales = []; }
+                return;
+            }
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.reports) {
                 try {
                     const sRes = await window.electronAPI.sqlite.reports.getReportSales({});
@@ -27233,7 +27387,11 @@
                 categorySelect.value = customValue;
             }
 
-            if (window.DATA_BACKEND === 'sqlite') {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                product.id = 'demo_prod_' + Date.now();
+                products.push(product);
+                localStorage.setItem('demo_products', JSON.stringify(products));
+            } else if (window.DATA_BACKEND === 'sqlite') {
                 try {
                     const sqliteProduct = {
                         name: product.name,
@@ -27344,7 +27502,7 @@
 
             let filteredProducts = [];
 
-            if (window.DATA_BACKEND === 'sqlite') {
+            if (window.DATA_BACKEND === 'sqlite' && (!isDemoMode || !isDemoMode())) {
                 if (searchTerm) {
                     const res = await window.electronAPI.sqlite.products.search(searchTerm);
                     filteredProducts = (res && res.success && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
@@ -32767,6 +32925,13 @@
         }
 
         async function loadPettyCashDataFromSQLite() {
+            if (typeof isDemoMode === 'function' && isDemoMode()) {
+                pcTransactions = [];
+                pcOpening = { cash: 0, bank: 0 };
+                pcCategories = JSON.parse(JSON.stringify(DEFAULT_PC_CATEGORIES));
+                syncPettyCashCompatibility();
+                return;
+            }
             if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.pettyCash) {
                 try {
                     const [txsRes, openResRaw, catsResRaw] = await Promise.all([
