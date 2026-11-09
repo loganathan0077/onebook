@@ -1,50 +1,32 @@
 const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell } = require('electron');
 
 const path = require('path');
-
 const fs = require('fs');
-
 const crypto = require('crypto');
-
 const { execSync } = require('child_process');
-
 const os = require('os');
 
-
-
-
+// Enforce consistent application name across development and packaged builds
+app.setName('OneBook');
 
 function createWindow() {
-
     const win = new BrowserWindow({
-
         width: 1200,
-
         height: 800,
-
         icon: path.join(__dirname, 'icon-512.png'),
-
         webPreferences: {
-
             nodeIntegration: false,
-
             contextIsolation: true,
-
             preload: path.join(__dirname, 'preload.js')
-
         }
-
     });
-
-
 
     const mode = checkLicense();
     if (mode === 'DEMO') {
         win.loadFile(path.join(__dirname, 'license.html'));
     } else {
         win.webContents.session.clearCache();
-
-        win.loadFile(path.join(__dirname, 'OneBook.html'), { query: { t: Date.now().toString() } });
+        win.loadFile(path.join(__dirname, 'login.html'));
     }
 
     
@@ -659,33 +641,23 @@ ipcMain.on('get-db-config-sync', (event) => {
 
 
 ipcMain.on('set-db-config-sync', (event, folderPath) => {
-
     try {
-
         const p = getConfigPath();
-
+        fs.mkdirSync(path.dirname(p), { recursive: true });
         let data = {};
-
         if (fs.existsSync(p)) {
-
-            data = JSON.parse(fs.readFileSync(p, 'utf-8'));
-
+            try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
         }
-
-        data.databaseFolder = folderPath;
-
+        const cleanPath = (folderPath || '').trim().replace(/^["']|["']$/g, '');
+        const dbPath = cleanPath.endsWith('.db') ? cleanPath : path.join(cleanPath, 'onebook.db');
+        data.databaseFolder = cleanPath.endsWith('.db') ? path.dirname(cleanPath) : cleanPath;
+        data.sqliteDatabasePath = dbPath;
         fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
-
         event.returnValue = { success: true };
-
     } catch (e) {
-
         console.error('Config write error:', e);
-
         event.returnValue = { success: false, error: e.message };
-
     }
-
 });
 
 
@@ -798,25 +770,59 @@ function resolveSqlitePath() {
     // Priority 1: CLI flag (--sqlite-path=...)
     for (const arg of process.argv) {
         if (arg.startsWith('--sqlite-path=')) {
-            return arg.split('=')[1].trim();
+            const raw = arg.split('=')[1].trim().replace(/^["']|["']$/g, '');
+            if (raw) return path.normalize(raw);
         }
     }
     // Priority 2: Environment variable
     if (process.env.ONEBOOK_SQLITE_PATH && process.env.ONEBOOK_SQLITE_PATH.trim()) {
-        return process.env.ONEBOOK_SQLITE_PATH.trim();
+        const raw = process.env.ONEBOOK_SQLITE_PATH.trim().replace(/^["']|["']$/g, '');
+        if (raw) return path.normalize(raw);
     }
-    // Priority 3: config.json (sqliteDatabasePath)
+    // Priority 3: config.json (sqliteDatabasePath or databaseFolder)
     try {
         const p = getConfigPath();
         if (fs.existsSync(p)) {
             const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
             if (data.sqliteDatabasePath && typeof data.sqliteDatabasePath === 'string' && data.sqliteDatabasePath.trim()) {
-                return data.sqliteDatabasePath.trim();
+                const sp = path.normalize(data.sqliteDatabasePath.trim().replace(/^["']|["']$/g, ''));
+                return sp;
+            }
+            if (data.databaseFolder && typeof data.databaseFolder === 'string' && data.databaseFolder.trim()) {
+                const df = path.normalize(data.databaseFolder.trim().replace(/^["']|["']$/g, ''));
+                const cand = df.endsWith('.db') ? df : path.join(df, 'onebook.db');
+                return cand;
             }
         }
     } catch (e) {
         console.error('Error reading sqliteDatabasePath from config:', e);
     }
+
+    // Priority 4: Standard default database location (if already exists and non-empty)
+    try {
+        const defaultDb = path.normalize(path.join(app.getPath('documents'), 'OneBook', 'Database', 'onebook.db'));
+        if (fs.existsSync(defaultDb)) {
+            const stats = fs.statSync(defaultDb);
+            if (stats.size > 0) {
+                // Auto-persist to config so it is permanently recorded
+                try {
+                    const p = getConfigPath();
+                    fs.mkdirSync(path.dirname(p), { recursive: true });
+                    let data = {};
+                    if (fs.existsSync(p)) {
+                        try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
+                    }
+                    data.databaseFolder = path.dirname(defaultDb);
+                    data.sqliteDatabasePath = defaultDb;
+                    fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+                } catch(e){}
+                return defaultDb;
+            }
+        }
+    } catch (e) {
+        console.error('Error checking default database location:', e);
+    }
+
     return null;
 }
 
@@ -863,6 +869,7 @@ app.whenReady().then(() => {
         },
         (updates) => {
             const p = getConfigPath();
+            fs.mkdirSync(path.dirname(p), { recursive: true });
             let data = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
             Object.assign(data, updates);
             fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
@@ -1309,6 +1316,7 @@ ipcMain.handle('sqlite:system:initializeDatabaseLocation', async (event, args) =
 
         // Save persistent config
         const p = getConfigPath();
+        fs.mkdirSync(path.dirname(p), { recursive: true });
         let data = {};
         if (fs.existsSync(p)) {
             try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
@@ -1443,6 +1451,7 @@ ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
 
         // Step 5: Update persistent config
         const p = getConfigPath();
+        fs.mkdirSync(path.dirname(p), { recursive: true });
         let data = {};
         if (fs.existsSync(p)) {
             try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
@@ -1527,10 +1536,12 @@ ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
 
         // Persist to config.json
         const p = getConfigPath();
+        fs.mkdirSync(path.dirname(p), { recursive: true });
         let data = {};
         if (fs.existsSync(p)) {
-            data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+            try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
         }
+        data.databaseFolder = path.dirname(chosenPath);
         data.sqliteDatabasePath = chosenPath;
         fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
 

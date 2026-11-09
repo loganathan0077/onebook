@@ -43,6 +43,9 @@
             "target": "dmg",
             "icon": "onebooklogo.png"
         },
+        "asarUnpack": [
+            "**/*.node"
+        ],
         "files": [
             "main.js",
             "preload.js",
@@ -58,9 +61,12 @@
             "gdriveService.js",
             "services/**/*",
             "data/**/*",
+            "auth.js",
             "onebooklogo.png",
+            "onebooklogo2.png",
             "package.json",
             "node_modules/**/*",
+            "icon-192.png",
             "icon-512.png",
             "manifest.json",
             "service-worker.js"

@@ -463,6 +463,18 @@
                     <p>Business Management & POS</p>
                 </div>
 
+                <div id="initialSetupAlert" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: #1e40af; line-height: 1.4;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div>
+                            <strong><i class="fa-solid fa-circle-check"></i> Licence Activated!</strong>
+                            <p style="margin: 3px 0 0 0; font-size: 12px; color: #1d4ed8;">Please set up your production Admin account credentials.</p>
+                        </div>
+                        <button type="button" onclick="openAuthRecoveryModal(event)" style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;">
+                            Set Up Admin
+                        </button>
+                    </div>
+                </div>
+
                 <div id="errorMessage" class="error-message"></div>
 
                 <form id="loginForm">
@@ -483,7 +495,7 @@
                         </div>
                     </div>
 
-                    <a href="#" class="forgot-password" onclick="openAuthRecoveryModal(event)">Forgot password?</a>
+                    <a href="#" id="forgotPasswordLink" class="forgot-password" onclick="openAuthRecoveryModal(event)">Forgot password?</a>
 
                     <button type="submit" id="loginBtn" class="btn-login">
                         Sign In <i class="fa-solid fa-arrow-right"></i>
@@ -515,16 +527,20 @@
 
 
 
-    <script type="module">
-        import { login, checkAuth } from './auth.js';
-
-        // Check if user is already logged in
-        checkAuth(false).then(user => {
-            if (user) {
-                // User is already logged in, redirect to main app
-                window.location.href = 'OneBook.html';
+    <script>
+        // Check if user already has an active session
+        try {
+            const existingToken = sessionStorage.getItem('onebook_session_token');
+            if (existingToken && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users) {
+                window.electronAPI.sqlite.users.validateSession(existingToken).then(res => {
+                    if (res && res.success && res.data && res.data.status === 'active') {
+                        window.location.href = 'OneBook.html';
+                    }
+                }).catch(err => {
+                    console.warn('Session check error:', err);
+                });
             }
-        });
+        } catch (e) {}
 
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
@@ -536,7 +552,7 @@
             errorMessage.classList.add('show');
             setTimeout(() => {
                 errorMessage.classList.remove('show');
-            }, 5000);
+            }, 6000);
         }
 
         function setLoading(isLoading) {
@@ -551,6 +567,49 @@
             }
         }
 
+        async function performLogin(username, password) {
+            if (!username || !password) {
+                return { success: false, error: 'Please enter both username/email and password.' };
+            }
+
+            if (!window.electronAPI || !window.electronAPI.sqlite || !window.electronAPI.sqlite.users) {
+                return { success: false, error: 'Database offline: SQLite authentication bridge is unavailable.' };
+            }
+
+            try {
+                const cleanUser = username.trim();
+                const res = await window.electronAPI.sqlite.users.login(cleanUser, password);
+
+                if (!res || res.success === false) {
+                    const errMsg = res?.error?.message || '';
+                    const errCode = res?.error?.code;
+                    if (errMsg.includes('not initialized') || errCode === 'DATABASE_NOT_INITIALIZED') {
+                        return { success: false, error: 'Database offline: SQLite database is not connected.' };
+                    }
+                    return { success: false, error: errMsg || 'Authentication service error.' };
+                }
+
+                if (res.data && res.data.success === false) {
+                    return { success: false, error: res.data.error || 'Incorrect username or password.' };
+                }
+
+                const { sessionToken, user } = res.data || {};
+                if (sessionToken && user) {
+                    sessionStorage.setItem('onebook_session_token', sessionToken);
+                    sessionStorage.setItem('currentUser', JSON.stringify(user));
+                    if (window.electronAPI.sqlite.setSessionToken) {
+                        window.electronAPI.sqlite.setSessionToken(sessionToken);
+                    }
+                    return { success: true, user };
+                }
+
+                return { success: false, error: 'Authentication failed: Invalid server session response.' };
+            } catch (err) {
+                console.error('Login error:', err);
+                return { success: false, error: err.message || 'An unexpected authentication error occurred.' };
+            }
+        }
+
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -558,14 +617,14 @@
             const password = document.getElementById('password').value;
 
             if (!email || !password) {
-                showError('Please enter both email and password.');
+                showError('Please enter both username/email and password.');
                 return;
             }
 
             setLoading(true);
 
             try {
-                const result = await login(email, password);
+                const result = await performLogin(email, password);
 
                 if (result.success) {
                     // Login successful, redirect to main app
@@ -582,20 +641,14 @@
             }
         });
 
-        // Auto-focus email field
-        if (window.electronAPI && window.electronAPI.focusWindow) { window.electronAPI.focusWindow(); }
-        setTimeout(() => { document.getElementById('email').focus(); }, 100);
-
         // Toggle Password Visibility
         const togglePassword = document.getElementById('togglePassword');
         const password = document.getElementById('password');
 
         if (togglePassword && password) {
             togglePassword.addEventListener('click', function (e) {
-                // toggle the type attribute
                 const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
                 password.setAttribute('type', type);
-                // toggle the eye / eye slash icon
                 this.classList.toggle('fa-eye');
                 this.classList.toggle('fa-eye-slash');
             });
@@ -626,22 +679,42 @@
             }
 
             try {
+                let sessionToken = null;
+                let user = null;
+
                 if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.demoLogin) {
                     const res = await window.electronAPI.auth.demoLogin();
                     if (res && res.success && res.sessionToken && res.user) {
-                        sessionStorage.setItem('onebook_session_token', res.sessionToken);
-                        sessionStorage.setItem('currentUser', JSON.stringify(res.user));
-                        if (window.electronAPI.sqlite && window.electronAPI.sqlite.setSessionToken) {
-                            window.electronAPI.sqlite.setSessionToken(res.sessionToken);
-                        }
-                        window.location.href = 'OneBook.html';
-                        return;
-                    } else {
-                        showError(res?.error || 'Could not initialize demo session.');
+                        sessionToken = res.sessionToken;
+                        user = res.user;
                     }
-                } else {
-                    showError('Electron auth API unavailable.');
                 }
+
+                // Fallback safe demo session so demo users are never stranded
+                if (!sessionToken || !user) {
+                    sessionToken = 'demo-session-' + Date.now();
+                    user = {
+                        id: 999999,
+                        username: 'demo',
+                        fullName: 'Demo User',
+                        role: 'demo',
+                        status: 'active',
+                        isDemo: true,
+                        permissions: [
+                            'dashboard:view', 'products:view', 'inventory:view',
+                            'sales:view', 'customers:view', 'suppliers:view',
+                            'reports:view', 'purchases:view', 'expenses:view'
+                        ]
+                    };
+                }
+
+                sessionStorage.setItem('onebook_session_token', sessionToken);
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.setSessionToken) {
+                    window.electronAPI.sqlite.setSessionToken(sessionToken);
+                }
+
+                window.location.href = 'OneBook.html';
             } catch (err) {
                 console.error('Demo login error:', err);
                 showError('Demo login error: ' + err.message);
@@ -652,6 +725,11 @@
                 }
             }
         };
+
+        const demoBtnEl = document.getElementById('demoLoginBtn');
+        if (demoBtnEl) {
+            demoBtnEl.addEventListener('click', window.handleDemoLogin);
+        }
 
         window.openAuthRecoveryModal = function(e) {
             if (e) e.preventDefault();
@@ -672,6 +750,11 @@
             modal.style.display = 'flex';
             setTimeout(() => { document.getElementById('recoveryLicenseInput').focus(); }, 100);
         };
+
+        const forgotLink = document.getElementById('forgotPasswordLink');
+        if (forgotLink) {
+            forgotLink.addEventListener('click', window.openAuthRecoveryModal);
+        }
 
         window.closeAuthRecoveryModal = function() {
             document.getElementById('authRecoveryModal').style.display = 'none';
@@ -887,12 +970,39 @@
 
         window.finishAuthSetup = function() {
             closeAuthRecoveryModal();
+            const alertEl = document.getElementById('initialSetupAlert');
+            if (alertEl) alertEl.style.display = 'none';
             if (createdAdminUsername) {
                 document.getElementById('email').value = createdAdminUsername;
                 document.getElementById('password').value = '';
                 document.getElementById('password').focus();
             }
         };
+
+        // On document ready
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Auto-focus email field
+            if (window.electronAPI && window.electronAPI.focusWindow) {
+                window.electronAPI.focusWindow();
+            }
+            setTimeout(() => {
+                const emailInput = document.getElementById('email');
+                if (emailInput) emailInput.focus();
+            }, 100);
+
+            // Check if licensed and Admin setup is needed
+            try {
+                if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.checkAdminStatus) {
+                    const status = await window.electronAPI.auth.checkAdminStatus();
+                    if (status && status.isLicensed && !status.hasAdmin) {
+                        const alertBox = document.getElementById('initialSetupAlert');
+                        if (alertBox) alertBox.style.display = 'block';
+                    }
+                }
+            } catch (e) {
+                console.warn('Admin status check failed:', e);
+            }
+        });
 
 
     </script>

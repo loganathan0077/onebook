@@ -58,8 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Save securely via IPC
                 const saveResult = window.electronAPI.saveLicenseSync(data);
                 if (saveResult.success) {
-                    // Success! Redirect to main app
-                    window.location.href = 'OneBook.html';
+                    // Success! Redirect to login/admin setup screen
+                    window.location.href = 'login.html';
                 } else {
                     showError(saveResult.error || 'Failed to save license locally.');
                 }
@@ -77,6 +77,68 @@ document.addEventListener('DOMContentLoaded', () => {
             setLoading(false);
         }
     });
+
+    const demoBtn = document.getElementById('demoBtn');
+    if (demoBtn) {
+        demoBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            demoBtn.disabled = true;
+            const btnText = demoBtn.querySelector('.btn-text');
+            if (btnText) btnText.innerHTML = 'Starting Demo Mode...';
+
+            try {
+                let sessionToken = null;
+                let user = null;
+
+                if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.demoLogin) {
+                    const res = await window.electronAPI.auth.demoLogin();
+                    if (res && res.success && res.sessionToken && res.user) {
+                        sessionToken = res.sessionToken;
+                        user = res.user;
+                    }
+                }
+
+                // Fallback safe demo session if SQLite is not yet initialized
+                if (!sessionToken || !user) {
+                    sessionToken = 'demo-session-' + Date.now();
+                    user = {
+                        id: 999999,
+                        username: 'demo',
+                        fullName: 'Demo User',
+                        role: 'demo',
+                        status: 'active',
+                        isDemo: true,
+                        permissions: [
+                            'dashboard:view', 'products:view', 'inventory:view',
+                            'sales:view', 'customers:view', 'suppliers:view',
+                            'reports:view', 'purchases:view', 'expenses:view'
+                        ]
+                    };
+                }
+
+                sessionStorage.setItem('onebook_session_token', sessionToken);
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.setSessionToken) {
+                    window.electronAPI.sqlite.setSessionToken(sessionToken);
+                }
+
+                // Directly bypass login screen and navigate to main OneBook Dashboard
+                window.location.href = 'OneBook.html';
+            } catch (err) {
+                console.error('Demo navigation error:', err);
+                sessionStorage.setItem('onebook_session_token', 'demo-fallback-' + Date.now());
+                sessionStorage.setItem('currentUser', JSON.stringify({
+                    id: 999999,
+                    username: 'demo',
+                    fullName: 'Demo User',
+                    role: 'demo',
+                    status: 'active',
+                    isDemo: true
+                }));
+                window.location.href = 'OneBook.html';
+            }
+        });
+    }
 
     function setLoading(isLoading) {
         if (isLoading) {
