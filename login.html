@@ -531,10 +531,26 @@
         // Check if user already has an active session
         try {
             const existingToken = sessionStorage.getItem('onebook_session_token');
-            if (existingToken && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users) {
+            const currentUserStr = sessionStorage.getItem('currentUser');
+            let isDemoUser = false;
+            try {
+                const u = JSON.parse(currentUserStr || 'null');
+                if (u && (u.isDemo || u.role === 'demo' || u.username === 'demo')) {
+                    isDemoUser = true;
+                }
+            } catch(e) {}
+
+            // NEVER auto-redirect demo users to dashboard from login screen
+            if (isDemoUser) {
+                sessionStorage.removeItem('onebook_session_token');
+                sessionStorage.removeItem('currentUser');
+            } else if (existingToken && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users) {
                 window.electronAPI.sqlite.users.validateSession(existingToken).then(res => {
-                    if (res && res.success && res.data && res.data.status === 'active') {
+                    if (res && res.success && res.data && res.data.status === 'active' && !res.data.isDemo && res.data.username !== 'demo') {
                         window.location.href = 'OneBook.html';
+                    } else {
+                        sessionStorage.removeItem('onebook_session_token');
+                        sessionStorage.removeItem('currentUser');
                     }
                 }).catch(err => {
                     console.warn('Session check error:', err);
@@ -971,11 +987,19 @@
         window.finishAuthSetup = function() {
             closeAuthRecoveryModal();
             const alertEl = document.getElementById('initialSetupAlert');
-            if (alertEl) alertEl.style.display = 'none';
+            if (alertEl) {
+                alertEl.style.display = 'block';
+                alertEl.style.background = '#f0fdf4';
+                alertEl.style.borderColor = '#bbf7d0';
+                alertEl.style.color = '#166534';
+                alertEl.innerHTML = '<div style="display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-circle-check" style="font-size:18px;"></i><div><strong>Admin Account Created!</strong><p style="margin:2px 0 0 0;font-size:12px;">Please enter your password to sign in.</p></div></div>';
+            }
             if (createdAdminUsername) {
                 document.getElementById('email').value = createdAdminUsername;
                 document.getElementById('password').value = '';
-                document.getElementById('password').focus();
+                setTimeout(() => {
+                    document.getElementById('password').focus();
+                }, 100);
             }
         };
 
@@ -985,10 +1009,69 @@
             if (window.electronAPI && window.electronAPI.focusWindow) {
                 window.electronAPI.focusWindow();
             }
-            setTimeout(() => {
-                const emailInput = document.getElementById('email');
-                if (emailInput) emailInput.focus();
-            }, 100);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewParam = urlParams.get('view');
+            const tokenParam = urlParams.get('token');
+            const activatedParam = urlParams.get('activated');
+
+            if (activatedParam === 'true') {
+                const alertBox = document.getElementById('initialSetupAlert');
+                if (alertBox) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = '#f0fdf4';
+                    alertBox.style.borderColor = '#bbf7d0';
+                    alertBox.style.color = '#166534';
+                    alertBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;"><i class="fa-solid fa-circle-check" style="font-size:18px;"></i><div><strong>Licence Activated!</strong><p style="margin:2px 0 0 0;font-size:12px;">Please sign in with your Admin credentials to continue.</p></div></div>';
+                }
+            }
+
+            if (viewParam === 'create-admin') {
+                openAuthRecoveryModal();
+                if (tokenParam) {
+                    // Scrub token from browser URL bar and history immediately
+                    try {
+                        window.history.replaceState({}, document.title, 'login.html?view=create-admin');
+                    } catch (e) {}
+
+                    (async () => {
+                        try {
+                            if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.consumeSetupToken) {
+                                const tokenRes = await window.electronAPI.auth.consumeSetupToken(tokenParam);
+                                if (tokenRes && tokenRes.success && tokenRes.licenseId) {
+                                    verifiedLicenseId = tokenRes.licenseId;
+                                    document.getElementById('step1LicenceSection').style.display = 'none';
+                                    document.getElementById('step2CreateSection').style.display = 'block';
+                                    document.getElementById('step2RecoverSection').style.display = 'none';
+                                    document.getElementById('step3SuccessSection').style.display = 'none';
+
+                                    document.getElementById('recoveryModalTitle').textContent = 'Create Admin Account';
+                                    document.getElementById('recoveryModalSubtitle').textContent = 'Set up your permanent production Admin credentials';
+                                    setTimeout(() => {
+                                        const usernameInput = document.getElementById('newAdminUsername');
+                                        if (usernameInput) usernameInput.focus();
+                                    }, 100);
+                                    return;
+                                } else {
+                                    showStep1();
+                                    setRecoveryAlert(tokenRes?.error || 'Setup token expired. Please enter your licence key.');
+                                    return;
+                                }
+                            }
+                        } catch (tokenErr) {
+                            console.warn('Setup token verification error:', tokenErr);
+                        }
+                        showStep1();
+                    })();
+                } else {
+                    showStep1();
+                }
+            } else {
+                setTimeout(() => {
+                    const emailInput = document.getElementById('email');
+                    if (emailInput) emailInput.focus();
+                }, 100);
+            }
 
             // Check if licensed and Admin setup is needed
             try {
@@ -996,7 +1079,9 @@
                     const status = await window.electronAPI.auth.checkAdminStatus();
                     if (status && status.isLicensed && !status.hasAdmin) {
                         const alertBox = document.getElementById('initialSetupAlert');
-                        if (alertBox) alertBox.style.display = 'block';
+                        if (alertBox && !activatedParam && viewParam !== 'create-admin') {
+                            alertBox.style.display = 'block';
+                        }
                     }
                 }
             } catch (e) {

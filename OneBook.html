@@ -2770,30 +2770,38 @@
         const DEMO_MAX_SALES_PER_DAY = 5;
 
         function isDemoMode() {
+            // 1. If the current user session is explicitly marked as demo, always demo
             try {
                 const user = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
-                if (user && (user.isDemo || user.id === 'demo_user' || user.username === 'demo')) {
+                if (user && (user.isDemo || user.id === 'demo_user' || user.username === 'demo' || user.role === 'demo')) {
                     return true;
                 }
             } catch (e) {}
 
+            // 2. Check hardware-bound license status
+            let isLicenseActive = false;
             if (window.electronAPI && window.electronAPI.getLicenseInfoSync) {
                 try {
                     const info = window.electronAPI.getLicenseInfoSync();
-                    if (info && info.mode === 'DEMO') return true;
+                    if (info && info.mode === 'LICENSED' && (info.status === 'ACTIVE' || info.status === 'TRIAL')) {
+                        isLicenseActive = true;
+                    }
                 } catch (e) {
                     console.error('License check error:', e);
                 }
             }
 
+            // 3. If licensed and user is an authenticated production account -> Licensed mode!
             try {
                 const user = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
-                if (user && !user.isDemo && user.id !== 'demo_user') {
-                    return false;
+                if (user && !user.isDemo && user.id !== 'demo_user' && user.username !== 'demo' && user.role !== 'demo') {
+                    if (isLicenseActive) {
+                        return false;
+                    }
                 }
             } catch (e) {}
 
-            return true; // Default to DEMO if unauthenticated or demo
+            return true; // Default to DEMO if unauthenticated or unlicensed
         }
 
         const DEFAULT_DEMO_PRODUCTS = [
@@ -4665,34 +4673,6 @@
                                 <div style="position: relative; height: 250px; width: 100%;">
                                     <canvas id="topProductsChart"></canvas>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Backup and Restore Section -->
-                    <div
-                        style="margin-top: 20px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0 0 5px 0; font-size: 16px;">💾 Data Backup & Restore</h3>
-                                <p style="margin: 0; color: #6c757d; font-size: 14px;">Download backups for safety or
-                                    restore from previous backups</p>
-                            </div>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-info"
-                                    style="display:flex; flex-direction:column; align-items:center;"
-                                    onclick="backupData()" title="Download backup of all data">
-                                    <span>💾 Full System Backup</span>
-                                    <span style="font-size:10px; opacity:0.8;">Includes all business data, settings and
-                                        images</span>
-                                </button>
-                                <button class="btn btn-warning admin-only"
-                                    onclick="document.getElementById('restoreFileInput').click()"
-                                    title="Restore data from backup">
-                                    📤 Restore Data
-                                </button>
-                                <input type="file" id="restoreFileInput" accept=".json" style="display: none;"
-                                    onchange="restoreData(event)">
                             </div>
                         </div>
                     </div>
@@ -9965,27 +9945,61 @@
                                 </div>
                             </div>
 
-                            <!-- About -->
+                            <!-- About & Software Updates -->
                             <div id="settings-pane-about" class="settings-pane"
-                                style="text-align: center; padding: 40px 20px;">
-                                <img src="onebooklogo.png" alt="OneBook Logo"
-                                    style="height: 80px; margin-bottom: 10px;">
-                                <h2 style="margin: 0 0 5px 0; font-size: 28px; letter-spacing: -0.5px;">
-                                    <span style="color: #0056b3;">One</span><span style="color: #28a745;">Book</span>
-                                </h2>
-                                <p style="color: #64748b; font-size: 16px; font-weight: 500; margin: 0 0 20px 0;">
-                                    Business Management & POS</p>
-
-                                <div
-                                    style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; max-width: 300px; margin: 0 auto 20px auto;">
-                                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #1e293b;">Version 1.0.0</p>
-                                    <p style="margin: 0; color: #64748b; font-size: 14px;">Developed by Shermon
-                                        Industries</p>
+                                style="max-width: 650px; background: #fff; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin: 0 auto;">
+                                <div style="text-align: center; margin-bottom: 25px;">
+                                    <img src="onebooklogo.png" alt="OneBook Logo"
+                                        style="height: 72px; margin-bottom: 12px;">
+                                    <h2 style="margin: 0 0 4px 0; font-size: 26px; letter-spacing: -0.5px;">
+                                        <span style="color: #0056b3;">One</span><span style="color: #28a745;">Book</span>
+                                    </h2>
+                                    <p style="color: #64748b; font-size: 14px; font-weight: 500; margin: 0 0 12px 0;">
+                                        Business Management & POS Software for Windows</p>
+                                    <div style="display: inline-flex; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; color: #334155; border: 1px solid #cbd5e1;">
+                                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                                        <span id="aboutAppVersion">Version 1.0.3</span>
+                                    </div>
+                                    <p style="margin: 10px 0 0 0; color: #94a3b8; font-size: 12px;">Developed by Shermon Industries</p>
                                 </div>
 
-                                <button class="btn btn-secondary" style="min-width: 200px;"
-                                    onclick="showAlert('You are on the latest version.', 'info')">Check for
-                                    Updates</button>
+                                <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                        <div>
+                                            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">Software Updates</h4>
+                                            <p style="margin: 3px 0 0 0; font-size: 12.5px; color: #64748b;">Keep OneBook up to date with the latest features and security updates.</p>
+                                        </div>
+                                        <button id="btnCheckUpdates" class="btn btn-primary" onclick="handleCheckForUpdates()" style="display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 9px 18px; border-radius: 8px; cursor: pointer; white-space: nowrap;">
+                                            <span id="btnCheckUpdatesIcon">🔄</span>
+                                            <span id="btnCheckUpdatesText">Check for Updates</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Update Status Card -->
+                                    <div id="updaterStatusCard" style="display: none; border-radius: 10px; padding: 18px; margin-top: 16px; border: 1px solid #e2e8f0; background: #f8fafc;">
+                                        <div id="updaterStatusContent"></div>
+                                    </div>
+
+                                    <!-- Download Progress Card -->
+                                    <div id="updaterProgressCard" style="display: none; border-radius: 10px; padding: 18px; margin-top: 16px; border: 1px solid #bfdbfe; background: #eff6ff;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-size: 13.5px; font-weight: 700; color: #1e40af;" id="updaterProgressLabel">Downloading Update...</span>
+                                            <span style="font-size: 13px; font-weight: 700; color: #1e40af;" id="updaterProgressPercent">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 10px; background: #dbeafe; border-radius: 6px; overflow: hidden;">
+                                            <div id="updaterProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); transition: width 0.3s ease; border-radius: 6px;"></div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: #64748b;">
+                                            <span id="updaterProgressDetails">0 MB / 0 MB</span>
+                                            <span id="updaterProgressSpeed">0 KB/s</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Safety notice -->
+                                    <div style="margin-top: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #64748b; line-height: 1.5;">
+                                        <strong style="color: #334155;">🛡️ Safe In-Place Updates:</strong> Your SQLite database, licensing credentials, local data, and configuration are safely preserved across all updates.
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- General Settings -->
@@ -31994,9 +32008,208 @@
                 }
             }
 
+            if (paneId === 'settings-pane-about') {
+                if (typeof initAboutUpdater === 'function') {
+                    initAboutUpdater();
+                }
+            }
+
             // Add active class to clicked button
             if (btnElement) {
                 btnElement.classList.add('active');
+            }
+        }
+
+        // --- Software Version & In-App Auto-Updater Logic ---
+        let updaterInitialized = false;
+
+        function initAboutUpdater() {
+            const versionEl = document.getElementById('aboutAppVersion');
+            let ver = '1.0.3';
+            try {
+                if (window.electronAPI && window.electronAPI.getAppVersionSync) {
+                    ver = window.electronAPI.getAppVersionSync();
+                }
+            } catch (e) {}
+            if (versionEl) versionEl.textContent = 'Version ' + ver;
+
+            if (!updaterInitialized && window.electronAPI && window.electronAPI.updater) {
+                updaterInitialized = true;
+                window.electronAPI.updater.onStatus((data) => {
+                    renderUpdaterStatus(data);
+                });
+                window.electronAPI.updater.onProgress((prog) => {
+                    renderUpdaterProgress(prog);
+                });
+            }
+        }
+
+        async function handleCheckForUpdates() {
+            const btn = document.getElementById('btnCheckUpdates');
+            const icon = document.getElementById('btnCheckUpdatesIcon');
+            const text = document.getElementById('btnCheckUpdatesText');
+
+            if (btn) btn.disabled = true;
+            if (icon) icon.textContent = '⏳';
+            if (text) text.textContent = 'Checking...';
+
+            const card = document.getElementById('updaterStatusCard');
+            const content = document.getElementById('updaterStatusContent');
+            if (card) card.style.display = 'block';
+            if (content) {
+                content.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 20px;">⏳</span>
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px; color: #1e293b;">Checking for updates...</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Connecting to OneBook update service</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            try {
+                if (window.electronAPI && window.electronAPI.updater) {
+                    await window.electronAPI.updater.check();
+                } else {
+                    setTimeout(() => {
+                        renderUpdaterStatus({ status: 'up-to-date', currentVersion: '1.0.3', latestVersion: '1.0.3' });
+                    }, 800);
+                }
+            } catch (err) {
+                renderUpdaterStatus({ status: 'error', error: err.message });
+            } finally {
+                if (btn) btn.disabled = false;
+                if (icon) icon.textContent = '🔄';
+                if (text) text.textContent = 'Check for Updates';
+            }
+        }
+
+        function renderUpdaterStatus(data) {
+            const card = document.getElementById('updaterStatusCard');
+            const content = document.getElementById('updaterStatusContent');
+            const progCard = document.getElementById('updaterProgressCard');
+
+            if (!card || !content) return;
+            card.style.display = 'block';
+
+            if (data.status === 'checking') {
+                if (progCard) progCard.style.display = 'none';
+                card.style.background = '#f8fafc';
+                card.style.borderColor = '#e2e8f0';
+                content.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 20px;">⏳</span>
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px; color: #1e293b;">Checking for updates...</div>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Connecting to GitHub release server</div>
+                        </div>
+                    </div>
+                `;
+            } else if (data.status === 'up-to-date') {
+                if (progCard) progCard.style.display = 'none';
+                card.style.background = '#f0fdf4';
+                card.style.borderColor = '#bbf7d0';
+                content.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 16px; shrink: 0;">✓</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px; color: #15803d;">You are using the latest version</div>
+                            <div style="font-size: 12.5px; color: #166534; margin-top: 2px;">OneBook v${data.latestVersion || data.currentVersion || '1.0.3'} is up to date. No updates needed.</div>
+                            <div style="font-size: 11px; color: #4ade80; margin-top: 4px;">Checked just now</div>
+                        </div>
+                    </div>
+                `;
+            } else if (data.status === 'available') {
+                if (progCard) progCard.style.display = 'none';
+                card.style.background = '#eff6ff';
+                card.style.borderColor = '#bfdbfe';
+                const notes = (data.releaseNotes || 'Bug fixes and performance improvements.').slice(0, 300);
+                content.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 18px; shrink: 0;">🚀</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 15px; color: #1e3a8a;">New Version Available: OneBook v${data.latestVersion}</div>
+                                <div style="font-size: 12.5px; color: #1e40af; margin-top: 3px;">Current: v${data.currentVersion} → New: v${data.latestVersion}</div>
+                                <div style="margin-top: 8px; background: rgba(255,255,255,0.7); border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #334155; max-width: 420px; white-space: pre-line;">${notes}</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="handleDownloadUpdate()" style="padding: 10px 20px; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; align-self: flex-start; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);">
+                            <span>Download Update</span> ⬇️
+                        </button>
+                    </div>
+                `;
+            } else if (data.status === 'downloading') {
+                card.style.display = 'none';
+                if (progCard) progCard.style.display = 'block';
+            } else if (data.status === 'downloaded') {
+                if (progCard) progCard.style.display = 'none';
+                card.style.background = '#f0fdf4';
+                card.style.borderColor = '#86efac';
+                content.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 18px; shrink: 0;">✓</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 15px; color: #14532d;">Update Ready to Install!</div>
+                                <div style="font-size: 12.5px; color: #166534; margin-top: 2px;">OneBook v${data.latestVersion || 'latest'} has been verified. All database files and licenses will be preserved.</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="handleInstallUpdate()" style="padding: 10px 22px; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; background: #16a34a; border-color: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
+                            <span>Install & Restart</span> ⚡
+                        </button>
+                    </div>
+                `;
+            } else if (data.status === 'error') {
+                if (progCard) progCard.style.display = 'none';
+                card.style.background = '#fef2f2';
+                card.style.borderColor = '#fecaca';
+                content.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #991b1b; display: flex; align-items: center; justify-content: center; font-size: 16px; shrink: 0;">⚠️</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px; color: #991b1b;">Could not check for updates</div>
+                            <div style="font-size: 12px; color: #b91c1c; margin-top: 2px;">${data.error || 'Please check your internet connection and try again.'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderUpdaterProgress(prog) {
+            const progCard = document.getElementById('updaterProgressCard');
+            if (!progCard) return;
+            progCard.style.display = 'block';
+
+            const bar = document.getElementById('updaterProgressBar');
+            const percent = document.getElementById('updaterProgressPercent');
+            const details = document.getElementById('updaterProgressDetails');
+            const speed = document.getElementById('updaterProgressSpeed');
+
+            const pct = Math.min(100, Math.max(0, prog.percent || 0));
+            if (bar) bar.style.width = pct + '%';
+            if (percent) percent.textContent = pct + '%';
+
+            const mbTransferred = ((prog.transferred || 0) / (1024 * 1024)).toFixed(1);
+            const mbTotal = ((prog.total || 0) / (1024 * 1024)).toFixed(1);
+            if (details) details.textContent = `${mbTransferred} MB / ${mbTotal} MB`;
+
+            const kbSpeed = Math.round((prog.bytesPerSecond || 0) / 1024);
+            const speedFormatted = kbSpeed > 1024 ? `${(kbSpeed / 1024).toFixed(1)} MB/s` : `${kbSpeed} KB/s`;
+            if (speed) speed.textContent = speedFormatted;
+        }
+
+        async function handleDownloadUpdate() {
+            if (window.electronAPI && window.electronAPI.updater) {
+                renderUpdaterStatus({ status: 'downloading' });
+                await window.electronAPI.updater.download();
+            }
+        }
+
+        async function handleInstallUpdate() {
+            if (window.electronAPI && window.electronAPI.updater) {
+                await window.electronAPI.updater.install();
             }
         }
 

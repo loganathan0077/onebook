@@ -20,7 +20,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ensureFolderSync: (folderPath) => ipcRenderer.sendSync('ensure-folder-sync', folderPath),
     checkFolderHasDataSync: (folderPath) => ipcRenderer.sendSync('check-folder-has-data-sync', folderPath),
     focusWindow: () => ipcRenderer.send('focus-window'),
+    getAppVersionSync: () => ipcRenderer.sendSync('get-app-version-sync'),
     printHTML: (html, options) => ipcRenderer.invoke('print-html', html, options),
+
+    // In-App Version & Updater APIs
+    updater: {
+        check: () => ipcRenderer.invoke('updater:check'),
+        download: () => ipcRenderer.invoke('updater:download'),
+        install: () => ipcRenderer.invoke('updater:install'),
+        getStatus: () => ipcRenderer.invoke('updater:getStatus'),
+        onStatus: (callback) => {
+            const listener = (_event, data) => callback(data);
+            ipcRenderer.on('updater:status', listener);
+            return () => ipcRenderer.removeListener('updater:status', listener);
+        },
+        onProgress: (callback) => {
+            const listener = (_event, data) => callback(data);
+            ipcRenderer.on('updater:progress', listener);
+            return () => ipcRenderer.removeListener('updater:progress', listener);
+        }
+    },
 
     // Licensing APIs
     getLicenseSync: () => ipcRenderer.sendSync('get-license-sync'),
@@ -35,10 +54,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Auth & Admin Setup APIs
     auth: {
         checkAdminStatus: () => ipcRenderer.invoke('auth:checkAdminStatus'),
+        createSetupToken: () => ipcRenderer.invoke('auth:createSetupToken'),
+        consumeSetupToken: (token) => ipcRenderer.invoke('auth:consumeSetupToken', token),
         verifyLicenseForSetup: (licenseKey) => ipcRenderer.invoke('auth:verifyLicenseForSetup', licenseKey),
         createAdminAccount: (data) => ipcRenderer.invoke('auth:createAdminAccount', data),
         resetAdminPassword: (data) => ipcRenderer.invoke('auth:resetAdminPassword', data),
-        demoLogin: () => ipcRenderer.invoke('auth:demoLogin')
+        demoLogin: () => ipcRenderer.invoke('auth:demoLogin'),
+        clearDemoSession: () => ipcRenderer.invoke('auth:clearDemoSession')
     },
 
     sqlite: {

@@ -1,7 +1,7 @@
 {
     "name": "onebook",
     "productName": "OneBook",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Desktop Application for Shermon Sales",
     "main": "main.js",
     "scripts": {
@@ -17,6 +17,13 @@
     },
     "build": {
         "appId": "com.onebook.pos",
+        "publish": [
+            {
+                "provider": "github",
+                "owner": "loganathan0077",
+                "repo": "onebook"
+            }
+        ],
         "win": {
             "target": [
                 {
@@ -76,6 +83,7 @@
         "@supabase/supabase-js": "^2.116.0",
         "acorn": "^8.18.0",
         "better-sqlite3": "^9.6.0",
+        "electron-updater": "^6.8.11",
         "hash-wasm": "^4.12.0",
         "jsdom": "^29.1.1",
         "puppeteer": "^25.10.0"

@@ -1,13 +1,76 @@
-const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, Menu } = require('electron');
 
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 const os = require('os');
+const updaterService = require('./services/updaterService');
 
 // Enforce consistent application name across development and packaged builds
 app.setName('OneBook');
+
+function createApplicationMenu() {
+    const isMac = process.platform === 'darwin';
+    const template = [
+        ...(isMac ? [{
+            label: app.name,
+            submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        }] : []),
+        {
+            label: 'Edit',
+            submenu: [
+                { role: 'undo' },
+                { role: 'redo' },
+                { type: 'separator' },
+                { role: 'cut' },
+                { role: 'copy' },
+                { role: 'paste' },
+                { role: 'selectAll' }
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forceReload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        {
+            label: 'Window',
+            submenu: [
+                { role: 'minimize' },
+                { role: 'zoom' },
+                ...(isMac ? [
+                    { type: 'separator' },
+                    { role: 'front' }
+                ] : [
+                    { role: 'close' }
+                ])
+            ]
+        }
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+}
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -29,34 +92,39 @@ function createWindow() {
         win.loadFile(path.join(__dirname, 'login.html'));
     }
 
-    
     win.webContents.on('before-input-event', (event, input) => {
-        if (input.type === 'keyDown') {
-            const isR = input.key.toLowerCase() === 'r';
-            const isCmdOrCtrl = Boolean(input.control || input.meta);
-            if (isCmdOrCtrl && isR) {
-                if (input.shift) {
-                    win.webContents.reloadIgnoringCache();
-                } else {
-                    win.webContents.reload();
+        try {
+            if (input && input.type === 'keyDown' && typeof input.key === 'string') {
+                const keyLower = input.key.toLowerCase();
+                const isCmdOrCtrl = Boolean(input.control || input.meta);
+                if (isCmdOrCtrl && keyLower === 'r') {
+                    if (input.shift) {
+                        win.webContents.reloadIgnoringCache();
+                    } else {
+                        win.webContents.reload();
+                    }
+                    event.preventDefault();
+                    return;
                 }
-                event.preventDefault();
-                return;
+                if (input.key === 'F5') {
+                    win.webContents.reload();
+                    event.preventDefault();
+                    return;
+                }
+                if (input.key === 'F12' || (isCmdOrCtrl && input.shift && keyLower === 'i')) {
+                    win.webContents.toggleDevTools();
+                    event.preventDefault();
+                    return;
+                }
             }
-            if (input.key === 'F5') {
-                win.webContents.reload();
-                event.preventDefault();
-                return;
-            }
-            if (input.key === 'F12') {
-                win.webContents.reload();
-                event.preventDefault();
-                return;
-            }
+        } catch (e) {
+            console.error('Error handling before-input-event:', e);
         }
     });
 
     win.maximize();
+    win.show();
+    win.focus();
 }
 
 // Set up IPC handlers
@@ -798,27 +866,10 @@ function resolveSqlitePath() {
         console.error('Error reading sqliteDatabasePath from config:', e);
     }
 
-    // Priority 4: Standard default database location (if already exists and non-empty)
+    // Priority 4: Standard default database location (OneBook Documents directory)
     try {
         const defaultDb = path.normalize(path.join(app.getPath('documents'), 'OneBook', 'Database', 'onebook.db'));
-        if (fs.existsSync(defaultDb)) {
-            const stats = fs.statSync(defaultDb);
-            if (stats.size > 0) {
-                // Auto-persist to config so it is permanently recorded
-                try {
-                    const p = getConfigPath();
-                    fs.mkdirSync(path.dirname(p), { recursive: true });
-                    let data = {};
-                    if (fs.existsSync(p)) {
-                        try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
-                    }
-                    data.databaseFolder = path.dirname(defaultDb);
-                    data.sqliteDatabasePath = defaultDb;
-                    fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
-                } catch(e){}
-                return defaultDb;
-            }
-        }
+        return defaultDb;
     } catch (e) {
         console.error('Error checking default database location:', e);
     }
@@ -827,20 +878,27 @@ function resolveSqlitePath() {
 }
 
 function initSqliteAtStartup() {
-    const targetPath = resolveSqlitePath();
+    let targetPath = resolveSqlitePath();
+    if (!targetPath) {
+        try {
+            targetPath = path.normalize(path.join(app.getPath('documents'), 'OneBook', 'Database', 'onebook.db'));
+        } catch (e) {}
+    }
+
     if (!targetPath) {
         sqliteStatus = {
             initialized: false,
             path: null,
             error: 'SQLITE_NOT_CONFIGURED',
-            message: 'No SQLite database path is configured. Please select an existing database file.'
+            message: 'No SQLite database path could be determined.'
         };
         console.log('[SQLite Startup] No SQLite database configured.');
         return;
     }
 
     try {
-        dbManager.initializeDatabase(targetPath, { allowCreate: false });
+        // Auto-create database with schema and WAL mode if it does not exist yet
+        dbManager.initializeDatabase(targetPath, { allowCreate: true });
         sqliteStatus = {
             initialized: true,
             path: targetPath,
@@ -848,6 +906,19 @@ function initSqliteAtStartup() {
             message: null
         };
         console.log('[SQLite Startup] Successfully connected to SQLite database at:', targetPath);
+
+        // Auto-persist to config so it is permanently recorded
+        try {
+            const p = getConfigPath();
+            fs.mkdirSync(path.dirname(p), { recursive: true });
+            let data = {};
+            if (fs.existsSync(p)) {
+                try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
+            }
+            data.databaseFolder = path.dirname(targetPath);
+            data.sqliteDatabasePath = targetPath;
+            fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+        } catch(e){}
     } catch (e) {
         sqliteStatus = {
             initialized: false,
@@ -860,6 +931,8 @@ function initSqliteAtStartup() {
 }
 
 app.whenReady().then(() => {
+    createApplicationMenu();
+    updaterService.init();
     initSqliteAtStartup();
     backupService.init(
         path.join(app.getPath('documents'), 'OneBook', 'Database'),
@@ -1049,6 +1122,84 @@ function maskUsername(u) {
 }
 
 // Secure Admin Account & Password Recovery IPC Handlers
+const setupTokenStore = new Map();
+
+function cleanExpiredSetupTokens() {
+    const now = Date.now();
+    for (const [token, data] of setupTokenStore.entries()) {
+        if (now > data.expiresAt || data.used) {
+            setupTokenStore.delete(token);
+        }
+    }
+}
+
+ipcMain.handle('auth:createSetupToken', async () => {
+    try {
+        cleanExpiredSetupTokens();
+        let activeLicenseId = null;
+        const p = getLicensePath();
+        if (fs.existsSync(p) && safeStorage.isEncryptionAvailable()) {
+            try {
+                const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+                const parsed = JSON.parse(decrypted);
+                if (verifyLicenseSignature(parsed.license, parsed.signature) && parsed.license.deviceId === machineIdCache) {
+                    activeLicenseId = parsed.license.licenseId;
+                }
+            } catch (err) {
+                console.warn('[AUTH SETUP] Error reading local license for setup token:', err);
+            }
+        }
+
+        if (!activeLicenseId) {
+            return { success: false, error: 'No active validated licence found on this device.' };
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes TTL
+        setupTokenStore.set(token, {
+            licenseId: activeLicenseId,
+            expiresAt,
+            used: false
+        });
+
+        return { success: true, token, expiresAt };
+    } catch (e) {
+        console.error('[AUTH SETUP] createSetupToken error:', e);
+        return { success: false, error: 'Failed to generate setup token.' };
+    }
+});
+
+ipcMain.handle('auth:consumeSetupToken', async (event, token) => {
+    try {
+        cleanExpiredSetupTokens();
+        if (!token || typeof token !== 'string') {
+            return { success: false, error: 'Invalid or missing setup token.' };
+        }
+
+        const data = setupTokenStore.get(token);
+        if (!data) {
+            return { success: false, error: 'Setup token is invalid or has expired.' };
+        }
+
+        if (data.used || Date.now() > data.expiresAt) {
+            setupTokenStore.delete(token);
+            return { success: false, error: 'Setup token has already been used or expired.' };
+        }
+
+        // Single-use guarantee: delete immediately upon consumption
+        data.used = true;
+        setupTokenStore.delete(token);
+
+        return {
+            success: true,
+            licenseId: data.licenseId
+        };
+    } catch (e) {
+        console.error('[AUTH SETUP] consumeSetupToken error:', e);
+        return { success: false, error: 'Failed to verify setup token.' };
+    }
+});
+
 ipcMain.handle('auth:checkAdminStatus', async () => {
     try {
         const hasAdmin = userService.hasConfiguredAdmin();
@@ -1216,6 +1367,24 @@ ipcMain.handle('auth:demoLogin', async () => {
         console.error('[AUTH DEMO] Demo login error:', e);
         return { success: false, error: e.message || 'Demo login failed.' };
     }
+});
+
+ipcMain.handle('auth:clearDemoSession', async () => {
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            const db = dbManager.getDatabase();
+            if (db) {
+                db.prepare("UPDATE user_sessions SET revoked = 1 WHERE user_id = 'demo_user'").run();
+            }
+        }
+    } catch (e) {
+        console.warn('[AUTH] Error revoking demo sessions:', e.message);
+    }
+    return { success: true };
+});
+
+ipcMain.on('get-app-version-sync', (event) => {
+    event.returnValue = app.getVersion();
 });
 
 // Helper to get database details (path, filename, size, status)

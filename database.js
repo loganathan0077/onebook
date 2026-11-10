@@ -77,7 +77,7 @@ function createSchema() {
     
     // Initialize version if not exists
     db.prepare(`INSERT OR IGNORE INTO database_metadata (key, value) VALUES ('schema_version', '1')`).run();
-    db.prepare(`INSERT OR REPLACE INTO database_metadata (key, value) VALUES ('application_version', '1.0.2')`).run();
+    db.prepare(`INSERT OR REPLACE INTO database_metadata (key, value) VALUES ('application_version', '1.0.3')`).run();
 
     // Products
     db.exec(`

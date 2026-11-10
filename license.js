@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const machineId = window.electronAPI.getMachineIdSync();
-    document.getElementById('machineIdDisplay').innerText = `Machine ID: ${machineId}`;
+    let machineId = 'DEVICE-UNKNOWN';
+    try {
+        if (window.electronAPI && window.electronAPI.getMachineIdSync) {
+            machineId = window.electronAPI.getMachineIdSync();
+        }
+    } catch (e) {
+        console.warn('Machine ID error:', e);
+    }
+    const machineEl = document.getElementById('machineIdDisplay');
+    if (machineEl) machineEl.innerText = `Machine ID: ${machineId}`;
 
     const licenseInput = document.getElementById('licenseKey');
     const activateBtn = document.getElementById('activateBtn');
@@ -8,83 +16,133 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnText = document.querySelector('.btn-text');
     const spinner = document.getElementById('spinner');
 
-    licenseInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
-        e.target.value = value;
-        licenseInput.classList.remove('invalid');
-        errorMessage.innerText = '';
-    });
+    if (licenseInput) {
+        licenseInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+            e.target.value = value;
+            licenseInput.classList.remove('invalid');
+            if (errorMessage) errorMessage.innerText = '';
+        });
 
-    activateBtn.addEventListener('click', async () => {
-        const key = licenseInput.value.trim();
-        
-        if (!key) {
-            showError('Please enter a valid license key.');
-            return;
-        }
+        setTimeout(() => {
+            licenseInput.focus();
+        }, 150);
+    }
 
-        setLoading(true);
-
-        try {
-            const response = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/activate-license', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    licenseKey: key,
-                    deviceId: machineId,
-                    deviceName: 'OneBook POS',
-                    operatingSystem: navigator.platform,
-                    appVersion: '1.0.0'
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // mask the key safely
-                let maskedKey = '';
-                const parts = key.split('-');
-                if (parts.length >= 4) {
-                    maskedKey = `${parts[0]}-****-${parts[parts.length-1]}`;
-                } else if (key.length >= 4) {
-                    maskedKey = `****-${key.slice(-4)}`;
-                } else {
-                    maskedKey = '****';
-                }
-                localStorage.setItem('maskedLicenseKey', maskedKey);
-
-                // Save securely via IPC
-                const saveResult = window.electronAPI.saveLicenseSync(data);
-                if (saveResult.success) {
-                    // Success! Redirect to login/admin setup screen
-                    window.location.href = 'login.html';
-                } else {
-                    showError(saveResult.error || 'Failed to save license locally.');
-                }
-            } else if (data.error === "Device limit exceeded") {
-                showError("This license key is already activated on another device. You must release the existing activation or transfer the license before using it here.");
-            } else if (data.error === "Invalid license key") {
-                showError("Invalid license key. Please check the key and try again.");
-            } else {
-                showError(data.error || 'Activation failed.');
+    if (activateBtn) {
+        activateBtn.addEventListener('click', async () => {
+            const key = licenseInput ? licenseInput.value.trim() : '';
+            
+            if (!key) {
+                showError('Please enter a valid license key.');
+                if (licenseInput) licenseInput.focus();
+                return;
             }
-        } catch (error) {
-            console.error('Activation request error:', error);
-            showError('Network error. Please check your connection.');
-        } finally {
-            setLoading(false);
-        }
-    });
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('https://sqibniuqbkgexipynfkx.supabase.co/functions/v1/activate-license', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        licenseKey: key,
+                        deviceId: machineId,
+                        deviceName: 'OneBook POS',
+                        operatingSystem: navigator.platform,
+                        appVersion: '1.0.0'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mask the key safely for storage
+                    let maskedKey = '';
+                    const parts = key.split('-');
+                    if (parts.length >= 4) {
+                        maskedKey = `${parts[0]}-****-${parts[parts.length-1]}`;
+                    } else if (key.length >= 4) {
+                        maskedKey = `****-${key.slice(-4)}`;
+                    } else {
+                        maskedKey = '****';
+                    }
+                    localStorage.setItem('maskedLicenseKey', maskedKey);
+
+                    // Save securely via IPC
+                    const saveResult = window.electronAPI.saveLicenseSync(data);
+                    if (saveResult.success) {
+                        // 1. Completely exit and wipe any Demo session state
+                        sessionStorage.removeItem('onebook_session_token');
+                        sessionStorage.removeItem('currentUser');
+                        if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                            window.electronAPI.sqlite.clearSessionToken();
+                        }
+                        if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.clearDemoSession) {
+                            await window.electronAPI.auth.clearDemoSession();
+                        }
+
+                        // 2. Check if this is a new user without a production Admin account
+                        let hasAdmin = false;
+                        try {
+                            if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.checkAdminStatus) {
+                                const adminStatus = await window.electronAPI.auth.checkAdminStatus();
+                                hasAdmin = Boolean(adminStatus && adminStatus.hasAdmin);
+                            }
+                        } catch (e) {
+                            console.warn('Admin check error:', e);
+                        }
+
+                        // 3. Direct new users to Create Admin Account, existing users to Login
+                        if (!hasAdmin) {
+                            let setupToken = null;
+                            try {
+                                if (window.electronAPI && window.electronAPI.auth && window.electronAPI.auth.createSetupToken) {
+                                    const tokenRes = await window.electronAPI.auth.createSetupToken();
+                                    if (tokenRes && tokenRes.success && tokenRes.token) {
+                                        setupToken = tokenRes.token;
+                                    }
+                                }
+                            } catch (tokenErr) {
+                                console.warn('Could not generate setup token:', tokenErr);
+                            }
+
+                            if (setupToken) {
+                                window.location.href = 'login.html?view=create-admin&token=' + encodeURIComponent(setupToken);
+                            } else {
+                                window.location.href = 'login.html?view=create-admin';
+                            }
+                        } else {
+                            window.location.href = 'login.html?activated=true';
+                        }
+                    } else {
+                        showError(saveResult.error || 'Failed to save license locally.');
+                    }
+                } else if (data.error === "Device limit exceeded") {
+                    showError("This license key is already activated on another device. You must release the existing activation or transfer the license before using it here.");
+                } else if (data.error === "Invalid license key") {
+                    showError("Invalid license key. Please check the key and try again.");
+                } else {
+                    showError(data.error || 'Activation failed.');
+                }
+            } catch (error) {
+                console.error('Activation request error:', error);
+                showError('Network error. Please check your connection.');
+            } finally {
+                setLoading(false);
+            }
+        });
+    }
 
     const demoBtn = document.getElementById('demoBtn');
     if (demoBtn) {
         demoBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             demoBtn.disabled = true;
-            const btnText = demoBtn.querySelector('.btn-text');
-            if (btnText) btnText.innerHTML = 'Starting Demo Mode...';
+            const bText = demoBtn.querySelector('.btn-text');
+            if (bText) bText.innerHTML = 'Starting Demo Mode...';
 
             try {
                 let sessionToken = null;
@@ -141,21 +199,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setLoading(isLoading) {
+        if (!activateBtn) return;
         if (isLoading) {
             activateBtn.disabled = true;
-            btnText.style.display = 'none';
-            spinner.style.display = 'block';
-            licenseInput.disabled = true;
+            if (btnText) btnText.style.display = 'none';
+            if (spinner) spinner.style.display = 'block';
+            if (licenseInput) licenseInput.disabled = true;
         } else {
             activateBtn.disabled = false;
-            btnText.style.display = 'block';
-            spinner.style.display = 'none';
-            licenseInput.disabled = false;
+            if (btnText) btnText.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+            if (licenseInput) licenseInput.disabled = false;
         }
     }
 
     function showError(message) {
-        licenseInput.classList.add('invalid');
-        errorMessage.innerText = message;
+        if (licenseInput) licenseInput.classList.add('invalid');
+        if (errorMessage) errorMessage.innerText = message;
     }
 });
