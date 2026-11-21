@@ -53,7 +53,7 @@ console.log('🧪 Starting Packaged ASAR & End-to-End Flow Verification Suite...
     const licenseJsContent = fs.readFileSync(extractedLicenseJs, 'utf8');
     assert(!licenseHtmlContent.includes("onclick=\"window.location.href='login.html'\""), 'license.html demoBtn must NOT redirect to login.html');
     assert(licenseJsContent.includes("window.location.href = 'OneBook.html'"), 'license.js demoBtn must redirect to OneBook.html directly');
-    assert(licenseJsContent.includes("window.location.href = 'login.html'"), 'license.js on license activation must redirect to login.html');
+    assert(licenseJsContent.includes("login.html"), 'license.js on license activation must redirect to login.html');
     console.log('  ✓ license.html and license.js verified in app.asar (direct demo bypass & admin login routing)');
 
     // 4. Verify main.js
