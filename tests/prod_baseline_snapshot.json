@@ -1,0 +1,23 @@
+{
+  "path": "/Users/log/Desktop/untitled folder/doodles-store-desktop/OneBook/onebook.db",
+  "size": 303104,
+  "mtime": "2026-11-20T12:39:22.470Z",
+  "sha256": "5f2f8ea5191a6085b04c77ed23fa28c4dc7ec595028065ba0b8885cea866e714",
+  "integrity": "ok",
+  "counts": {
+    "products": 1,
+    "product_variants": 2,
+    "sales": 2,
+    "sale_items": 3,
+    "purchases": 0,
+    "purchase_items": 0,
+    "customers": 1,
+    "suppliers": 0,
+    "petty_cash_transactions": 2,
+    "day_closings": 0,
+    "users": 1,
+    "user_sessions": 3,
+    "categories": 16,
+    "units": 17
+  }
+}

@@ -84,3 +84,6 @@ test_*.ts
 
 # Supabase local environment data
 supabase/.temp/
+
+# Production Release Deliverables
+OneBook-v*/

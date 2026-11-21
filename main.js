@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 const os = require('os');
+const updateService = require('./services/updateService');
 
 // Enforce consistent application name across development and packaged builds
 app.setName('OneBook');
@@ -20,6 +21,12 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+
+    try {
+        updateService.init(win);
+    } catch (e) {
+        console.warn('[MAIN] Update service init error:', e.message);
+    }
 
     const mode = checkLicense();
     if (mode === 'DEMO') {
@@ -63,11 +70,15 @@ function createWindow() {
 
 ipcMain.handle('print-html', async (event, html, options = {}) => {
     return new Promise((resolve) => {
+        let tempFile = null;
         try {
             const senderWin = BrowserWindow.fromWebContents(event.sender);
             const isLandscape = Boolean(options && options.landscape);
             const pageSize = (options && options.pageSize) ? options.pageSize : 'A4';
             const title = (options && options.title) ? options.title : 'Print Preview';
+
+            tempFile = path.join(app.getPath('temp'), `onebook-print-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.html`);
+            fs.writeFileSync(tempFile, html || '', 'utf8');
 
             const printWin = new BrowserWindow({
                 width: isLandscape ? 1100 : 850,
@@ -88,6 +99,9 @@ ipcMain.handle('print-html', async (event, html, options = {}) => {
                     finished = true;
                     try {
                         if (!printWin.isDestroyed()) printWin.close();
+                    } catch (e) {}
+                    try {
+                        if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
                     } catch (e) {}
                     resolve(res);
                 }
@@ -126,8 +140,11 @@ ipcMain.handle('print-html', async (event, html, options = {}) => {
                 cleanup({ success: false, error: `Failed to load print document: ${desc}` });
             });
 
-            printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+            printWin.loadFile(tempFile);
         } catch (err) {
+            try {
+                if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+            } catch (e) {}
             resolve({ success: false, error: err.message || 'Error initializing printing window' });
         }
     });
@@ -860,6 +877,9 @@ function initSqliteAtStartup() {
 }
 
 app.whenReady().then(() => {
+    if (process.env.ONEBOOK_TEST_RUNNER === '1') {
+        return;
+    }
     initSqliteAtStartup();
     backupService.init(
         path.join(app.getPath('documents'), 'OneBook', 'Database'),
@@ -1165,7 +1185,7 @@ ipcMain.handle('auth:createAdminAccount', async (event, args) => {
             deviceId: machineIdCache
         });
 
-        return { success: true, username: res.username, recoveryCode: res.recoveryCode };
+        return { success: true, username: res.username };
     } catch (e) {
         console.error('[AUTH SETUP] Create admin error:', e);
         return { success: false, error: e.message || 'Failed to create admin account.' };
@@ -1175,33 +1195,41 @@ ipcMain.handle('auth:createAdminAccount', async (event, args) => {
 ipcMain.handle('auth:resetAdminPassword', async (event, args) => {
     try {
         const { licenseId, recoveryCode, newPassword } = args || {};
-        if (!licenseId || !recoveryCode || !newPassword) {
-            return { success: false, error: 'Licence ID, recovery code, and new password are required.' };
+        if (!recoveryCode || !newPassword) {
+            return { success: false, error: 'Backup Key and new password are required.' };
         }
+
+        const admin = userService.getConfiguredAdmin();
+        if (!admin) {
+            return { success: false, error: 'No configured Admin account found.' };
+        }
+
+        let activeLicenseId = licenseId || admin.license_id;
 
         const p = getLicensePath();
-        if (!fs.existsSync(p) || !safeStorage.isEncryptionAvailable()) {
-            return { success: false, error: 'No validated licence found on this device.' };
-        }
-
-        const decrypted = safeStorage.decryptString(fs.readFileSync(p));
-        const parsed = JSON.parse(decrypted);
-        if (!verifyLicenseSignature(parsed.license, parsed.signature) || parsed.license.deviceId !== machineIdCache) {
-            return { success: false, error: 'Device mismatch or invalid licence signature.' };
-        }
-
-        if (parsed.license.licenseId !== licenseId) {
-            return { success: false, error: 'Licence ID mismatch.' };
+        if (fs.existsSync(p) && safeStorage.isEncryptionAvailable()) {
+            try {
+                const decrypted = safeStorage.decryptString(fs.readFileSync(p));
+                const parsed = JSON.parse(decrypted);
+                if (verifyLicenseSignature(parsed.license, parsed.signature) && parsed.license.deviceId === machineIdCache) {
+                    if (licenseId && parsed.license.licenseId !== licenseId) {
+                        return { success: false, error: 'Licence ID mismatch.' };
+                    }
+                    activeLicenseId = parsed.license.licenseId;
+                }
+            } catch (err) {
+                console.warn('[AUTH] Error reading local license for reset:', err);
+            }
         }
 
         const res = await userService.resetAdminPasswordWithRecovery({
-            licenseId,
+            licenseId: activeLicenseId,
             deviceId: machineIdCache,
             recoveryCode,
             newPassword
         });
 
-        return { success: true, username: res.username, newRecoveryCode: res.newRecoveryCode };
+        return { success: true, username: res.username };
     } catch (e) {
         console.error('[AUTH SETUP] Reset admin password error:', e);
         return { success: false, error: e.message || 'Password reset failed.' };
@@ -1215,6 +1243,37 @@ ipcMain.handle('auth:demoLogin', async () => {
     } catch (e) {
         console.error('[AUTH DEMO] Demo login error:', e);
         return { success: false, error: e.message || 'Demo login failed.' };
+    }
+});
+
+// Auto-Updater IPC Handlers
+ipcMain.handle('updater:getVersion', () => {
+    try {
+        return app.getVersion();
+    } catch (e) {
+        return '1.0.5';
+    }
+});
+ipcMain.handle('updater:getStatus', () => updateService.getStatus());
+ipcMain.handle('updater:check', async () => {
+    try {
+        return await updateService.checkForUpdates();
+    } catch (e) {
+        return { success: false, error: e.message || 'Failed to check for updates' };
+    }
+});
+ipcMain.handle('updater:download', async () => {
+    try {
+        return await updateService.downloadUpdate();
+    } catch (e) {
+        return { success: false, error: e.message || 'Failed to download update' };
+    }
+});
+ipcMain.handle('updater:install', () => {
+    try {
+        return updateService.quitAndInstall();
+    } catch (e) {
+        return { success: false, error: e.message || 'Failed to install update' };
     }
 });
 
@@ -1267,9 +1326,12 @@ ipcMain.handle('sqlite:system:getDefaultDbFolder', () => {
 
 ipcMain.handle('sqlite:system:selectFolder', async (event, options = {}) => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
-        title: options.title || 'Select Database Folder',
+        title: options.title || 'Select Database Folder or File',
         defaultPath: options.defaultPath || path.join(app.getPath('documents'), 'OneBook', 'Database'),
-        properties: ['openDirectory', 'createDirectory']
+        properties: ['openDirectory', 'openFile', 'createDirectory'],
+        filters: [
+            { name: 'SQLite Database / All Files', extensions: ['db', 'sqlite', 'sqlite3', '*'] }
+        ]
     });
 
     if (canceled || !filePaths || filePaths.length === 0) {
@@ -1352,60 +1414,160 @@ ipcMain.handle('sqlite:system:initializeDatabaseLocation', async (event, args) =
 });
 
 ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
-    const newFolder = args?.folderPath;
+    const rawTarget = args?.folderPath;
     const forceOverwrite = !!args?.forceOverwrite;
+    const skipBackup = !!args?.skipBackup;
 
-    if (!newFolder || typeof newFolder !== 'string') {
-        return { success: false, error: 'INVALID_DESTINATION', message: 'Destination folder must be specified.' };
+    if (!rawTarget || typeof rawTarget !== 'string') {
+        return { success: false, error: 'INVALID_DESTINATION', message: 'Destination must be specified.' };
     }
 
     const currentDetails = getDatabaseDetailsHelper();
     const oldDbPath = currentDetails.path;
 
     if (!oldDbPath || !fs.existsSync(oldDbPath)) {
-        return { success: false, error: 'NO_SOURCE_DATABASE', message: 'No current SQLite database found to migrate.' };
+        return { success: false, error: 'NO_SOURCE_DATABASE', message: 'No current SQLite database found to migrate or switch from.' };
     }
 
-    const targetDbPath = path.join(newFolder, 'onebook.db');
+    // Determine targetDbPath and targetFolder (supports directory or direct .db file)
+    const isDbFile = rawTarget.endsWith('.db') || rawTarget.endsWith('.sqlite') || rawTarget.endsWith('.sqlite3') || (fs.existsSync(rawTarget) && fs.statSync(rawTarget).isFile());
+    
+    let targetDbPath = null;
+    let targetFolder = null;
+
+    if (isDbFile) {
+        targetDbPath = path.normalize(rawTarget);
+        targetFolder = path.dirname(targetDbPath);
+    } else {
+        targetFolder = path.normalize(rawTarget);
+        const defaultInFolder = path.join(targetFolder, 'onebook.db');
+        if (fs.existsSync(defaultInFolder)) {
+            targetDbPath = defaultInFolder;
+        } else {
+            // Check if there is another .db file in this folder
+            let candidateDb = null;
+            try {
+                if (fs.existsSync(targetFolder)) {
+                    const files = fs.readdirSync(targetFolder).filter(f => f.endsWith('.db') && !f.startsWith('.'));
+                    if (files.length === 1) {
+                        candidateDb = path.join(targetFolder, files[0]);
+                    }
+                }
+            } catch(e){}
+            targetDbPath = candidateDb || defaultInFolder;
+        }
+    }
+
     if (path.resolve(oldDbPath) === path.resolve(targetDbPath)) {
-        return { success: false, error: 'SAME_LOCATION', message: 'The selected folder is already the current database location.' };
+        return { success: false, error: 'SAME_LOCATION', message: 'The selected folder/file is already the current active database location.' };
     }
 
-    // Check if target database already exists and forceOverwrite is not confirmed
-    if (fs.existsSync(targetDbPath) && !forceOverwrite) {
+    // CASE 1: Target database already exists — Switch to it directly without overwriting!
+    if (fs.existsSync(targetDbPath)) {
+        console.log('[Database Switch] Target database already exists at:', targetDbPath, '. Validating and connecting...');
+        
+        // Step 1A: Validate SQLite integrity before switching
+        const Database = require('better-sqlite3');
+        let checkDb = null;
+        try {
+            checkDb = new Database(targetDbPath, { readonly: true });
+            const integrity = checkDb.pragma('integrity_check');
+            const integrityOk = integrity && integrity.length > 0 && integrity[0].integrity_check === 'ok';
+            checkDb.close();
+            if (!integrityOk) {
+                return { success: false, error: 'TARGET_CORRUPT', message: 'Target database failed integrity check: ' + JSON.stringify(integrity) };
+            }
+        } catch (checkErr) {
+            if (checkDb) { try { checkDb.close(); } catch(e){} }
+            return { success: false, error: 'TARGET_INVALID', message: 'Cannot open target file as a valid SQLite database: ' + checkErr.message };
+        }
+
+        // Step 1B: Create safety backup of the currently active database before switching
+        let safetyBackupFile = null;
+        if (!skipBackup) {
+            try {
+                const backupRes = await backupService.createBackup('pre_switch_safety', 'PreSwitch_SafetyBackup');
+                if (backupRes && backupRes.success) {
+                    safetyBackupFile = backupRes.metadata?.filePath;
+                    console.log('[Database Switch] Safety backup of previous DB created at:', safetyBackupFile);
+                }
+            } catch (bErr) {
+                console.warn('[Database Switch] Safety backup warning:', bErr.message);
+            }
+        }
+
+        // Step 1C: Safely close active connection
+        if (dbManager.isDatabaseOpen()) {
+            dbManager.closeDatabase();
+        }
+
+        // Step 1D: Open the target database
+        try {
+            dbManager.initializeDatabase(targetDbPath, { allowCreate: false });
+        } catch (openErr) {
+            console.error('[Database Switch Error]: Could not open target database:', openErr);
+            // Rollback to old database
+            if (fs.existsSync(oldDbPath)) {
+                try { dbManager.initializeDatabase(oldDbPath, { allowCreate: false }); } catch(e){}
+            }
+            return { success: false, error: 'SWITCH_FAILED', message: 'Failed to connect to target database: ' + openErr.message };
+        }
+
+        // Step 1E: Update persistent config
+        const p = getConfigPath();
+        fs.mkdirSync(path.dirname(p), { recursive: true });
+        let data = {};
+        if (fs.existsSync(p)) {
+            try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
+        }
+        data.databaseFolder = targetFolder;
+        data.sqliteDatabasePath = targetDbPath;
+        fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
+
+        sqliteStatus = {
+            initialized: true,
+            path: targetDbPath,
+            error: null,
+            message: null
+        };
+
+        console.log('[Database Switch] Successfully connected to existing database at:', targetDbPath);
         return {
-            success: false,
-            error: 'TARGET_EXISTS',
-            targetPath: targetDbPath,
-            message: 'A database file (onebook.db) already exists in the selected destination folder. Explicit confirmation is required to proceed.'
+            success: true,
+            newPath: targetDbPath,
+            oldPath: oldDbPath,
+            safetyBackup: safetyBackupFile,
+            switchedToExisting: true,
+            details: getDatabaseDetailsHelper()
         };
     }
 
+    // CASE 2: Target database does not exist — Safe migration/copy of current database to new location
     try {
-        if (!fs.existsSync(newFolder)) {
-            fs.mkdirSync(newFolder, { recursive: true });
+        if (!fs.existsSync(targetFolder)) {
+            fs.mkdirSync(targetFolder, { recursive: true });
         }
     } catch (err) {
         return { success: false, error: 'DEST_DIR_CREATE_FAILED', message: 'Could not create destination directory: ' + err.message };
     }
 
-    console.log('[Database Migration] Starting migration from:', oldDbPath, 'to:', targetDbPath);
+    console.log('[Database Migration] Starting migration from:', oldDbPath, 'to:', targetDbPath, '(skipBackup:', skipBackup, ')');
 
-    // Step 1: Create a safety backup of current database
+    // Step 2A: Create a safety backup of current database unless explicitly skipped
     let safetyBackupFile = null;
-    try {
-        const backupRes = await backupService.createBackup('pre_migration_safety', 'PreMigration_SafetyBackup');
-        if (backupRes && backupRes.success) {
-            safetyBackupFile = backupRes.metadata?.filePath;
-            console.log('[Database Migration] Safety backup created at:', safetyBackupFile);
-        } else {
-            console.warn('[Database Migration] Safety backup returned unsuccessful:', backupRes?.error);
+    if (!skipBackup) {
+        try {
+            const backupRes = await backupService.createBackup('pre_migration_safety', 'PreMigration_SafetyBackup');
+            if (backupRes && backupRes.success) {
+                safetyBackupFile = backupRes.metadata?.filePath;
+                console.log('[Database Migration] Safety backup created at:', safetyBackupFile);
+            }
+        } catch (bErr) {
+            console.warn('[Database Migration] Safety backup warning:', bErr.message);
         }
-    } catch (bErr) {
-        console.warn('[Database Migration] Safety backup warning:', bErr.message);
     }
 
-    // Step 2: Checkpoint WAL and copy to target using better-sqlite3 backup API or safe copy
+    // Step 2B: Checkpoint WAL and copy to target using better-sqlite3 backup API or safe copy
     const tempCopyPath = targetDbPath + '.migrating_' + Date.now();
     try {
         if (dbManager.isDatabaseOpen()) {
@@ -1422,12 +1584,10 @@ ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
             fs.copyFileSync(oldDbPath, tempCopyPath);
         }
 
-        // Step 3: Validate the copied database using integrity checks
+        // Step 2C: Validate the copied database using integrity checks
         const Database = require('better-sqlite3');
         const vDb = new Database(tempCopyPath, { readonly: true });
         const integrity = vDb.pragma('integrity_check');
-        const fkCheck = vDb.pragma('foreign_key_check');
-        const countRow = vDb.prepare('SELECT count(*) as c FROM sales').get();
         vDb.close();
 
         const integrityOk = integrity && integrity.length > 0 && integrity[0].integrity_check === 'ok';
@@ -1435,32 +1595,26 @@ ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
             if (fs.existsSync(tempCopyPath)) fs.unlinkSync(tempCopyPath);
             throw new Error('Integrity check failed on copied database: ' + JSON.stringify(integrity));
         }
-        console.log('[Database Migration] Destination database verified ok. Verified sales records count:', countRow?.c);
 
-        // Step 4: Safely close active connection
+        // Step 2D: Safely close active connection
         if (dbManager.isDatabaseOpen()) {
             dbManager.closeDatabase();
         }
 
-        // Atomically move temp copy to targetDbPath
-        if (fs.existsSync(targetDbPath)) {
-            const existingBackupPath = targetDbPath + '.replaced_' + Date.now();
-            fs.renameSync(targetDbPath, existingBackupPath);
-        }
         fs.renameSync(tempCopyPath, targetDbPath);
 
-        // Step 5: Update persistent config
+        // Step 2E: Update persistent config
         const p = getConfigPath();
         fs.mkdirSync(path.dirname(p), { recursive: true });
         let data = {};
         if (fs.existsSync(p)) {
             try { data = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch(e){}
         }
-        data.databaseFolder = newFolder;
+        data.databaseFolder = targetFolder;
         data.sqliteDatabasePath = targetDbPath;
         fs.writeFileSync(p, JSON.stringify(data, null, 4), 'utf-8');
 
-        // Step 6: Reopen database from new location
+        // Step 2F: Reopen database from new location
         dbManager.initializeDatabase(targetDbPath, { allowCreate: false });
 
         sqliteStatus = {
@@ -1476,6 +1630,7 @@ ipcMain.handle('sqlite:system:changeDatabaseLocation', async (event, args) => {
             newPath: targetDbPath,
             oldPath: oldDbPath,
             safetyBackup: safetyBackupFile,
+            switchedToExisting: false,
             details: getDatabaseDetailsHelper()
         };
 
@@ -1528,11 +1683,10 @@ ipcMain.handle('sqlite:system:selectAndConnect', async (event) => {
     const chosenPath = filePaths[0];
 
     try {
-        if (!dbManager.isDatabaseOpen()) {
-            dbManager.initializeDatabase(chosenPath, { allowCreate: false });
-        } else {
-            return { success: false, error: 'ALREADY_CONNECTED', message: 'A database is already connected. Please restart the app to switch databases.' };
+        if (dbManager.isDatabaseOpen()) {
+            dbManager.closeDatabase();
         }
+        dbManager.initializeDatabase(chosenPath, { allowCreate: false });
 
         // Persist to config.json
         const p = getConfigPath();
@@ -1603,6 +1757,30 @@ ipcMain.handle('sqlite:products:update', (e, args, arg2) => handleAuthorizedSqli
 }, { isWrite: true }));
 ipcMain.handle('sqlite:products:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.searchProducts(args?.q !== undefined ? args.q : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 ipcMain.handle('sqlite:products:lowStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'products', () => productService.getLowStockProducts(), { isDemoRestrictedRead: true, demoReadDefault: [] }));
+ipcMain.handle('sqlite:products:addVariant', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => {
+    const productId = args?.productId !== undefined ? args.productId : args;
+    const variant = args?.variant !== undefined ? args.variant : arg2;
+    return productService.addVariant(productId, variant);
+}, { isWrite: true }));
+ipcMain.handle('sqlite:products:delete', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => {
+    const id = args?.id !== undefined ? args.id : args;
+    return productService.deleteProduct(id);
+}, { isWrite: true }));
+ipcMain.handle('sqlite:products:deleteVariant', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => {
+    const variantId = args?.variantId !== undefined ? args.variantId : (args?.id !== undefined ? args.id : args);
+    const productId = args?.productId !== undefined ? args.productId : arg2;
+    return productService.deleteVariant(variantId, productId);
+}, { isWrite: true }));
+ipcMain.handle('sqlite:products:updateGstRate', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => {
+    const productId = args?.productId !== undefined ? args.productId : args;
+    const gstRate = args?.gstRate !== undefined ? args.gstRate : arg2;
+    return productService.updateProductGstRate(productId, gstRate);
+}, { isWrite: true }));
+ipcMain.handle('sqlite:products:updateVariantGstRate', (e, args, arg2) => handleAuthorizedSqlite(e, args?.sessionToken, 'product_add_edit', () => {
+    const variantId = args?.variantId !== undefined ? args.variantId : args;
+    const gstRate = args?.gstRate !== undefined ? args.gstRate : arg2;
+    return productService.updateVariantGstRate(variantId, gstRate);
+}, { isWrite: true }));
 
 // Stock
 ipcMain.handle('sqlite:stock:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => stockService.getCurrentStock(args?.pId !== undefined ? args.pId : args), { isDemoRestrictedRead: true, demoReadDefault: 0 }));
@@ -1647,7 +1825,13 @@ ipcMain.handle('sqlite:sales:cancel', (e, args, arg2) => {
 ipcMain.handle('sqlite:purchases:create', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.createPurchase(args?.data !== undefined ? args.data : args), { isWrite: true }));
 ipcMain.handle('sqlite:purchases:getAll', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchases(typeof args?.dateStr === 'string' ? args.dateStr : (typeof args === 'string' ? args : null)), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 ipcMain.handle('sqlite:purchases:search', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.searchPurchases(args?.query !== undefined ? args.query : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
-ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => purchaseService.getPurchaseById(args?.id !== undefined ? args.id : args), { isDemoRestrictedRead: true, demoReadDefault: null }));
+ipcMain.handle('sqlite:purchases:get', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'purchase_entry', () => {
+    let id = args?.id !== undefined ? args.id : args;
+    if (typeof id === 'object' && id !== null) {
+        id = id.id || id.invoice_number || id.invoiceNumber || id.invoice;
+    }
+    return purchaseService.getPurchaseById(id);
+}, { isDemoRestrictedRead: true, demoReadDefault: null }));
 ipcMain.handle('sqlite:purchases:cancel', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'delete', () => purchaseService.cancelPurchase(args?.id !== undefined ? args.id : args), { isWrite: true }));
 
 // Suppliers
@@ -1874,3 +2058,10 @@ ipcMain.handle('sqlite:locations:getStock', (e, args) => handleAuthorizedSqlite(
 ipcMain.handle('sqlite:locations:getBreakdown', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getProductStockBreakdown(args?.productId, args?.variantId)));
 ipcMain.handle('sqlite:locations:transferStock', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.transferStock(args?.productId, args?.variantId, args?.fromLocationId, args?.toLocationId, args?.quantity, args?.notes)));
 ipcMain.handle('sqlite:locations:getTransfers', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'inventory', () => locationService.getTransfers(args?.filters)));
+
+module.exports = {
+    initSqliteAtStartup,
+    resolveSqlitePath,
+    getDatabaseDetailsHelper,
+    createWindow
+};

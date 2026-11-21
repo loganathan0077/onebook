@@ -77,7 +77,7 @@ function createSchema() {
     
     // Initialize version if not exists
     db.prepare(`INSERT OR IGNORE INTO database_metadata (key, value) VALUES ('schema_version', '1')`).run();
-    db.prepare(`INSERT OR REPLACE INTO database_metadata (key, value) VALUES ('application_version', '1.0.2')`).run();
+    db.prepare(`INSERT OR REPLACE INTO database_metadata (key, value) VALUES ('application_version', '1.0.5')`).run();
 
     // Products
     db.exec(`
@@ -113,6 +113,7 @@ function createSchema() {
             buying_price REAL DEFAULT 0,
             selling_price REAL DEFAULT 0,
             stock REAL DEFAULT 0,
+            gst_rate REAL DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
@@ -745,6 +746,9 @@ function createSchema() {
     const varCols = db.prepare('PRAGMA table_info(product_variants)').all().map(c => c.name);
     if (!varCols.includes('is_favorite')) {
         try { db.exec('ALTER TABLE product_variants ADD COLUMN is_favorite INTEGER DEFAULT 0'); } catch(e) {}
+    }
+    if (!varCols.includes('gst_rate')) {
+        try { db.exec('ALTER TABLE product_variants ADD COLUMN gst_rate REAL DEFAULT NULL'); } catch(e) {}
     }
     for (const col of locCols) {
         if (!varCols.includes(col)) {

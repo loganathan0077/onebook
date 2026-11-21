@@ -360,18 +360,24 @@ class UserService {
         const cleanUsername = username.trim();
         const db = database.getDatabase();
 
-        // Generate recovery code and hash with Argon2id
-        const recoveryCode = this.generateRecoveryCode();
-        const recoveryCodeHash = await this.hashRecoveryCode(recoveryCode);
+        // Check for existing admin or existing username (excluding demo_user)
+        const existingAdmin = db.prepare("SELECT id, recovery_code_hash FROM users WHERE role = 'admin' AND id != 'demo_user'").get();
+        const existingByUsername = db.prepare("SELECT id, recovery_code_hash FROM users WHERE username = ? COLLATE NOCASE AND id != 'demo_user'").get(cleanUsername);
+        const existingRecord = existingByUsername || existingAdmin;
+
+        let recoveryCode = null;
+        let recoveryCodeHash = existingRecord ? existingRecord.recovery_code_hash : null;
+
+        // If no recovery key exists yet in the database, initialize one so the recovery system has a key
+        if (!recoveryCodeHash) {
+            recoveryCode = this.generateRecoveryCode();
+            recoveryCodeHash = await this.hashRecoveryCode(recoveryCode);
+        }
 
         // Hash password with Argon2id
         const passwordHash = await this.hashPasswordArgon2id(password);
 
         const nowIso = new Date().toISOString();
-
-        // Check for existing admin or existing username (excluding demo_user)
-        const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' AND id != 'demo_user'").get();
-        const existingByUsername = db.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id != 'demo_user'").get(cleanUsername);
 
         let adminId = 'admin_1';
         if (existingByUsername) {
@@ -407,7 +413,7 @@ class UserService {
                     status = 'active',
                     license_id = excluded.license_id,
                     device_id = excluded.device_id,
-                    recovery_code_hash = excluded.recovery_code_hash,
+                    recovery_code_hash = COALESCE(users.recovery_code_hash, excluded.recovery_code_hash),
                     recovery_attempts = 0,
                     recovery_locked_until = NULL,
                     updated_at = excluded.updated_at,
@@ -423,7 +429,7 @@ class UserService {
             success: true,
             adminId,
             username: cleanUsername,
-            recoveryCode
+            recoveryCode: recoveryCode || undefined
         };
     }
 
@@ -444,7 +450,7 @@ class UserService {
         }
 
         // Verify licence association
-        if (admin.license_id !== licenseId) {
+        if (licenseId && admin.license_id && admin.license_id !== licenseId) {
             throw new Error('Licence key mismatch: This account was created with a different licence key.');
         }
 
@@ -478,9 +484,8 @@ class UserService {
             }
         }
 
-        // Valid recovery: hash new password with Argon2id, generate fresh recovery code
-        const newRecoveryCode = this.generateRecoveryCode();
-        const newRecoveryCodeHash = await this.hashRecoveryCode(newRecoveryCode);
+        // Valid recovery: hash new password with Argon2id, reset attempts and lockout.
+        // Preserve existing original recovery key (do not overwrite, regenerate, or delete it)
         const newPasswordHash = await this.hashPasswordArgon2id(newPassword);
         const nowIso = new Date().toISOString();
 
@@ -489,21 +494,19 @@ class UserService {
                 password_hash = ?,
                 salt = '',
                 hash_algorithm = 'argon2id',
-                recovery_code_hash = ?,
                 recovery_attempts = 0,
                 recovery_locked_until = NULL,
                 updated_at = ?,
                 last_password_change = ?
             WHERE id = ?
-        `).run(newPasswordHash, newRecoveryCodeHash, nowIso, nowIso, admin.id);
+        `).run(newPasswordHash, nowIso, nowIso, admin.id);
 
         // Invalidate all active sessions
         await this.revokeAllUserSessions(admin.id);
 
         return {
             success: true,
-            username: admin.username,
-            newRecoveryCode
+            username: admin.username
         };
     }
 

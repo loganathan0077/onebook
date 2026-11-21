@@ -68,6 +68,39 @@ class CalculatorService {
             return { success: true };
         });
     }
+
+    calculateGstInclusive(inclusiveAmount, gstRate) {
+        const inc = parseFloat(inclusiveAmount);
+        const rate = parseFloat(gstRate);
+        if (isNaN(inc) || inc < 0 || isNaN(rate) || rate < 0) {
+            return { inclusiveAmount: 0, taxableAmount: 0, gstAmount: 0, totalAmount: 0 };
+        }
+        const taxable = inc / (1 + rate / 100);
+        const gst = inc - taxable;
+        return {
+            inclusiveAmount: parseFloat(inc.toFixed(2)),
+            taxableAmount: parseFloat(taxable.toFixed(2)),
+            gstAmount: parseFloat(gst.toFixed(2)),
+            totalAmount: parseFloat(inc.toFixed(2))
+        };
+    }
+
+    calculateGstExclusive(baseAmount, gstRate) {
+        const base = parseFloat(baseAmount);
+        const rate = parseFloat(gstRate);
+        if (isNaN(base) || base < 0 || isNaN(rate) || rate < 0) {
+            return { baseAmount: 0, taxableAmount: 0, gstAmount: 0, totalAmount: 0, finalAmount: 0 };
+        }
+        const gst = base * (rate / 100);
+        const total = base + gst;
+        return {
+            baseAmount: parseFloat(base.toFixed(2)),
+            taxableAmount: parseFloat(base.toFixed(2)),
+            gstAmount: parseFloat(gst.toFixed(2)),
+            totalAmount: parseFloat(total.toFixed(2)),
+            finalAmount: parseFloat(total.toFixed(2))
+        };
+    }
 }
 
 module.exports = new CalculatorService();

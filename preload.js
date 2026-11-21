@@ -41,6 +41,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
         demoLogin: () => ipcRenderer.invoke('auth:demoLogin')
     },
 
+    // Auto-Update APIs
+    updater: {
+        getVersion: () => ipcRenderer.invoke('updater:getVersion'),
+        getStatus: () => ipcRenderer.invoke('updater:getStatus'),
+        check: () => ipcRenderer.invoke('updater:check'),
+        download: () => ipcRenderer.invoke('updater:download'),
+        install: () => ipcRenderer.invoke('updater:install'),
+        onStatusChange: (callback) => {
+            const listener = (_event, state) => callback(state);
+            ipcRenderer.on('updater:status-changed', listener);
+            return () => ipcRenderer.removeListener('updater:status-changed', listener);
+        }
+    },
+
     sqlite: {
         // Session token management
         setSessionToken: (token) => { currentSessionToken = (typeof token === 'string') ? token.trim() : null; },
@@ -92,7 +106,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             create: (data) => ipcRenderer.invoke('sqlite:products:create', { sessionToken: currentSessionToken, data }),
             update: (id, data) => ipcRenderer.invoke('sqlite:products:update', { sessionToken: currentSessionToken, id, data }),
             search: (q) => ipcRenderer.invoke('sqlite:products:search', { sessionToken: currentSessionToken, q }),
-            lowStock: () => ipcRenderer.invoke('sqlite:products:lowStock', { sessionToken: currentSessionToken })
+            lowStock: () => ipcRenderer.invoke('sqlite:products:lowStock', { sessionToken: currentSessionToken }),
+            addVariant: (productId, variant) => ipcRenderer.invoke('sqlite:products:addVariant', { sessionToken: currentSessionToken, productId, variant }),
+            delete: (id) => ipcRenderer.invoke('sqlite:products:delete', { sessionToken: currentSessionToken, id }),
+            deleteVariant: (variantId, productId) => ipcRenderer.invoke('sqlite:products:deleteVariant', { sessionToken: currentSessionToken, variantId, productId }),
+            updateGstRate: (productId, gstRate) => ipcRenderer.invoke('sqlite:products:updateGstRate', { sessionToken: currentSessionToken, productId, gstRate }),
+            updateVariantGstRate: (variantId, gstRate) => ipcRenderer.invoke('sqlite:products:updateVariantGstRate', { sessionToken: currentSessionToken, variantId, gstRate })
         },
         stock: {
             get: (pId) => ipcRenderer.invoke('sqlite:stock:get', { sessionToken: currentSessionToken, pId }),
@@ -120,7 +139,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
             create: (data) => ipcRenderer.invoke('sqlite:purchases:create', { sessionToken: currentSessionToken, data }),
             getAll: (dateStr) => ipcRenderer.invoke('sqlite:purchases:getAll', { sessionToken: currentSessionToken, dateStr: (typeof dateStr === 'string' ? dateStr : null) }),
             search: (query) => ipcRenderer.invoke('sqlite:purchases:search', { sessionToken: currentSessionToken, query }),
-            get: (id) => ipcRenderer.invoke('sqlite:purchases:get', { sessionToken: currentSessionToken, id }),
+            get: (id) => {
+                let resolvedId = id;
+                if (typeof resolvedId === 'object' && resolvedId !== null) {
+                    resolvedId = resolvedId.id || resolvedId.invoice_number || resolvedId.invoiceNumber || resolvedId.invoice;
+                }
+                return ipcRenderer.invoke('sqlite:purchases:get', { sessionToken: currentSessionToken, id: resolvedId });
+            },
             cancel: (id) => ipcRenderer.invoke('sqlite:purchases:cancel', { sessionToken: currentSessionToken, id })
         },
         suppliers: {

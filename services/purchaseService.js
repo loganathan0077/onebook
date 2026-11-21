@@ -308,6 +308,12 @@ class PurchaseService {
     }
 
     getPurchaseById(id) {
+        if (!id) return null;
+        if (typeof id === 'object') {
+            id = id.id || id.invoice_number || id.invoiceNumber || id.invoice;
+        }
+        if (!id || id === '[object Object]') return null;
+
         const db = dbManager.getDatabase();
         const purchase = db.prepare(`
             SELECT p.*, COALESCE(s.name, c.name) as supplier_name,
@@ -322,9 +328,14 @@ class PurchaseService {
             WHERE p.id = ? OR p.invoice_number = ?
         `).get(id, id);
         if (purchase) {
-            purchase.items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(purchase.id);
             try {
-                purchase.payments = db.prepare("SELECT * FROM party_payments WHERE purchase_id = ? AND status != 'CANCELLED' ORDER BY date DESC, id DESC").all(purchase.id);
+                purchase.items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(purchase.id) || [];
+            } catch (e) {
+                console.warn('[PurchaseService] Error fetching purchase_items:', e.message);
+                purchase.items = [];
+            }
+            try {
+                purchase.payments = db.prepare("SELECT * FROM party_payments WHERE purchase_id = ? AND status != 'CANCELLED' ORDER BY date DESC, id DESC").all(purchase.id) || [];
             } catch (e) {
                 purchase.payments = [];
             }

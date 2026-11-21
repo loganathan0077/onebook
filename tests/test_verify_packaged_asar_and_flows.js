@@ -222,7 +222,9 @@ console.log('🧪 Starting Packaged ASAR & End-to-End Flow Verification Suite...
         newPassword: 'ResetPassword@2026'
     });
     assert.strictEqual(goodReset.success, true, 'Valid recovery code must reset password');
-    assert(goodReset.newRecoveryCode, 'A new recovery code must be issued on password reset');
+    // Verify original recovery key remains preserved and valid
+    const keyValidAfterReset = await userService.verifyRecoveryCodeHash(savedRecoveryCode, db.prepare('SELECT recovery_code_hash FROM users WHERE username = ?').get('production_admin@pos.local').recovery_code_hash);
+    assert.strictEqual(keyValidAfterReset, true, 'Original recovery code must remain valid after reset');
 
     // Verify login with OLD password fails
     const oldLoginFail = await userService.authenticate('production_admin@pos.local', 'InitialPassword@2026');

@@ -226,9 +226,10 @@ async function runTests() {
     });
 
     assert(resetRes.success === true, 'Password reset failed');
-    assert(typeof resetRes.newRecoveryCode === 'string', 'A new recovery code must be generated');
-    assert(resetRes.newRecoveryCode !== initialRecoveryCode, 'New recovery code must differ from old one');
-    console.log('✅ Password successfully reset! New Recovery Code issued:', resetRes.newRecoveryCode);
+    // Verify existing original recovery code remains completely valid
+    const keyCheck = await userService.verifyRecoveryCodeHash(initialRecoveryCode, db.prepare('SELECT recovery_code_hash FROM users WHERE id = ?').get(storedAdmin.id).recovery_code_hash);
+    assert.strictEqual(keyCheck, true, 'Original recovery code must be preserved and remain valid');
+    console.log('✅ Password successfully reset and original Recovery Code preserved.');
 
     // 6.5 Session Invalidation: Previous session must now be invalidated
     const oldSessionCheck = await userService.validateSession(correctAuth.sessionToken);
