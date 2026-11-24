@@ -262,6 +262,280 @@
             await logout();
         };
 
+        window.updateActiveCompanyDisplay = async function() {
+            try {
+                if (window.electronAPI && window.electronAPI.company) {
+                    const res = await window.electronAPI.company.getActiveCompany();
+                    const headerName = document.getElementById('headerCompanyName');
+                    const sidebarName = document.getElementById('sidebarCompanyName');
+                    const dropdownCurrent = document.getElementById('dropdownCurrentCompanyName');
+                    const settingsName = document.getElementById('settingsCompanyName');
+                    const settingsFY = document.getElementById('settingsCompanyFY');
+                    const settingsStatus = document.getElementById('settingsCompanyStatus');
+                    if (res && res.success && res.company) {
+                        window._activeCompanyInfo = res.company;
+                        const name = res.company.name || res.company.companyName || 'Company';
+                        if (headerName) headerName.textContent = name;
+                        if (sidebarName) sidebarName.textContent = name;
+                        if (dropdownCurrent) dropdownCurrent.textContent = name;
+                        if (settingsName) settingsName.textContent = name;
+                        if (settingsFY) settingsFY.textContent = res.company.financialYear || 'Current';
+                        if (settingsStatus) settingsStatus.innerHTML = '<span style="color:#166534;">● Active</span>';
+                        if (typeof window.loadSettings === 'function') {
+                            await window.loadSettings();
+                        }
+                    } else {
+                        window._activeCompanyInfo = null;
+                        if (headerName) headerName.textContent = 'No Company';
+                        if (sidebarName) sidebarName.textContent = 'No Company';
+                        if (dropdownCurrent) dropdownCurrent.textContent = 'No Company';
+                        if (settingsName) settingsName.textContent = 'None Selected';
+                        if (settingsStatus) settingsStatus.innerHTML = '<span style="color:#dc2626;">● Disconnected</span>';
+                    }
+                }
+            } catch (e) {
+                console.warn('[OneBook Company]: Error fetching active company:', e);
+            }
+        };
+
+        window.toggleCompanyDropdown = function(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('sidebarCompanyDropdown');
+            if (!dropdown) return;
+            if (dropdown.classList.contains('show')) {
+                window.closeCompanyDropdown();
+            } else {
+                window.openCompanyDropdown();
+            }
+        };
+
+        window.openCompanyDropdown = async function() {
+            const dropdown = document.getElementById('sidebarCompanyDropdown');
+            const chevron = document.getElementById('sidebarCompanyChevron');
+            if (!dropdown) return;
+            dropdown.classList.add('show');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+            await window.loadCompaniesForDropdown();
+        };
+
+        window.closeCompanyDropdown = function() {
+            const dropdown = document.getElementById('sidebarCompanyDropdown');
+            const chevron = document.getElementById('sidebarCompanyChevron');
+            if (dropdown) dropdown.classList.remove('show');
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        };
+
+        window.loadCompaniesForDropdown = async function() {
+            try {
+                const currentNameEl = document.getElementById('dropdownCurrentCompanyName');
+                const listEl = document.getElementById('dropdownCompanyList');
+                if (!listEl) return;
+
+                let activeName = 'Company';
+                let activeFolder = null;
+                if (window._activeCompanyInfo) {
+                    activeName = window._activeCompanyInfo.name || window._activeCompanyInfo.companyName || 'Company';
+                    activeFolder = window._activeCompanyInfo.folderPath || window._activeCompanyInfo.path;
+                } else if (window.electronAPI && window.electronAPI.company) {
+                    const activeRes = await window.electronAPI.company.getActiveCompany();
+                    if (activeRes && activeRes.success && activeRes.company) {
+                        window._activeCompanyInfo = activeRes.company;
+                        activeName = activeRes.company.name || activeRes.company.companyName || 'Company';
+                        activeFolder = activeRes.company.folderPath || activeRes.company.path;
+                    }
+                }
+                if (currentNameEl) currentNameEl.textContent = activeName;
+
+                let companies = [];
+                if (window.electronAPI && window.electronAPI.company) {
+                    if (typeof window.electronAPI.company.getCompanies === 'function') {
+                        companies = await window.electronAPI.company.getCompanies();
+                    } else if (typeof window.electronAPI.company.getRecentCompanies === 'function') {
+                        const allRecents = await window.electronAPI.company.getRecentCompanies();
+                        const dirRes = await window.electronAPI.company.getDataDirectory();
+                        const dataDir = (dirRes && dirRes.dataDirectory) ? dirRes.dataDirectory : '';
+                        companies = (allRecents || []).filter(c => {
+                            if (!c.folderPath || !dataDir) return true;
+                            return c.folderPath.startsWith(dataDir) && c.healthStatus !== 'MISSING' && c.healthStatus !== 'CORRUPT';
+                        });
+                    }
+                }
+
+                if (!companies || companies.length === 0) {
+                    listEl.innerHTML = `
+                        <div style="padding: 10px 14px; font-size: 12px; color: #94a3b8; text-align: center;">
+                            No other companies found in current data directory.
+                        </div>
+                    `;
+                    return;
+                }
+
+                const normActiveFolder = activeFolder ? activeFolder.replace(/[\\/]+$/, '').toLowerCase() : null;
+
+                listEl.innerHTML = companies.map(c => {
+                    const cFolderNorm = (c.folderPath || '').replace(/[\\/]+$/, '').toLowerCase();
+                    const isActive = c.isActive || (normActiveFolder && cFolderNorm === normActiveFolder) || (c.companyName === activeName);
+                    const safeName = (c.companyName || 'Unnamed').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    const safePath = (c.folderPath || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+                    return `
+                        <div class="company-dropdown-item ${isActive ? 'active' : ''}" 
+                             onclick="handleSelectCompanyFromDropdown('${safePath}', '${safeName}')"
+                             title="${isActive ? 'Currently Active' : 'Switch to ' + safeName}">
+                            <div class="dropdown-item-left">
+                                <i class="fa-solid fa-building dropdown-item-icon"></i>
+                                <span class="dropdown-item-name">${safeName}</span>
+                            </div>
+                            ${isActive ? '<span class="dropdown-active-pill"><i class="fa-solid fa-check"></i> Active</span>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.warn('[CompanyDropdown] Error loading companies:', err);
+            }
+        };
+
+        window.handleSelectCompanyFromDropdown = async function(folderPath, companyName) {
+            window.closeCompanyDropdown();
+            if (!folderPath) return;
+
+            let activeFolder = null;
+            let activeName = null;
+            if (window._activeCompanyInfo) {
+                activeFolder = window._activeCompanyInfo.folderPath || window._activeCompanyInfo.path;
+                activeName = window._activeCompanyInfo.name || window._activeCompanyInfo.companyName;
+            }
+            const normActive = activeFolder ? activeFolder.replace(/[\\/]+$/, '').toLowerCase() : null;
+            const normTarget = folderPath.replace(/[\\/]+$/, '').toLowerCase();
+
+            if (normActive === normTarget || (activeName && activeName === companyName)) {
+                // Already active
+                return;
+            }
+
+            const confirmed = confirm(`Switch to company "${companyName}"?\n\nAny active operations will be finalized before switching.`);
+            if (!confirmed) return;
+
+            try {
+                const token = sessionStorage.getItem('onebook_session_token');
+                if (token && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users && window.electronAPI.sqlite.users.logout) {
+                    await window.electronAPI.sqlite.users.logout(token).catch(() => {});
+                }
+            } catch (e) {}
+
+            sessionStorage.removeItem('onebook_session_token');
+            sessionStorage.removeItem('currentUser');
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                window.electronAPI.sqlite.clearSessionToken();
+            }
+
+            if (window.electronAPI && window.electronAPI.company && window.electronAPI.company.openCompany) {
+                try {
+                    const res = await window.electronAPI.company.openCompany(folderPath);
+                    if (!res || !res.success) {
+                        alert('Could not open company: ' + (res?.error?.message || res?.error || 'Database validation failed.'));
+                    }
+                } catch (err) {
+                    console.error('Error opening company:', err);
+                    window.location.href = 'companyManager.html';
+                }
+            } else {
+                window.location.href = 'companyManager.html';
+            }
+        };
+
+        window.handleShowCompanyInfo = async function() {
+            try {
+                const modal = document.getElementById('companyInfoModal');
+                if (!modal) return;
+                const nameEl = document.getElementById('infoModalCompanyName');
+                const fyEl = document.getElementById('infoModalFinancialYear');
+                const locEl = document.getElementById('infoModalLocation');
+                const statusEl = document.getElementById('infoModalStatus');
+
+                let comp = window._activeCompanyInfo;
+                if (!comp && window.electronAPI && window.electronAPI.company) {
+                    const res = await window.electronAPI.company.getActiveCompany();
+                    if (res && res.success && res.company) {
+                        comp = res.company;
+                        window._activeCompanyInfo = comp;
+                    }
+                }
+
+                if (comp) {
+                    if (nameEl) nameEl.textContent = comp.name || comp.companyName || 'Unknown Company';
+                    if (fyEl) fyEl.textContent = comp.financialYear || 'Current Year';
+                    if (locEl) locEl.textContent = comp.path || comp.databasePath || comp.folderPath || 'Local Database';
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#16a34a; font-weight:600;">● Active</span>';
+                } else {
+                    if (nameEl) nameEl.textContent = 'No Company Selected';
+                    if (fyEl) fyEl.textContent = '-';
+                    if (locEl) locEl.textContent = '-';
+                    if (statusEl) statusEl.innerHTML = '<span style="color:#dc2626; font-weight:600;">● Disconnected</span>';
+                }
+
+                modal.style.display = 'flex';
+            } catch (e) {
+                console.warn('Error displaying company info:', e);
+            }
+        };
+
+        window.closeCompanyInfoModal = function() {
+            const modal = document.getElementById('companyInfoModal');
+            if (modal) modal.style.display = 'none';
+        };
+
+        window.getActiveUserEmail = function() {
+            try {
+                if (window.currentUser && (window.currentUser.email || window.currentUser.username)) {
+                    return window.currentUser.email || window.currentUser.username;
+                }
+                const userStr = sessionStorage.getItem('currentUser');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    if (user && (user.email || user.username)) {
+                        return user.email || user.username;
+                    }
+                }
+            } catch (e) {}
+            return 'Admin';
+        };
+
+        window.showLogoutTooltip = function() {
+            const tooltipEmail = document.getElementById('logoutTooltipEmail');
+            if (tooltipEmail) {
+                tooltipEmail.textContent = window.getActiveUserEmail();
+            }
+        };
+
+        window.hideLogoutTooltip = function() {
+            // Handled cleanly via CSS hover
+        };
+
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('companyInfoModal');
+            if (modal && e.target === modal) {
+                modal.style.display = 'none';
+            }
+            const dropdown = document.getElementById('sidebarCompanyDropdown');
+            const row = document.getElementById('sidebarCompanyRow');
+            if (dropdown && dropdown.classList.contains('show')) {
+                if (!dropdown.contains(e.target) && (!row || !row.contains(e.target))) {
+                    window.closeCompanyDropdown();
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.closeCompanyDropdown();
+            }
+        });
+
+        window.handleSwitchCompanyFromHeader = async function() {
+            window.toggleCompanyDropdown();
+        };
+
 
         // --- GLOBAL EVENT LISTENER LIFECYCLE ---
         window._globalEventListeners = [];
@@ -299,6 +573,9 @@
         // Initialize App
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 App Initializing...');
+            if (typeof window.updateActiveCompanyDisplay === 'function') {
+                await window.updateActiveCompanyDisplay();
+            }
             if (isDemoMode()) {
                 const w = document.getElementById('demoWatermark');
                 const b = document.getElementById('demoActivateBtn');
@@ -314,6 +591,11 @@
 
             if (user) {
                 console.log('👤 User Logged In:', user.username, user.role);
+                window.currentUser = user;
+                const tooltipEmail = document.getElementById('logoutTooltipEmail');
+                if (tooltipEmail) {
+                    tooltipEmail.textContent = user.email || user.username || 'Admin';
+                }
                 window.isAdminUser = await isAdmin();
                 document.getElementById('mainAppContainer').style.display = 'block';
 
@@ -630,11 +912,288 @@
             flex-direction: column;
             background: #1e293b;
             border-left: 2px solid #dee2e6;
-            overflow-y: auto;
+            overflow: visible;
             width: 250px;
             min-width: 250px;
             box-sizing: border-box;
             flex-shrink: 0;
+            position: relative;
+            height: 100%;
+        }
+
+        .nav-menu-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .sidebar-account-section {
+            flex-shrink: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 10px 12px 6px 12px;
+            background: #1e293b;
+            position: relative;
+        }
+
+        /* Company Dropdown Menu Opening Upward Above Company Name */
+        .company-dropdown-menu {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 8px;
+            right: 8px;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
+            padding: 8px 0;
+            z-index: 10001;
+            display: none;
+            max-height: 320px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .company-dropdown-menu.show {
+            display: block;
+            animation: dropdownFadeUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes dropdownFadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.8px;
+            padding: 6px 14px 4px 14px;
+            text-transform: uppercase;
+        }
+
+        .company-dropdown-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 6px 0;
+        }
+
+        .company-dropdown-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            cursor: pointer;
+            user-select: none;
+            color: #cbd5e1;
+            font-size: 13px;
+            transition: all 0.15s ease;
+        }
+
+        .company-dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        .company-dropdown-item.active {
+            background: rgba(37, 99, 235, 0.18);
+            color: #ffffff;
+            font-weight: 600;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .company-dropdown-item .dropdown-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .company-dropdown-item .dropdown-item-icon {
+            font-size: 13px;
+            color: #94a3b8;
+            width: 16px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .company-dropdown-item.active .dropdown-item-icon {
+            color: #60a5fa;
+        }
+
+        .company-dropdown-item .dropdown-item-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dropdown-active-pill {
+            font-size: 11px;
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.15);
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-account-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            color: #cbd5e1;
+            font-size: 13.5px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .sidebar-account-row:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+
+        .sidebar-account-row .account-row-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .sidebar-account-row .account-row-icon {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+
+        .sidebar-account-row:hover .account-row-icon {
+            color: #ffffff;
+        }
+
+        .sidebar-account-row .account-row-text {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-account-row .account-row-chevron {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-left: 6px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .sidebar-account-row:hover .account-row-chevron {
+            color: #ffffff;
+        }
+
+        /* Row C: Logout styling with RED */
+        .sidebar-account-row.logout-row {
+            color: #ef4444;
+        }
+
+        .sidebar-account-row.logout-row .logout-icon {
+            color: #ef4444 !important;
+        }
+
+        .sidebar-account-row.logout-row .logout-text {
+            color: #ef4444 !important;
+            font-weight: 600;
+        }
+
+        .sidebar-account-row.logout-row:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+        }
+
+        .sidebar-account-row.logout-row:hover .logout-icon,
+        .sidebar-account-row.logout-row:hover .logout-text {
+            color: #f87171 !important;
+        }
+
+        /* Floating Logout Tooltip */
+        .logout-tooltip {
+            position: absolute;
+            right: calc(100% + 14px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #0f172a;
+            color: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+            padding: 8px 14px;
+            border-radius: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            pointer-events: none;
+            z-index: 10000;
+            text-align: left;
+        }
+
+        .logout-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent transparent #0f172a;
+        }
+
+        .sidebar-account-row.logout-row:hover .logout-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .logout-tooltip-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+
+        .logout-tooltip-email {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+            line-height: 1.3;
+        }
+
+        .sidebar-branding-footer {
+            margin-top: 6px;
+            padding: 8px 6px 4px 6px;
+            color: #64748b;
+            font-size: 10px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            line-height: 1.3;
         }
 
         .nav-tab {
@@ -3038,59 +3597,81 @@
 
 
     <div class="container" id="mainAppContainer" style="display:none;">
-        <div class="header">
-            <div class="responsive-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <img id="headerLogo" src="" style="max-height: 50px; display: none; border-radius: 4px;">
-                    <div>
-                        <h1 id="headerTitle" style="margin-bottom: 2px;">Business Management</h1>
-                        <p id="headerTagline" style="margin: 0; opacity: 0.9;">Inventory & Sales System</p>
-                    </div>
-                </div>
-                <div style="text-align: right; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 15px;"
-                    class="header-actions">
-                    <div id="demoWatermark"
-                        style="display: none; background: #fff; color: var(--th-primary); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; border: 2px solid var(--th-primary); box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-                        🔵 DEMO MODE</div>
-                    <button id="demoActivateBtn" onclick="window.location.href='license.html';"
-                        style="display: none; background: #fff; color: var(--th-primary); border: none; padding: 6px 15px; border-radius: 6px; font-weight: bold; cursor: pointer;">Activate
-                        License</button>
-                    <span id="userEmail" style="font-size: 0.9em; opacity: 0.9;"></span>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="handleLogout()"
-                            style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;">
-                            🚪 Logout
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- Legacy Header Fallback Elements (Hidden to eliminate header bar while preserving element ID compatibility) -->
+        <div id="headerLegacyFallbacks" style="display: none !important;" aria-hidden="true">
+            <img id="headerLogo" src="" style="display: none;">
+            <h1 id="headerTitle">Business Management</h1>
+            <p id="headerTagline">Inventory & Sales System</p>
+            <div id="companyHeaderBadge"><i class="fa-solid fa-building"></i> <span id="headerCompanyName">Company</span></div>
+            <button id="btnSwitchCompanyHeader" onclick="handleSwitchCompanyFromHeader()"></button>
+            <div id="demoWatermark"></div>
+            <button id="demoActivateBtn" onclick="window.location.href='license.html';"></button>
+            <span id="userEmail"></span>
         </div>
 
         <div class="main-wrapper">
             <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)"><span>📈
-                        Dashboard</span> <kbd class="nav-shortcut">F1</kbd></button>
-                <button class="nav-tab" data-tab="inventory" onclick="switchTab('inventory', this)"><span>📦
-                        Inventory</span> <kbd class="nav-shortcut">F2</kbd></button>
-                <button class="nav-tab" data-tab="sales" onclick="switchTab('sales', this)"><span>💰 Record Sale</span>
-                    <kbd class="nav-shortcut">F3</kbd></button>
-                <button class="nav-tab" data-tab="reports" onclick="switchTab('reports', this)"><span>📊 Reports</span>
-                    <kbd class="nav-shortcut">F4</kbd></button>
-                <button class="nav-tab" data-tab="products" onclick="switchTab('products', this)"><span>🏷️
-                        Products</span> <kbd class="nav-shortcut">F5</kbd></button>
-                <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼
-                        Purchase & Parties</span> <kbd class="nav-shortcut">F6</kbd></button>
-                <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty
-                        Cash</span> <kbd class="nav-shortcut">F7</kbd></button>
-                <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day
-                        Closing</span> <kbd class="nav-shortcut">F8</kbd></button>
-                <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮
-                        Calculator</span> <kbd class="nav-shortcut">F9</kbd></button>
-                <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️
-                        Settings</span> <kbd class="nav-shortcut">F10</kbd></button>
-                <div
-                    style="margin-top: auto; padding: 20px; color: #64748b; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
-                    Application Version: 1.0.5 &bull; Built by Shermon Technology
+                <div class="nav-menu-scrollable">
+                    <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)"><span>📈 Dashboard</span> <kbd class="nav-shortcut">F1</kbd></button>
+                    <button class="nav-tab" data-tab="inventory" onclick="switchTab('inventory', this)"><span>📦 Inventory</span> <kbd class="nav-shortcut">F2</kbd></button>
+                    <button class="nav-tab" data-tab="sales" onclick="switchTab('sales', this)"><span>💰 Record Sale</span> <kbd class="nav-shortcut">F3</kbd></button>
+                    <button class="nav-tab" data-tab="reports" onclick="switchTab('reports', this)"><span>📊 Reports</span> <kbd class="nav-shortcut">F4</kbd></button>
+                    <button class="nav-tab" data-tab="products" onclick="switchTab('products', this)"><span>🏷️ Products</span> <kbd class="nav-shortcut">F5</kbd></button>
+                    <button class="nav-tab" data-tab="purchaseparties" onclick="switchTab('purchaseparties', this)"><span>💼 Purchase & Parties</span> <kbd class="nav-shortcut">F6</kbd></button>
+                    <button class="nav-tab" data-tab="pettycash" onclick="switchTab('pettycash', this)"><span>📒 Petty Cash</span> <kbd class="nav-shortcut">F7</kbd></button>
+                    <button class="nav-tab" data-tab="denomination" onclick="switchTab('denomination', this)"><span>💵 Day Closing</span> <kbd class="nav-shortcut">F8</kbd></button>
+                    <button class="nav-tab" data-tab="calculator" onclick="switchTab('calculator', this)"><span>🧮 Calculator</span> <kbd class="nav-shortcut">F9</kbd></button>
+                    <button class="nav-tab" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️ Settings</span> <kbd class="nav-shortcut">F10</kbd></button>
+                </div>
+
+                <!-- Right Sidebar Bottom Account Section -->
+                <div class="sidebar-account-section">
+                    <!-- Upward-Opening Company Dropdown Menu -->
+                    <div class="company-dropdown-menu" id="sidebarCompanyDropdown">
+                        <div class="dropdown-section-title">CURRENT COMPANY</div>
+                        <div class="company-dropdown-item active" id="dropdownCurrentCompanyRow" onclick="closeCompanyDropdown()">
+                            <div class="dropdown-item-left">
+                                <i class="fa-solid fa-building dropdown-item-icon"></i>
+                                <span class="dropdown-item-name" id="dropdownCurrentCompanyName">Company</span>
+                            </div>
+                            <span class="dropdown-active-pill"><i class="fa-solid fa-check"></i> Active</span>
+                        </div>
+
+                        <div class="company-dropdown-divider"></div>
+
+                        <div class="dropdown-section-title">AVAILABLE COMPANIES</div>
+                        <div class="company-dropdown-list" id="dropdownCompanyList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- 1. Current Company (Clickable Dropdown Button) -->
+                    <div class="sidebar-account-row company-row" id="sidebarCompanyRow" onclick="toggleCompanyDropdown(event)" title="Click to switch company">
+                        <div class="account-row-left">
+                            <i class="fa-solid fa-building account-row-icon"></i>
+                            <span class="account-row-text" id="sidebarCompanyName">Company</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-up account-row-chevron" id="sidebarCompanyChevron"></i>
+                    </div>
+
+                    <!-- 2. Logout (Red power icon and red text) -->
+                    <div class="sidebar-account-row logout-row" id="sidebarLogoutRow" onclick="handleLogout()" onmouseenter="showLogoutTooltip()" onmouseleave="hideLogoutTooltip()">
+                        <div class="account-row-left">
+                            <i class="fa-solid fa-power-off account-row-icon logout-icon"></i>
+                            <span class="account-row-text logout-text">Logout</span>
+                        </div>
+
+                        <!-- Logout Hover Tooltip (floats out cleanly to the left) -->
+                        <div class="logout-tooltip" id="sidebarLogoutTooltip">
+                            <div class="logout-tooltip-title">Logged in as</div>
+                            <div class="logout-tooltip-email" id="logoutTooltipEmail">Admin</div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Branding Footer -->
+                    <div class="sidebar-branding-footer">
+                        Application Version: 1.0.6 &bull; Built by Shermon Technology
+                    </div>
                 </div>
             </div>
 
@@ -10131,7 +10712,7 @@
                                 <div
                                     style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 24px; max-width: 440px; margin: 0 auto 20px auto;">
                                     <p style="margin: 0 0 6px 0; font-weight: 700; color: #1e293b; font-size: 16px;">
-                                        Version <span id="appCurrentVersionText" style="color: #2563eb;">1.0.5</span>
+                                        Version <span id="appCurrentVersionText" style="color: #2563eb;">1.0.6</span>
                                     </p>
                                     <p style="margin: 0; color: #64748b; font-size: 13.5px;">
                                         Developed by Shermon Industries
@@ -13954,14 +14535,19 @@
         // Check authentication on page load
         checkAuth().then(async user => {
             if (user) {
+                window.currentUser = user;
                 // Display user identifier clearly distinguishing Demo Account from licensed Admin
                 const emailEl = document.getElementById('userEmail');
+                const tooltipEmail = document.getElementById('logoutTooltipEmail');
+                const displayId = (user.isDemo || user.id === 'demo_user' || (typeof isDemoMode === 'function' && isDemoMode()))
+                    ? 'Demo Account'
+                    : (user.email || user.username || 'Admin');
+
                 if (emailEl) {
-                    if (user.isDemo || user.id === 'demo_user' || (typeof isDemoMode === 'function' && isDemoMode())) {
-                        emailEl.textContent = 'Demo Account';
-                    } else {
-                        emailEl.textContent = user.username || user.email || 'Admin';
-                    }
+                    emailEl.textContent = displayId;
+                }
+                if (tooltipEmail) {
+                    tooltipEmail.textContent = displayId;
                 }
 
                 // Check if user is admin
@@ -14044,6 +14630,9 @@
                 try {
                     if (typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
+                    }
+                    if (typeof updateProductsTable === 'function') {
+                        updateProductsTable();
                     }
 
                     if (window.electronAPI.sqlite.reports) {
@@ -14133,6 +14722,7 @@
             // Refresh UI components
             await updateDashboard();
             await updateInventoryTable();
+            if (typeof updateProductsTable === 'function') await updateProductsTable();
             if (typeof renderReceivablesTable === 'function') renderReceivablesTable();
             if (typeof renderPayablesTable === 'function') renderPayablesTable();
 
@@ -21691,6 +22281,9 @@
                     if (typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
                     }
+                    if (typeof updateProductsTable === 'function') {
+                        updateProductsTable();
+                    }
                     if (typeof updateCartDisplay === 'function') {
                         updateCartDisplay();
                     }
@@ -21969,6 +22562,9 @@
                     // Reload products from database to synchronize in-memory state
                     if (typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
+                    }
+                    if (typeof updateProductsTable === 'function') {
+                        updateProductsTable();
                     }
 
                     if (typeof updateInventoryTable === 'function') updateInventoryTable();
@@ -23136,6 +23732,9 @@
                     }
                     if (typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
+                    }
+                    if (typeof updateProductsTable === 'function') {
+                        updateProductsTable();
                     }
                     document.getElementById('addStockModal').style.display = 'none';
                     if (typeof updateInventoryTable === 'function') updateInventoryTable();
@@ -28170,6 +28769,9 @@
                     if (typeof window.loadProductsFromDatabase === 'function') {
                         await window.loadProductsFromDatabase();
                     }
+                    if (typeof updateProductsTable === 'function') {
+                        updateProductsTable();
+                    }
                 } catch (e) {
                     console.error(e);
                     showAlert('Error saving product to DB: ' + e.message, '❌');
@@ -28357,84 +28959,100 @@
                     _labelQty: v._labelQty
                 }));
 
-                const isPlaceholder = (v) => {
-                    if (!v) return true;
-                    const name = String(v.variantName || '').trim().toLowerCase();
-                    return name === '' || name === 'default';
-                };
+                // Filter out any unused blank variant if other variants exist
+                const validVars = rawVars.filter(v => {
+                    if (rawVars.length <= 1) return true;
+                    const hasName = v.variantName && String(v.variantName).trim() !== '' && String(v.variantName).trim().toLowerCase() !== 'default';
+                    const hasBarcode = v.barcode && String(v.barcode).trim() !== '';
+                    const hasStock = parseFloat(v.stock) > 0;
+                    const hasPrice = parseFloat(v.sellingPrice) > 0;
+                    return hasName || hasBarcode || hasStock || hasPrice;
+                });
 
-                const meaningfulVariants = rawVars.filter(v => !isPlaceholder(v));
-                const hasMeaningfulVars = meaningfulVariants.length > 0;
-
-                const defVar = rawVars.length > 0 ? rawVars[0] : null;
-                const parentBarcode = p.barcode || (defVar && defVar.barcode) || '';
-                const parentStock = hasMeaningfulVars 
-                    ? rawVars.reduce((sum, v) => sum + v.stock, 0)
-                    : (p.stock !== undefined ? parseFloat(p.stock) : (defVar ? defVar.stock : 0)) || 0;
-                const parentPrice = parseFloat(p.price !== undefined ? p.price : (p.selling_price || (defVar ? defVar.sellingPrice : 0))) || 0;
-                const parentKey = `p_${p.id}`;
-
-                const pQty = window.labelQuantitiesMap.has(parentKey) 
-                    ? window.labelQuantitiesMap.get(parentKey) 
-                    : (p._labelQty !== undefined ? p._labelQty : 1);
-
-                const parentItem = {
-                    key: parentKey,
-                    recordType: 'product',
-                    productId: String(p.id),
-                    variantId: null,
-                    id: p.id,
-                    name: p.name || 'Unnamed Product',
-                    displayName: p.name || 'Unnamed Product',
-                    barcode: parentBarcode,
-                    category: p.category || 'Uncategorized',
-                    stock: parentStock,
-                    price: parentPrice,
-                    costPrice: parseFloat(p.cost_price || p.costPrice || (defVar ? defVar.buyingPrice : 0)) || 0,
-                    unit: p.unit || (defVar ? defVar.unit : 'Piece'),
-                    expiryDays: p.expiry_days || p.expiryDays || '',
-                    _labelQty: pQty,
-                    isFavourite: !!p.is_favorite || !!p.isFavourite,
-                    hasVariants: hasMeaningfulVars,
-                    variantCount: meaningfulVariants.length,
-                    rawProduct: p,
-                    rawVariant: null
-                };
-
-                flatItems.push(parentItem);
-
-                if (hasMeaningfulVars) {
-                    meaningfulVariants.forEach(v => {
+                if (validVars.length > 0) {
+                    // Every sellable variant in the product is listed as a distinct record matching Inventory
+                    validVars.forEach(v => {
                         const vKey = `v_${p.id}_${v.id}`;
-                        const vDisplayName = window.getVariantDisplayName ? window.getVariantDisplayName(p, v) : `${p.name} - ${v.variantName}`;
+                        const vDisplayName = window.getVariantDisplayName 
+                            ? window.getVariantDisplayName(p, v) 
+                            : (v.variantName ? `${p.name} - ${v.variantName}` : p.name);
+                        const vBarcode = v.barcode || p.barcode || '—';
+                        const vStock = (v.stock !== undefined && v.stock !== null) ? v.stock : 0;
+                        const vPrice = (v.sellingPrice !== undefined && v.sellingPrice !== null && v.sellingPrice !== 0) 
+                            ? v.sellingPrice 
+                            : (parseFloat(p.price !== undefined ? p.price : (p.selling_price || 0)) || 0);
+                        const vCost = (v.buyingPrice !== undefined && v.buyingPrice !== null && v.buyingPrice !== 0) 
+                            ? v.buyingPrice 
+                            : (parseFloat(p.cost_price || p.costPrice || 0)) || 0;
+                        const vUnit = v.unit || p.unit || 'Piece';
+                        const vCategory = v.category || p.category || 'Uncategorized';
+
                         const vQty = window.labelQuantitiesMap.has(vKey) 
                             ? window.labelQuantitiesMap.get(vKey) 
-                            : (v._labelQty !== undefined ? v._labelQty : (window.labelQuantitiesMap.has(parentKey) ? window.labelQuantitiesMap.get(parentKey) : (p._labelQty !== undefined ? p._labelQty : 1)));
+                            : (v._labelQty !== undefined ? v._labelQty : (window.labelQuantitiesMap.has(`p_${p.id}`) ? window.labelQuantitiesMap.get(`p_${p.id}`) : 1));
 
-                        const variantItem = {
+                        const isBaseVariant = !v.variantName || String(v.variantName).trim().toLowerCase() === 'default';
+
+                        const item = {
                             key: vKey,
-                            recordType: 'variant',
+                            recordType: isBaseVariant ? 'product' : 'variant',
+                            isChildVariant: false,
+                            isParentHeader: false,
                             productId: String(p.id),
                             variantId: String(v.id),
                             id: v.id,
                             name: vDisplayName,
                             displayName: vDisplayName,
-                            barcode: v.barcode || '',
-                            category: v.category || p.category || 'Uncategorized',
-                            stock: parseFloat(v.stock) || 0,
-                            price: parseFloat(v.sellingPrice) || 0,
-                            costPrice: parseFloat(v.buyingPrice) || 0,
-                            unit: v.unit || p.unit || 'Piece',
+                            barcode: vBarcode,
+                            category: vCategory,
+                            stock: vStock,
+                            price: vPrice,
+                            costPrice: vCost,
+                            unit: vUnit,
                             expiryDays: p.expiry_days || p.expiryDays || '',
                             _labelQty: vQty,
-                            isFavourite: false,
+                            isFavourite: !!p.is_favorite || !!p.isFavourite,
                             hasVariants: false,
                             variantCount: 0,
+                            totalVariantsInProduct: validVars.length,
                             rawProduct: p,
                             rawVariant: v
                         };
-                        flatItems.push(variantItem);
+                        flatItems.push(item);
                     });
+                } else {
+                    // Standalone product without variants
+                    const parentKey = `p_${p.id}`;
+                    const pQty = window.labelQuantitiesMap.has(parentKey) 
+                        ? window.labelQuantitiesMap.get(parentKey) 
+                        : (p._labelQty !== undefined ? p._labelQty : 1);
+
+                    const item = {
+                        key: parentKey,
+                        recordType: 'product',
+                        isChildVariant: false,
+                        isParentHeader: false,
+                        productId: String(p.id),
+                        variantId: null,
+                        id: p.id,
+                        name: p.name || 'Unnamed Product',
+                        displayName: p.name || 'Unnamed Product',
+                        barcode: p.barcode || '—',
+                        category: p.category || 'Uncategorized',
+                        stock: parseFloat(p.stock) || 0,
+                        price: parseFloat(p.price !== undefined ? p.price : (p.selling_price || 0)) || 0,
+                        costPrice: parseFloat(p.cost_price || p.costPrice || 0) || 0,
+                        unit: p.unit || 'Piece',
+                        expiryDays: p.expiry_days || p.expiryDays || '',
+                        _labelQty: pQty,
+                        isFavourite: !!p.is_favorite || !!p.isFavourite,
+                        hasVariants: false,
+                        variantCount: 0,
+                        totalVariantsInProduct: 0,
+                        rawProduct: p,
+                        rawVariant: null
+                    };
+                    flatItems.push(item);
                 }
             });
 
@@ -28511,16 +29129,14 @@
                 const stockNum = parseFloat(item.stock) || 0;
                 const stockStatusColor = stockNum <= 0 ? '#dc2626' : (stockNum <= 5 ? '#d97706' : '#16a34a');
 
-                const favStar = item.recordType === 'product' ? `
+                const favStar = `
                     <span onclick="toggleFavourite('${item.productId}')" style="cursor: pointer; font-size: 1.1em; margin-right: 4px; user-select: none;" title="Toggle Favourite">
                         ${item.isFavourite ? '⭐' : '☆'}
-                    </span>` : '';
+                    </span>`;
 
-                const editAction = item.recordType === 'variant'
-                    ? `<button class="btn btn-warning btn-action-compact" onclick="editInventoryVariant('${item.productId}', '${item.variantId}')" title="Edit Variant">✏️</button>`
-                    : `<button class="btn btn-warning btn-action-compact" onclick="editProduct('${item.productId}')" title="Edit Product">✏️</button>`;
+                const editAction = `<button class="btn btn-warning btn-action-compact" onclick="handleEditInventoryRow('${item.recordType}', '${item.productId}', '${item.variantId || ''}')" title="Edit">✏️</button>`;
 
-                const deleteAction = item.recordType === 'variant'
+                const deleteAction = (item.recordType === 'variant' && item.variantId && item.totalVariantsInProduct > 1)
                     ? `<button class="btn btn-danger btn-action-compact" onclick="deleteInventoryVariant('${item.productId}', '${item.variantId}')" title="Delete Variant">🗑️</button>`
                     : `<button class="btn btn-danger btn-action-compact" onclick="deleteProduct('${item.productId}')" title="Delete Product">🗑️</button>`;
 
@@ -28536,7 +29152,7 @@
                                onkeydown="handleLabelCheckboxKeydown(event, this)"
                                style="cursor: pointer; width: 14px; height: 14px;">
                     </td>
-                    <td style="font-family: monospace; font-size: 12px; color: #1e293b; font-weight: 600;">${item.barcode || 'N/A'}</td>
+                    <td style="font-family: monospace; font-size: 12px; color: #1e293b; font-weight: 600;">${item.barcode || '—'}</td>
                     <td>
                         ${favStar}
                         <span style="font-weight: 600; color: #0f172a;">${item.displayName}</span>
@@ -29259,8 +29875,10 @@
                 (async () => {
                     try {
                         await window.electronAPI.sqlite.products.update(product.id, product);
-                        if (typeof refreshUI === 'function') await refreshUI();
-                        else if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                        if (typeof window.loadProductsFromDatabase === 'function') await window.loadProductsFromDatabase();
+                        if (typeof updateInventoryTable === 'function') await updateInventoryTable();
+                        if (typeof updateProductsTable === 'function') await updateProductsTable();
+                        if (typeof updateDashboard === 'function') await updateDashboard();
                         showAlert(`Variant "${name}" updated successfully!`, '✅');
                     } catch (err) {
                         console.error('Failed to save edited variant to SQLite:', err);
@@ -29270,6 +29888,7 @@
             } else {
                 saveData();
                 updateInventoryTable();
+                if (typeof updateProductsTable === 'function') updateProductsTable();
                 showAlert(`Variant "${name}" updated successfully!`, '✅');
             }
             closeEditVariantModal();
@@ -33184,7 +33803,7 @@
                     badge.style.color = '#15803d';
                     badge.textContent = 'Update Available';
                     title.textContent = `OneBook v${state.availableVersion || 'New'} is available!`;
-                    desc.textContent = `A newer release is ready for download (Current: v${state.currentVersion || '1.0.5'}).`;
+                    desc.textContent = `A newer release is ready for download (Current: v${state.currentVersion || '1.0.6'}).`;
                     btnDownload.style.display = 'inline-flex';
                     btnDownload.disabled = false;
                     btnDownload.innerHTML = `<i class="fa-solid fa-download"></i> Download v${state.availableVersion}`;
@@ -33197,7 +33816,7 @@
                     badge.style.background = '#e2e8f0';
                     badge.style.color = '#475569';
                     badge.textContent = 'Up to Date';
-                    title.textContent = `You are on the latest version (v${state.currentVersion || '1.0.5'})`;
+                    title.textContent = `You are on the latest version (v${state.currentVersion || '1.0.6'})`;
                     desc.textContent = 'No newer updates are available at this time.';
                     break;
 
@@ -43453,5 +44072,44 @@
         <p id="migrationOverlaySubtitle"
             style="margin: 0; font-size: 14px; opacity: 0.85; max-width: 400px; text-align: center;">Safely
             checkpointing WAL, creating backup snapshot, and verifying data integrity...</p>
+    </div>
+
+    <!-- Company Information Modal -->
+    <div id="companyInfoModal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; width: 440px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); overflow: hidden;">
+            <div style="background: #1e293b; color: white; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px;">
+                    <i class="fa-solid fa-building" style="color: #60a5fa;"></i>
+                    <span>Company Information</span>
+                </div>
+                <button type="button" onclick="closeCompanyInfoModal()" style="background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;">Company Name</span>
+                        <strong style="color: #0f172a;" id="infoModalCompanyName">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;">Financial Year</span>
+                        <span style="color: #0f172a; font-weight: 500;" id="infoModalFinancialYear">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;">Status</span>
+                        <span id="infoModalStatus" style="color: #16a34a; font-weight: 600;">● Active</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;">Database / Folder Location</span>
+                        <span style="color: #334155; font-family: monospace; font-size: 12px; word-break: break-all; background: #f8fafc; padding: 6px 8px; border-radius: 4px; border: 1px solid #e2e8f0;" id="infoModalLocation">-</span>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeCompanyInfoModal()" style="padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; cursor: pointer; font-weight: 500;">Close</button>
+                    <button type="button" onclick="closeCompanyInfoModal(); handleSwitchCompanyFromHeader();" style="padding: 8px 16px; border-radius: 6px; border: none; background: #2563eb; color: white; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Switch Company
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>

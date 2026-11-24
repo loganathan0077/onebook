@@ -1,7 +1,7 @@
 {
     "name": "onebook",
     "productName": "OneBook",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "description": "Desktop Application for Shermon Sales",
     "main": "main.js",
     "scripts": {
@@ -59,6 +59,7 @@
             "main.js",
             "preload.js",
             "index.html",
+            "companyManager.html",
             "OneBook.html",
             "login.html",
             "license.html",

@@ -42,6 +42,12 @@ class StockService {
             
             db.prepare('UPDATE product_variants SET stock = ? WHERE id = ?').run(newStock, variantId);
             
+            // Synchronize parent product stock
+            const sumRow = db.prepare('SELECT COALESCE(SUM(stock), 0) as total FROM product_variants WHERE product_id = ?').get(v.product_id);
+            if (sumRow) {
+                db.prepare('UPDATE products SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(sumRow.total, v.product_id);
+            }
+            
             db.prepare('INSERT INTO stock_movements (product_id, variant_id, type, quantity, previous_stock, new_stock, reference_type, reference_id, notes, date, location_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)')
               .run(v.product_id, variantId, reason, quantity, prevStock, newStock, referenceType, referenceId, reason, date, locationId || null);
 

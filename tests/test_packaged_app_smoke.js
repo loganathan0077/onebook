@@ -4,8 +4,10 @@ const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
 
+const pkgVersion = require('../package.json').version;
+
 console.log('================================================================');
-console.log('🧪 OneBook v1.0.5 - Packaged macOS App & ASAR Verification Suite');
+console.log(`🧪 OneBook v${pkgVersion} - Packaged macOS App & ASAR Verification Suite`);
 console.log('================================================================');
 
 (async () => {
@@ -13,8 +15,8 @@ console.log('================================================================');
     const macBin = path.join(appPath, 'Contents', 'MacOS', 'OneBook');
     const asarPath = path.join(appPath, 'Contents', 'Resources', 'app.asar');
     const infoPlistPath = path.join(appPath, 'Contents', 'Info.plist');
-    const dmgPath = path.join(__dirname, '..', 'dist', 'OneBook-1.0.5-arm64.dmg');
-    const zipPath = path.join(__dirname, '..', 'dist', 'OneBook-1.0.5-arm64-mac.zip');
+    const dmgPath = path.join(__dirname, '..', 'dist', `OneBook-${pkgVersion}-arm64.dmg`);
+    const zipPath = path.join(__dirname, '..', 'dist', `OneBook-${pkgVersion}-arm64-mac.zip`);
 
     // --- CHECK 1: File Artifacts Exist ---
     console.log('\n--- CHECK 1: Packaged Artifacts Verification ---');
@@ -39,9 +41,9 @@ console.log('================================================================');
     const plistContent = execSync(`/usr/libexec/PlistBuddy -c "Print" "${infoPlistPath}"`, { encoding: 'utf8' });
     assert(plistContent.includes('CFBundleDisplayName = OneBook'), 'DisplayName must be OneBook');
     assert(plistContent.includes('CFBundleIdentifier = com.onebook.pos'), 'Identifier must be com.onebook.pos');
-    assert(plistContent.includes('CFBundleShortVersionString = 1.0.5'), 'Version string must be 1.0.5');
-    assert(plistContent.includes('CFBundleVersion = 1.0.5'), 'CFBundleVersion must be 1.0.5');
-    console.log('✓ Info.plist metadata verified: Name=OneBook, ID=com.onebook.pos, Version=1.0.5');
+    assert(plistContent.includes(`CFBundleShortVersionString = ${pkgVersion}`), `Version string must be ${pkgVersion}`);
+    assert(plistContent.includes(`CFBundleVersion = ${pkgVersion}`), `CFBundleVersion must be ${pkgVersion}`);
+    console.log(`✓ Info.plist metadata verified: Name=OneBook, ID=com.onebook.pos, Version=${pkgVersion}`);
 
     // --- CHECK 3: Inspect app.asar File Whitelist & Version ---
     console.log('\n--- CHECK 3: ASAR Extraction & Whitelist Audit ---');
@@ -61,7 +63,7 @@ console.log('================================================================');
 
     // Verify package.json inside ASAR
     const packagedPkg = JSON.parse(fs.readFileSync(path.join(tmpExtractDir, 'package.json'), 'utf8'));
-    assert.strictEqual(packagedPkg.version, '1.0.5', 'package.json in ASAR must have version 1.0.5');
+    assert.strictEqual(packagedPkg.version, pkgVersion, `package.json in ASAR must have version ${pkgVersion}`);
     assert.strictEqual(packagedPkg.productName, 'OneBook', 'package.json in ASAR must have productName OneBook');
     console.log(`✓ Packaged package.json version verified: ${packagedPkg.version}`);
 

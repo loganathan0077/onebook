@@ -582,6 +582,9 @@ function createSchema() {
     if (!customerCols.includes('opening_balance')) {
         db.exec('ALTER TABLE customers ADD COLUMN opening_balance REAL DEFAULT 0');
     }
+    if (!customerCols.includes('status')) {
+        db.exec("ALTER TABLE customers ADD COLUMN status TEXT DEFAULT 'active'");
+    }
 
     // Runtime column migration for stock_movements
     const smCols = db.prepare('PRAGMA table_info(stock_movements)').all().map(c => c.name);
@@ -869,6 +872,27 @@ function createSchema() {
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
+
+    // Synchronize parent product stock and prices with product_variants
+    try {
+        db.exec(`
+            UPDATE products 
+            SET stock = (SELECT COALESCE(SUM(stock), 0) FROM product_variants WHERE product_id = products.id) 
+            WHERE EXISTS (SELECT 1 FROM product_variants WHERE product_id = products.id);
+
+            UPDATE products 
+            SET price = (SELECT selling_price FROM product_variants WHERE product_id = products.id AND selling_price > 0 ORDER BY id ASC LIMIT 1) 
+            WHERE (price = 0 OR price IS NULL) 
+              AND EXISTS (SELECT 1 FROM product_variants WHERE product_id = products.id AND selling_price > 0);
+
+            UPDATE products 
+            SET barcode = (SELECT barcode FROM product_variants WHERE product_id = products.id AND barcode IS NOT NULL AND barcode != '' ORDER BY id ASC LIMIT 1) 
+            WHERE (barcode IS NULL OR barcode = '') 
+              AND EXISTS (SELECT 1 FROM product_variants WHERE product_id = products.id AND barcode IS NOT NULL AND barcode != '');
+        `);
+    } catch(e) {
+        console.warn('[Database] Sync products with variants warning:', e.message);
+    }
 }
 
 function transaction(callback) {

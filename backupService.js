@@ -40,28 +40,40 @@ class BackupService {
         }
     }
 
-    getEffectiveBackupDir() {
+    getEffectiveBackupDir(category = null) {
         const config = this.getConfig();
+        let baseDir = null;
+
         // 1. Explicit backup destination configured by user
         if (config.backupDestination && typeof config.backupDestination === 'string' && config.backupDestination.trim()) {
             const dest = config.backupDestination.trim();
-            if (path.basename(dest) !== 'OneBook_Backups') {
-                return path.join(dest, 'OneBook_Backups');
+            if (path.basename(dest) !== 'OneBook_Backups' && path.basename(dest) !== 'Backups') {
+                baseDir = path.join(dest, 'Backups');
+            } else {
+                baseDir = dest;
             }
-            return dest;
+        } else {
+            // 2. Derive from active database folder
+            const activeDbPath = dbManager.getDatabasePath();
+            if (activeDbPath && typeof activeDbPath === 'string') {
+                const dbDir = path.dirname(activeDbPath);
+                const companyBackups = path.join(dbDir, 'Backups');
+                if (fs.existsSync(companyBackups)) {
+                    baseDir = companyBackups;
+                } else {
+                    baseDir = path.join(dbDir, 'OneBook_Backups');
+                }
+            } else if (this.appDataDir) {
+                baseDir = path.join(this.appDataDir, 'OneBook_Backups');
+            } else {
+                baseDir = '/Users/log/Documents/OneBook/Database/OneBook_Backups';
+            }
         }
 
-        // 2. Derive from active database folder
-        const activeDbPath = dbManager.getDatabasePath();
-        if (activeDbPath && typeof activeDbPath === 'string') {
-            return path.join(path.dirname(activeDbPath), 'OneBook_Backups');
+        if (category && typeof category === 'string') {
+            return path.join(baseDir, category);
         }
-
-        // 3. Fallback to Documents/OneBook/Database/OneBook_Backups
-        if (this.appDataDir) {
-            return path.join(this.appDataDir, 'OneBook_Backups');
-        }
-        return '/Users/log/Documents/OneBook/Database/OneBook_Backups';
+        return baseDir;
     }
 
     ensureDir(dirPath) {
@@ -113,7 +125,22 @@ class BackupService {
                 console.warn('[BackupService] Non-fatal wal_checkpoint warning:', walErr.message);
             }
 
-            const targetDir = customDest || this.getEffectiveBackupDir();
+            let targetDir = customDest;
+            if (!targetDir) {
+                let category = 'Manual';
+                if (reason === 'daily' || reason === 'automatic' || String(reason).toLowerCase().includes('auto')) {
+                    category = 'Daily';
+                } else if (String(reason).toLowerCase().includes('update') || String(reason).toLowerCase().includes('pre-restore') || String(reason).toLowerCase().includes('migration')) {
+                    category = 'BeforeUpdate';
+                }
+                const catDir = this.getEffectiveBackupDir(category);
+                const baseDir = this.getEffectiveBackupDir();
+                if (fs.existsSync(catDir) || (fs.existsSync(baseDir) && path.basename(baseDir) === 'Backups')) {
+                    targetDir = catDir;
+                } else {
+                    targetDir = baseDir;
+                }
+            }
             this.ensureDir(targetDir);
 
             const now = new Date();
@@ -233,41 +260,61 @@ class BackupService {
         const targetDir = this.getEffectiveBackupDir();
         this.ensureDir(targetDir);
 
+        let allBackups = [];
+
+        // 1. Check metadata file in root backup dir
         const metaPath = path.join(targetDir, 'backups_meta.json');
-        let metaList = [];
         if (fs.existsSync(metaPath)) {
             try {
-                metaList = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                const metaList = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
                 if (Array.isArray(metaList)) {
-                    // Filter to verified existing files only
-                    return metaList.filter(item => {
-                        return item && item.filePath && fs.existsSync(item.filePath);
-                    });
+                    allBackups.push(...metaList.filter(item => item && item.filePath && fs.existsSync(item.filePath)));
                 }
             } catch (e) {
                 console.warn('[BackupService] Error reading backups_meta.json:', e.message);
             }
         }
 
-        // Fallback scan of directory
-        try {
-            const files = fs.readdirSync(targetDir).filter(f => f.endsWith('.db') && !f.includes('.tmp_'));
-            return files.map(f => {
-                const p = path.join(targetDir, f);
-                const stat = fs.statSync(p);
-                return {
-                    fileName: f,
-                    filePath: p,
-                    fileSize: stat.size,
-                    timestamp: stat.mtime.toISOString(),
-                    reason: f.includes('Auto') ? 'automatic' : 'manual',
-                    verified: true
-                };
-            }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        } catch (scanErr) {
-            console.warn('[BackupService] Error scanning backup dir:', scanErr.message);
-            return [];
+        // 2. Also check category subfolders: Daily, Manual, BeforeUpdate
+        const subDirs = ['Daily', 'Manual', 'BeforeUpdate', ''];
+        for (const sub of subDirs) {
+            const dir = sub ? path.join(targetDir, sub) : targetDir;
+            if (!fs.existsSync(dir)) continue;
+
+            const subMeta = path.join(dir, 'backups_meta.json');
+            if (sub && fs.existsSync(subMeta)) {
+                try {
+                    const list = JSON.parse(fs.readFileSync(subMeta, 'utf8'));
+                    if (Array.isArray(list)) {
+                        for (const item of list) {
+                            if (item && item.filePath && fs.existsSync(item.filePath) && !allBackups.some(b => b.filePath === item.filePath)) {
+                                allBackups.push(item);
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            try {
+                const files = fs.readdirSync(dir).filter(f => f.endsWith('.db') && !f.includes('.tmp_'));
+                for (const f of files) {
+                    const p = path.join(dir, f);
+                    if (!allBackups.some(b => b.filePath === p)) {
+                        const stat = fs.statSync(p);
+                        allBackups.push({
+                            fileName: f,
+                            filePath: p,
+                            fileSize: stat.size,
+                            timestamp: stat.mtime.toISOString(),
+                            reason: sub ? sub.toLowerCase() : (f.includes('Auto') ? 'automatic' : 'manual'),
+                            verified: true
+                        });
+                    }
+                }
+            } catch (scanErr) {}
         }
+
+        return allBackups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
 
     getLastBackupInfo() {

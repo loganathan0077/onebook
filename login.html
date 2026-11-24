@@ -463,6 +463,16 @@
                     <p>Business Management & POS</p>
                 </div>
 
+                <div id="companyLoginBadge" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1e293b; font-weight: 600;">
+                        <i class="fa-solid fa-building" style="color: #0284c7;"></i>
+                        <span id="loginCompanyName">Loading company...</span>
+                    </div>
+                    <button type="button" onclick="handleSwitchCompanyFromLogin()" style="background: none; border: 1px solid #cbd5e1; color: #2563eb; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" title="Switch Company / Select Database">
+                        <i class="fa-solid fa-arrows-rotate"></i> Switch
+                    </button>
+                </div>
+
                 <div id="initialSetupAlert" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: #1e40af; line-height: 1.4;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                         <div>
@@ -528,17 +538,68 @@
 
 
     <script>
-        // Check if user already has an active session
-        try {
-            const existingToken = sessionStorage.getItem('onebook_session_token');
-            if (existingToken && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users) {
-                window.electronAPI.sqlite.users.validateSession(existingToken).then(res => {
-                    if (res && res.success && res.data && res.data.status === 'active') {
-                        window.location.href = 'OneBook.html';
+        async function checkActiveCompany() {
+            try {
+                if (window.electronAPI && window.electronAPI.company) {
+                    const res = await window.electronAPI.company.getActiveCompany();
+                    const badge = document.getElementById('companyLoginBadge');
+                    const nameEl = document.getElementById('loginCompanyName');
+                    if (res && res.success && res.company) {
+                        if (nameEl) nameEl.textContent = res.company.name || 'Company';
+                        if (badge) badge.style.display = 'flex';
+                    } else {
+                        // Check if sqlite system is already connected before redirecting
+                        if (window.electronAPI.sqlite && window.electronAPI.sqlite.system) {
+                            try {
+                                const details = await window.electronAPI.sqlite.system.getDatabaseDetails();
+                                if (details && details.connected && details.path) {
+                                    if (nameEl) nameEl.textContent = details.filename || 'Company';
+                                    if (badge) badge.style.display = 'flex';
+                                    return;
+                                }
+                            } catch (e) {}
+                        }
+                        // Rule 1 & 2: If no active company is loaded, redirect to companyManager.html
+                        console.log('[Login] No active company or database selected. Navigating to Company Manager.');
+                        window.location.href = 'companyManager.html';
                     }
-                }).catch(err => {
-                    console.warn('Session check error:', err);
-                });
+                }
+            } catch (e) {
+                console.warn('[Login] Error checking active company:', e);
+            }
+        }
+
+        window.handleSwitchCompanyFromLogin = async function() {
+            try {
+                const token = sessionStorage.getItem('onebook_session_token');
+                if (token && window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.users && window.electronAPI.sqlite.users.logout) {
+                    await window.electronAPI.sqlite.users.logout(token).catch(() => {});
+                }
+            } catch (e) {}
+            sessionStorage.removeItem('onebook_session_token');
+            sessionStorage.removeItem('currentUser');
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                window.electronAPI.sqlite.clearSessionToken();
+            }
+            if (window.electronAPI && window.electronAPI.company) {
+                try {
+                    await window.electronAPI.company.switchCompany();
+                } catch (e) {
+                    window.location.href = 'companyManager.html';
+                }
+            } else {
+                window.location.href = 'companyManager.html';
+            }
+        };
+
+        checkActiveCompany();
+
+        // Strict Session Isolation: Never auto-redirect on login screen. Require explicit credentials.
+        try {
+            sessionStorage.removeItem('onebook_session_token');
+            sessionStorage.removeItem('currentUser');
+            if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                window.electronAPI.sqlite.clearSessionToken();
             }
         } catch (e) {}
 

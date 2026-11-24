@@ -22,6 +22,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     focusWindow: () => ipcRenderer.send('focus-window'),
     printHTML: (html, options) => ipcRenderer.invoke('print-html', html, options),
 
+    // Company & Database Management APIs
+    company: {
+        getRecentCompanies: () => ipcRenderer.invoke('company:getRecent'),
+        getCompanies: (dataDir) => ipcRenderer.invoke('company:getCompanies', dataDir),
+        getDataDirectory: () => ipcRenderer.invoke('company:getDataDirectory'),
+        setDataDirectory: (newPath) => ipcRenderer.invoke('company:setDataDirectory', newPath),
+        selectFolder: (options) => ipcRenderer.invoke('company:selectFolder', options),
+        selectBackupFile: (options) => ipcRenderer.invoke('company:selectBackupFile', options),
+        validateDatabase: (folderOrDbPath) => ipcRenderer.invoke('company:validate', folderOrDbPath),
+        createCompany: (data) => ipcRenderer.invoke('company:create', data),
+        openCompany: (folderOrDbPath) => ipcRenderer.invoke('company:open', folderOrDbPath),
+        closeCompany: () => ipcRenderer.invoke('company:close'),
+        getActiveCompany: () => ipcRenderer.invoke('company:getActive'),
+        removeFromRecent: (companyId) => ipcRenderer.invoke('company:removeFromRecent', companyId),
+        restoreBackup: (data) => ipcRenderer.invoke('company:restoreBackup', data),
+        getHealth: (folderOrDbPath) => ipcRenderer.invoke('company:getHealth', folderOrDbPath),
+        openFolder: (folderPath) => ipcRenderer.invoke('company:openFolder', folderPath),
+        switchCompany: () => ipcRenderer.invoke('company:switchCompany')
+    },
+
     // Licensing APIs
     getLicenseSync: () => ipcRenderer.sendSync('get-license-sync'),
     getLicenseInfoSync: () => ipcRenderer.sendSync('get-license-info-sync'),
@@ -70,6 +90,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
             openDatabaseFolder: () => ipcRenderer.invoke('sqlite:system:openDatabaseFolder'),
             initializeDatabaseLocation: (args) => ipcRenderer.invoke('sqlite:system:initializeDatabaseLocation', args),
             changeDatabaseLocation: (args) => ipcRenderer.invoke('sqlite:system:changeDatabaseLocation', args)
+        },
+        settings: {
+            getAll: () => ipcRenderer.invoke('sqlite:settings:getAll'),
+            get: (key) => ipcRenderer.invoke('sqlite:settings:get', key),
+            save: (key, value) => ipcRenderer.invoke('sqlite:settings:save', { key, value }),
+            saveAll: (settings) => ipcRenderer.invoke('sqlite:settings:saveAll', settings),
+            getBusinessProfile: () => ipcRenderer.invoke('sqlite:settings:getBusinessProfile'),
+            saveBusinessProfile: (profile) => ipcRenderer.invoke('sqlite:settings:saveBusinessProfile', profile)
         },
         users: {
             login: (username, password) => ipcRenderer.invoke('sqlite:users:login', { username, password }),
@@ -281,6 +309,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
             transferStock: (productId, variantId, fromLocationId, toLocationId, quantity, notes) => 
                 ipcRenderer.invoke('sqlite:locations:transferStock', { sessionToken: currentSessionToken, productId, variantId, fromLocationId, toLocationId, quantity, notes }),
             getTransfers: (filters) => ipcRenderer.invoke('sqlite:locations:getTransfers', { sessionToken: currentSessionToken, filters })
+        },
+        ledger: {
+            getPartyLedger: (partyId, partyType, options) => {
+                const token = currentSessionToken || (typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage.getItem('onebook_session_token') : null);
+                return ipcRenderer.invoke('sqlite:ledger:getPartyLedger', { sessionToken: token, partyId, partyType, options });
+            }
         }
     }
 });

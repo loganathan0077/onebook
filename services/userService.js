@@ -256,6 +256,21 @@ class UserService {
     }
 
     /**
+     * Revoke all active sessions (on company switch, close, or shutdown)
+     */
+    async revokeAllSessions() {
+        if (!database.isDatabaseOpen()) return 0;
+        try {
+            const db = database.getDatabase();
+            const info = db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            return info.changes;
+        } catch (e) {
+            console.warn('[UserService] revokeAllSessions warning:', e.message);
+            return 0;
+        }
+    }
+
+    /**
      * Authenticate user with username and password
      */
     async authenticate(username, password) {

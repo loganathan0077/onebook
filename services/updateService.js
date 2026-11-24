@@ -11,7 +11,7 @@ class UpdateService extends EventEmitter {
         this.mainWindow = null;
         this.autoUpdater = null;
         this.status = 'IDLE'; // IDLE | CHECKING | AVAILABLE | NOT_AVAILABLE | DOWNLOADING | DOWNLOADED | ERROR
-        this.currentVersion = '1.0.5';
+        this.currentVersion = '1.0.6';
         this.availableVersion = null;
         this.updateInfo = null;
         this.downloadProgress = null;

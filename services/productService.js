@@ -31,6 +31,22 @@ class ProductService {
         for (const p of products) {
             p.variants = variantsByProduct[p.id] || [];
             p.gstRate = (p.gst_rate !== undefined && p.gst_rate !== null) ? parseFloat(p.gst_rate) : 0;
+            if (p.variants.length > 0) {
+                const defVar = p.variants[0];
+                const totalStock = p.variants.reduce((sum, v) => sum + (parseFloat(v.stock) || 0), 0);
+                if (p.stock === 0 || p.stock === undefined || p.stock === null || totalStock > 0) {
+                    p.stock = totalStock;
+                }
+                if ((p.price === 0 || p.price === undefined || p.price === null) && defVar && defVar.sellingPrice) {
+                    p.price = defVar.sellingPrice;
+                }
+                if ((p.cost_price === 0 || p.cost_price === undefined || p.cost_price === null) && defVar && defVar.buyingPrice) {
+                    p.cost_price = defVar.buyingPrice;
+                }
+                if (!p.barcode && defVar && defVar.barcode) {
+                    p.barcode = defVar.barcode;
+                }
+            }
         }
         return products;
     }
@@ -80,6 +96,22 @@ class ProductService {
             loc_shelf: v.loc_shelf || null,
             loc_bin: v.loc_bin || null
         }));
+        if (product.variants && product.variants.length > 0) {
+            const defVar = product.variants[0];
+            const totalStock = product.variants.reduce((sum, v) => sum + (parseFloat(v.stock) || 0), 0);
+            if (product.stock === 0 || product.stock === undefined || product.stock === null || totalStock > 0) {
+                product.stock = totalStock;
+            }
+            if ((product.price === 0 || product.price === undefined || product.price === null) && defVar && defVar.sellingPrice) {
+                product.price = defVar.sellingPrice;
+            }
+            if ((product.cost_price === 0 || product.cost_price === undefined || product.cost_price === null) && defVar && defVar.buyingPrice) {
+                product.cost_price = defVar.buyingPrice;
+            }
+            if (!product.barcode && defVar && defVar.barcode) {
+                product.barcode = defVar.barcode;
+            }
+        }
         return product;
     }
 

@@ -6,9 +6,13 @@ const crypto = require('crypto');
 const { execSync } = require('child_process');
 const os = require('os');
 const updateService = require('./services/updateService');
+const companyService = require('./services/companyService');
+const settingsService = require('./services/settingsService');
 
 // Enforce consistent application name across development and packaged builds
 app.setName('OneBook');
+
+let mainWindow = null;
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -21,6 +25,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+    mainWindow = win;
 
     try {
         updateService.init(win);
@@ -33,7 +38,12 @@ function createWindow() {
         win.loadFile(path.join(__dirname, 'license.html'));
     } else {
         win.webContents.session.clearCache();
-        win.loadFile(path.join(__dirname, 'login.html'));
+        const activeComp = companyService.getActiveCompany();
+        if (activeComp && activeComp.success && activeComp.company) {
+            win.loadFile(path.join(__dirname, 'login.html'));
+        } else {
+            win.loadFile(path.join(__dirname, 'companyManager.html'));
+        }
     }
 
     
@@ -61,6 +71,15 @@ function createWindow() {
                 return;
             }
         }
+    });
+
+    win.on('close', () => {
+        try {
+            if (dbManager.isDatabaseOpen()) {
+                const db = dbManager.getDatabase();
+                db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            }
+        } catch (e) {}
     });
 
     win.maximize();
@@ -876,11 +895,57 @@ function initSqliteAtStartup() {
     }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    companyService.setAppInstance(app);
+
     if (process.env.ONEBOOK_TEST_RUNNER === '1') {
         return;
     }
-    initSqliteAtStartup();
+
+    // Check for explicit database or company passed via CLI or ENV
+    const explicitArg = process.argv.find(a => a.startsWith('--sqlite-path=') || a.startsWith('--company-folder='));
+    const explicitEnv = process.env.ONEBOOK_SQLITE_PATH;
+    const explicitTarget = explicitArg ? explicitArg.split('=')[1].trim().replace(/^["']|["']$/g, '') : (explicitEnv ? explicitEnv.trim() : null);
+
+    if (explicitTarget) {
+        console.log('[OneBook Startup] Explicit database/company target provided:', explicitTarget);
+        try {
+            const openRes = await companyService.openCompany(explicitTarget);
+            if (openRes && openRes.success) {
+                sqliteStatus = {
+                    initialized: true,
+                    path: openRes.company.dbPath,
+                    error: null,
+                    message: null
+                };
+            }
+        } catch (e) {
+            console.error('[OneBook Startup] Failed to open explicit target:', e.message);
+        }
+    } else {
+        // ISSUE 1: Automatically Open the Last Used Company
+        const lastCompanyTarget = companyService.getLastOpenedCompanyTarget();
+        if (lastCompanyTarget) {
+            console.log('[OneBook Startup] Attempting to auto-load last opened company:', lastCompanyTarget);
+            try {
+                const openRes = await companyService.openCompany(lastCompanyTarget);
+                if (openRes && openRes.success) {
+                    sqliteStatus = {
+                        initialized: true,
+                        path: openRes.company.dbPath,
+                        error: null,
+                        message: null
+                    };
+                    console.log('[OneBook Startup] Successfully auto-loaded last company:', openRes.company.companyName || openRes.company.name);
+                } else {
+                    console.warn('[OneBook Startup] Last company could not be opened safely:', openRes?.error);
+                }
+            } catch (e) {
+                console.warn('[OneBook Startup] Error auto-loading last company:', e.message);
+            }
+        }
+    }
+
     backupService.init(
         path.join(app.getPath('documents'), 'OneBook', 'Database'),
         () => {
@@ -914,6 +979,21 @@ app.whenReady().then(() => {
 
 });
 
+app.on('before-quit', () => {
+    console.log('[OneBook App] Graceful shutdown executing (checkpoint WAL & close database)...');
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            try {
+                const db = dbManager.getDatabase();
+                db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            } catch (e) {}
+        }
+        companyService.closeCurrentCompany();
+    } catch (e) {
+        console.warn('[OneBook App] Error during company cleanup on shutdown:', e.message);
+    }
+});
+
 
 
 app.on('window-all-closed', () => {
@@ -939,6 +1019,7 @@ const pettyCashService = require('./services/pettyCashService');
 const dayClosingService = require('./services/dayClosingService');
 const calculatorService = require('./services/calculatorService');
 const reportService = require('./services/reportService');
+const ledgerService = require('./services/ledgerService');
 const dashboardService = require('./services/dashboardService');
 const stockService = require('./services/stockService');
 const customerService = require('./services/customerService');
@@ -1027,6 +1108,175 @@ async function handleAuthorizedSqlite(event, sessionToken, requiredPermission, h
     }
 }
 
+
+// --- COMPANY & MULTI-DATABASE ARCHITECTURE IPC HANDLERS ---
+ipcMain.handle('company:getRecent', async () => {
+    return companyService.getRecentCompanies();
+});
+
+ipcMain.handle('company:getCompanies', async (event, dataDir) => {
+    return companyService.getCompaniesInDataDirectory(dataDir);
+});
+
+ipcMain.handle('company:getDataDirectory', async () => {
+    return { success: true, dataDirectory: companyService.getDataDirectory() };
+});
+
+ipcMain.handle('company:setDataDirectory', async (event, newPath) => {
+    return companyService.setDataDirectory(newPath);
+});
+
+ipcMain.handle('company:selectFolder', async (event, options = {}) => {
+    const parentWin = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const res = await dialog.showOpenDialog(parentWin, {
+        title: options.title || 'Select Folder',
+        defaultPath: options.defaultPath || companyService.getDataDirectory(),
+        properties: ['openDirectory', 'createDirectory']
+    });
+    if (res.canceled || !res.filePaths.length) {
+        return { canceled: true, folderPath: null };
+    }
+    return { canceled: false, folderPath: res.filePaths[0] };
+});
+
+ipcMain.handle('company:selectBackupFile', async (event, options = {}) => {
+    const parentWin = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const res = await dialog.showOpenDialog(parentWin, {
+        title: options.title || 'Select Backup File',
+        defaultPath: options.defaultPath,
+        filters: [{ name: 'SQLite Database / Backup', extensions: ['db', 'sqlite', 'bak'] }],
+        properties: ['openFile']
+    });
+    if (res.canceled || !res.filePaths.length) {
+        return { canceled: true, filePath: null };
+    }
+    return { canceled: false, filePath: res.filePaths[0] };
+});
+
+ipcMain.handle('company:validate', async (event, folderOrDbPath) => {
+    return companyService.validateCompanyDatabase(folderOrDbPath);
+});
+
+ipcMain.handle('company:create', async (event, data) => {
+    return companyService.createCompany(data);
+});
+
+ipcMain.handle('company:open', async (event, folderOrDbPath) => {
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            try {
+                const db = dbManager.getDatabase();
+                db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            } catch (e) {}
+        }
+    } catch (e) {}
+    const result = await companyService.openCompany(folderOrDbPath);
+    if (result && result.success && result.company) {
+        sqliteStatus = {
+            initialized: true,
+            path: result.company.dbPath || result.dbPath,
+            error: null,
+            message: null
+        };
+        const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+        if (win && !win.isDestroyed()) {
+            await win.webContents.executeJavaScript(`
+                try {
+                    sessionStorage.removeItem('onebook_session_token');
+                    sessionStorage.removeItem('currentUser');
+                    if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                        window.electronAPI.sqlite.clearSessionToken();
+                    }
+                } catch (e) {}
+            `).catch(() => {});
+            win.loadFile(path.join(__dirname, 'login.html'));
+        }
+    }
+    return result;
+});
+
+ipcMain.handle('company:close', async () => {
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            try {
+                const db = dbManager.getDatabase();
+                db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            } catch (e) {}
+        }
+    } catch (e) {}
+    return companyService.closeCurrentCompany();
+});
+
+ipcMain.handle('company:getActive', async () => {
+    return companyService.getActiveCompany();
+});
+
+ipcMain.handle('company:removeFromRecent', async (event, companyId) => {
+    return companyService.removeFromRecentCompanies(companyId);
+});
+
+ipcMain.handle('company:restoreBackup', async (event, data) => {
+    return companyService.restoreCompanyBackup(data);
+});
+
+ipcMain.handle('company:getHealth', async (event, folderOrDbPath) => {
+    return companyService.getCompanyHealth(folderOrDbPath);
+});
+
+ipcMain.handle('company:openFolder', async (event, folderPath) => {
+    try {
+        if (folderPath && fs.existsSync(folderPath)) {
+            shell.openPath(folderPath);
+            return { success: true };
+        }
+        return { success: false, error: 'FOLDER_NOT_FOUND', message: 'Folder does not exist on disk' };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('company:switchCompany', async (event) => {
+    try {
+        if (dbManager.isDatabaseOpen()) {
+            try {
+                const db = dbManager.getDatabase();
+                db.prepare(`UPDATE user_sessions SET revoked = 1 WHERE revoked = 0`).run();
+            } catch (e) {}
+        }
+        const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+        if (win && !win.isDestroyed()) {
+            await win.webContents.executeJavaScript(`
+                try {
+                    sessionStorage.removeItem('onebook_session_token');
+                    sessionStorage.removeItem('currentUser');
+                    if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                        window.electronAPI.sqlite.clearSessionToken();
+                    }
+                } catch (e) {}
+            `).catch(() => {});
+        }
+    } catch (e) {}
+    companyService.closeCurrentCompany();
+    sqliteStatus = {
+        initialized: false,
+        path: null,
+        error: 'NO_COMPANY_SELECTED',
+        message: 'No active company database loaded'
+    };
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    if (win && !win.isDestroyed()) {
+        win.loadFile(path.join(__dirname, 'companyManager.html'));
+    }
+    return { success: true };
+});
+
+// Company-Specific Settings & Business Profile SQLite IPC
+ipcMain.handle('sqlite:settings:getAll', () => handleSqlite(null, () => settingsService.getAllSettings()));
+ipcMain.handle('sqlite:settings:get', (e, key) => handleSqlite(e, () => settingsService.getSetting(key)));
+ipcMain.handle('sqlite:settings:save', (e, args) => handleSqlite(e, () => settingsService.saveSetting(args?.key, args?.value)));
+ipcMain.handle('sqlite:settings:saveAll', (e, args) => handleSqlite(e, () => settingsService.saveAllSettings(args)));
+ipcMain.handle('sqlite:settings:getBusinessProfile', () => handleSqlite(null, () => settingsService.getBusinessProfile()));
+ipcMain.handle('sqlite:settings:saveBusinessProfile', (e, args) => handleSqlite(e, () => settingsService.saveBusinessProfile(args)));
 
 // System SQLite status and connection IPC
 ipcMain.handle('sqlite:system:getStatus', () => {
@@ -1251,7 +1501,7 @@ ipcMain.handle('updater:getVersion', () => {
     try {
         return app.getVersion();
     } catch (e) {
-        return '1.0.5';
+        return '1.0.6';
     }
 });
 ipcMain.handle('updater:getStatus', () => updateService.getStatus());
@@ -1965,6 +2215,7 @@ ipcMain.handle('sqlite:calculator:clearAllHistory', (e, args) => handleCalculato
 // Reports
 ipcMain.handle('sqlite:reports:getReportSales', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getReportSales(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: [] }));
 ipcMain.handle('sqlite:reports:getSummary', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'reports', () => reportService.getCustomReportSummary(args?.filters !== undefined ? args.filters : args), { isDemoRestrictedRead: true, demoReadDefault: { totalSales: 0, totalPurchases: 0, totalExpenses: 0, netProfit: 0 } }));
+ipcMain.handle('sqlite:ledger:getPartyLedger', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'authenticated', () => ledgerService.getPartyLedger(args?.partyId, args?.partyType, args?.options)));
 
 // Dashboard
 ipcMain.handle('sqlite:dashboard:getMetrics', (e, args) => handleAuthorizedSqlite(e, args?.sessionToken, 'dashboard', () => dashboardService.getDashboardMetrics(args?.options !== undefined ? args.options : args), { isDemoRestrictedRead: true, demoReadDefault: { totalSales: 0, totalOrders: 0, lowStockCount: 0, pendingReceivables: 0 } }));

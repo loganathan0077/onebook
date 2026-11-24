@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneBook — Company & Database Manager</title>
+    <link rel="icon" type="image/png" href="onebooklogo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --navy-dark: #0f172a;
+            --navy-header: #1e293b;
+            --bg-page: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #16a34a;
+            --success-bg: #dcfce7;
+            --warning: #ca8a04;
+            --warning-bg: #fef9c3;
+            --danger: #dc2626;
+            --danger-bg: #fee2e2;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        .app-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+            color: white;
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-brand img {
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-brand h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .header-brand span {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .data-dir-pill {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 14px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .data-dir-pill code {
+            color: #cbd5e1;
+            font-family: monospace;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-link {
+            background: none;
+            border: none;
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .btn-link:hover {
+            color: #93c5fd;
+        }
+
+        /* Container Layout */
+        .main-container {
+            flex: 1;
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        /* Top Action Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            max-width: 360px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12.5px;
+        }
+
+        /* Companies Card & Table */
+        .companies-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafbfc;
+        }
+
+        .card-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1e293b;
+        }
+
+        .badge-count {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table.company-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13.5px;
+        }
+
+        table.company-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        table.company-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        table.company-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .company-name-cell {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 14.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .company-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+
+        .folder-path-text {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-family: monospace;
+            display: block;
+            margin-top: 3px;
+            word-break: break-all;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.healthy {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .status-badge.backup-due {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .status-badge.missing {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .status-badge.locked {
+            background: #ffedd5;
+            color: #c2410c;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .row-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .btn-icon {
+            background: none;
+            border: 1px solid var(--border);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-icon:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+
+        .btn-icon.danger:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-color: #fca5a5;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 50px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: #cbd5e1;
+            margin-bottom: 14px;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 14px;
+            max-width: 540px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalFadeIn 0.2s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text-main);
+        }
+
+        .modal-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-with-button .form-input {
+            flex: 1;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            background: #f8fafc;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .alert-box {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            color: #92400e;
+        }
+
+        .alert-danger {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(3px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            color: white;
+        }
+
+        .spinner {
+            font-size: 32px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-brand">
+            <img src="onebooklogo.png" alt="OneBook Logo">
+            <div>
+                <h1>OneBook</h1>
+                <span>Company & Database Manager</span>
+            </div>
+        </div>
+
+        <div class="data-dir-pill">
+            <i class="fa-solid fa-folder-tree"></i>
+            <div>
+                <span style="display:block; font-size: 11px; opacity: 0.8;">Data Directory:</span>
+                <code id="currentDataDirDisplay">Loading...</code>
+            </div>
+            <button class="btn-link" onclick="openChangeDataDirModal()">Change</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="companySearchInput" placeholder="Search companies or locations..." oninput="filterCompanies()">
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openCreateCompanyModal()">
+                    <i class="fa-solid fa-plus"></i> Create New Company
+                </button>
+                <button class="btn btn-secondary" onclick="browseExistingCompany()">
+                    <i class="fa-solid fa-folder-open"></i> Open Existing Database
+                </button>
+                <button class="btn btn-secondary" onclick="openRestoreModal()">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Restore Backup
+                </button>
+            </div>
+        </div>
+
+        <!-- Companies Card -->
+        <div class="companies-card">
+            <div class="card-header">
+                <h2>
+                    <i class="fa-solid fa-building"></i>
+                    Recently Opened Companies
+                    <span class="badge-count" id="companiesCountBadge">0</span>
+                </h2>
+                <button class="btn btn-secondary btn-sm" onclick="loadCompanies()">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th>Company Details</th>
+                            <th>Status</th>
+                            <th>Last Opened</th>
+                            <th>Database Size</th>
+                            <th>Last Backup</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companyTableBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fa-solid fa-box-open"></i>
+                <h3>No Companies Found</h3>
+                <p>Create a new company database or open an existing company folder to get started.</p>
+                <div style="margin-top: 16px;">
+                    <button class="btn btn-primary" onclick="openCreateCompanyModal()">
+                        <i class="fa-solid fa-plus"></i> Create First Company
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Create New Company -->
+    <div id="createCompanyModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-building-circle-check"></i> Create New Company</h3>
+                <button class="modal-close" onclick="closeModal('createCompanyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Company Name <span style="color: var(--danger)">*</span></label>
+                    <input type="text" id="newCompanyNameInput" class="form-input" placeholder="e.g. Acme Enterprise" oninput="updateSuggestedFolder()">
+                </div>
+
+                <div class="form-group">
+                    <label>Company Data Folder</label>
+                    <div class="input-with-button">
+                        <input type="text" id="newCompanyFolderInput" class="form-input" placeholder="Folder path">
+                        <button class="btn btn-secondary btn-sm" onclick="browseNewCompanyFolder()"><i class="fa-solid fa-folder"></i> Browse</button>
+                    </div>
+                    <span class="form-hint">Company databases are stored separately from application installation files.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Financial Year</label>
+                    <input type="text" id="newCompanyFyInput" class="form-input" placeholder="2026-2027">
+                </div>
+
+                <div class="alert-box alert-info">
+                    <i class="fa-solid fa-shield-halved" style="font-size: 16px;"></i>
+                    <div>
+                        <strong>Safety Assurance:</strong> OneBook will initialize a dedicated SQLite database and directory structure. Existing databases will never be overwritten.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('createCompanyModal')">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitCreateCompany" onclick="submitCreateCompany()">
+                    <i class="fa-solid fa-check"></i> Create & Open Company
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Restore Database -->
+    <div id="restoreModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Restore Company Database</h3>
+                <button class="modal-close" onclick="closeModal('restoreModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Company Folder</label>
+                    <div class="input-with-button">
+                        <input type="text" id="restoreTargetFolderInput" class="form-input" placeholder="Select company folder">
+                        <button class="btn btn-secondary btn-sm" onclick="browseRestoreTargetFolder()"><i class="fa-solid fa-folder"></i> Browse</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Backup File (.db)</label>
+                    <div class="input-with-button">
+                        <input type="text" id="restoreBackupFileInput" class="form-input" placeholder="Path to verified backup .db file">
+                        <button class="btn btn-secondary btn-sm" onclick="browseRestoreBackupFile()"><i class="fa-solid fa-file"></i> Select File</button>
+                    </div>
+                </div>
+
+                <div class="alert-box alert-warning">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 16px;"></i>
+                    <div>
+                        <strong>Safety First:</strong> Before restoring, a verified pre-restore safety snapshot of the active database will be saved to <code>Backups/Manual/</code>. The backup will be integrity-tested before replacement.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('restoreModal')">Cancel</button>
+                <button class="btn btn-primary" id="btnSubmitRestore" onclick="submitRestoreBackup()">
+                    <i class="fa-solid fa-rotate"></i> Verify & Restore
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Change Data Directory -->
+    <div id="dataDirModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-folder-tree"></i> Configure Data Directory</h3>
+                <button class="modal-close" onclick="closeModal('dataDirModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Root Company Storage Location</label>
+                    <div class="input-with-button">
+                        <input type="text" id="customDataDirInput" class="form-input">
+                        <button class="btn btn-secondary btn-sm" onclick="browseDataDirectory()"><i class="fa-solid fa-folder"></i> Browse</button>
+                    </div>
+                    <span class="form-hint">New companies will default to folders inside this directory. Application updates will never modify this path.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('dataDirModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitDataDirectory()">Save Location</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Database Health Diagnostics -->
+    <div id="healthModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-heart-pulse"></i> Database Health Diagnostics</h3>
+                <button class="modal-close" onclick="closeModal('healthModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="healthModalBody">
+                <div class="spinner"><i class="fa-solid fa-circle-notch"></i></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('healthModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Missing Database Alert (Rule 1) -->
+    <div id="missingDbModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header" style="background: #fef2f2; border-bottom-color: #fecaca;">
+                <h3 style="color: #991b1b;"><i class="fa-solid fa-triangle-exclamation"></i> Database Not Found</h3>
+                <button class="modal-close" onclick="closeModal('missingDbModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 14.5px; font-weight: 600; color: #1e293b;">
+                    OneBook cannot locate your company database. Your company data has not been replaced.
+                </p>
+                <div class="alert-box alert-danger">
+                    <div>
+                        <strong>Configured Path:</strong><br>
+                        <code id="missingDbPathText" style="word-break: break-all; font-size: 12px;"></code>
+                    </div>
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                    If your storage drive or external disk is disconnected, please reconnect it. You can also browse for the folder or restore from your verified backups.
+                </p>
+            </div>
+            <div class="modal-footer" style="flex-wrap: wrap;">
+                <button class="btn btn-secondary" onclick="browseExistingCompany()"><i class="fa-solid fa-folder-open"></i> Locate Folder</button>
+                <button class="btn btn-secondary" onclick="openRestoreModal()"><i class="fa-solid fa-clock-rotate-left"></i> Restore Backup</button>
+                <button class="btn btn-primary" onclick="closeModal('missingDbModal')">Select Another Company</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"><i class="fa-solid fa-circle-notch"></i></div>
+        <div id="loadingMessage" style="font-weight: 600; font-size: 15px;">Opening company database...</div>
+    </div>
+
+    <script>
+        let allCompanies = [];
+        let currentDataDir = '';
+
+        // Format byte sizes
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+        }
+
+        // Format relative or friendly date
+        function formatDate(isoStr) {
+            if (!isoStr) return 'Never';
+            try {
+                const d = new Date(isoStr);
+                if (isNaN(d.getTime())) return 'Unknown';
+                const now = new Date();
+                const diffMs = now - d;
+                const diffMins = Math.floor(diffMs / (1000 * 60));
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                if (diffMins < 2) return 'Just now';
+                if (diffMins < 60) return `${diffMins} mins ago`;
+                if (diffHours < 24) return `${diffHours} hrs ago`;
+                if (diffDays === 1) return 'Yesterday';
+                if (diffDays < 7) return `${diffDays} days ago`;
+                return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+            } catch (e) {
+                return 'Unknown';
+            }
+        }
+
+        function showLoading(msg = 'Processing...') {
+            document.getElementById('loadingMessage').textContent = msg;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // Load active data directory & companies
+        async function loadCompanies() {
+            try {
+                if (!window.electronAPI || !window.electronAPI.company) {
+                    console.warn('Electron company API not detected');
+                    return;
+                }
+
+                let dirRes = await window.electronAPI.company.getDataDirectory();
+                let dataDirStr = '';
+                if (dirRes && typeof dirRes === 'object') {
+                    dataDirStr = dirRes.dataDirectory || dirRes.path || dirRes.directory || dirRes.location || dirRes.selectedPath || '';
+                } else if (typeof dirRes === 'string') {
+                    dataDirStr = dirRes;
+                }
+                if (!dataDirStr || dataDirStr === '[object Object]') {
+                    dataDirStr = '/Users/log/Documents/OneBook/Data';
+                }
+                currentDataDir = dataDirStr;
+                const dispEl = document.getElementById('currentDataDirDisplay');
+                if (dispEl) {
+                    dispEl.textContent = currentDataDir;
+                    dispEl.title = currentDataDir;
+                }
+                const inputEl = document.getElementById('customDataDirInput');
+                if (inputEl) {
+                    inputEl.value = currentDataDir;
+                }
+
+                allCompanies = await window.electronAPI.company.getRecentCompanies();
+                renderCompanyTable(allCompanies);
+            } catch (err) {
+                console.error('Error loading companies:', err);
+                alert('Could not load companies: ' + err.message);
+            }
+        }
+
+        function renderCompanyTable(companies) {
+            const tbody = document.getElementById('companyTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const badge = document.getElementById('companiesCountBadge');
+
+            badge.textContent = companies.length;
+            tbody.innerHTML = '';
+
+            if (companies.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            companies.forEach(comp => {
+                const tr = document.createElement('tr');
+
+                // Status Badge styling
+                let badgeClass = 'healthy';
+                let badgeText = 'Healthy';
+                let badgeIcon = 'fa-check';
+
+                if (comp.healthStatus === 'MISSING') {
+                    badgeClass = 'missing';
+                    badgeText = 'Missing DB';
+                    badgeIcon = 'fa-triangle-exclamation';
+                } else if (comp.healthStatus === 'BACKUP_DUE') {
+                    badgeClass = 'backup-due';
+                    badgeText = 'Backup Due';
+                    badgeIcon = 'fa-clock';
+                } else if (comp.healthStatus === 'LOCKED') {
+                    badgeClass = 'locked';
+                    badgeText = 'Locked';
+                    badgeIcon = 'fa-lock';
+                }
+
+                // Backup summary
+                let backupDisplay = '<span style="color: #94a3b8;">None</span>';
+                if (comp.lastBackupInfo) {
+                    backupDisplay = `<strong>${comp.lastBackupInfo.type}</strong> (${formatDate(comp.lastBackupInfo.timestamp)})`;
+                }
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="company-name-cell">
+                            <div class="company-icon"><i class="fa-solid fa-building"></i></div>
+                            <div>
+                                <div>${escapeHtml(comp.companyName)} <span style="font-size: 11.5px; color: #64748b; font-weight: normal;">(FY ${escapeHtml(comp.financialYear || '2026-2027')})</span></div>
+                                <span class="folder-path-text">${escapeHtml(comp.folderPath || '')}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge ${badgeClass}" title="${escapeHtml(comp.statusMessage || '')}">
+                            <span class="status-dot"></span> ${badgeText}
+                        </span>
+                    </td>
+                    <td>${formatDate(comp.lastOpenedAt)}</td>
+                    <td>${comp.dbSize ? formatBytes(comp.dbSize) : '—'}</td>
+                    <td style="font-size: 12.5px;">${backupDisplay}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-primary btn-sm" onclick="openCompanyTarget('${escapeHtml(comp.folderPath)}')">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> Open
+                            </button>
+                            <button class="btn-icon" title="Open Folder in File Explorer" onclick="openFolderInExplorer('${escapeHtml(comp.folderPath)}')">
+                                <i class="fa-regular fa-folder"></i>
+                            </button>
+                            <button class="btn-icon" title="Database Health Diagnostics" onclick="showHealthCheck('${escapeHtml(comp.folderPath)}')">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </button>
+                            <button class="btn-icon danger" title="Remove from Recent List (Does not delete files)" onclick="removeRecentCompany('${comp.companyId}', '${escapeHtml(comp.companyName)}')">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterCompanies() {
+            const query = document.getElementById('companySearchInput').value.toLowerCase().trim();
+            if (!query) {
+                renderCompanyTable(allCompanies);
+                return;
+            }
+            const filtered = allCompanies.filter(c => 
+                (c.companyName && c.companyName.toLowerCase().includes(query)) ||
+                (c.folderPath && c.folderPath.toLowerCase().includes(query))
+            );
+            renderCompanyTable(filtered);
+        }
+
+        // Open Selected Company
+        async function openCompanyTarget(folderPath) {
+            showLoading('Validating & opening company database...');
+            try {
+                const res = await window.electronAPI.company.openCompany(folderPath);
+                if (res && res.success) {
+                    console.log('Opened company successfully:', res.company);
+                    // main.js will navigate to login.html
+                } else {
+                    hideLoading();
+                    showMissingDbModal(folderPath, res?.error);
+                }
+            } catch (err) {
+                hideLoading();
+                if (err.message && err.message.includes('DATABASE_NOT_FOUND')) {
+                    showMissingDbModal(folderPath, err.message);
+                } else {
+                    alert('Could not open company:\n\n' + err.message);
+                }
+            }
+        }
+
+        function showMissingDbModal(folderPath, errorMsg) {
+            document.getElementById('missingDbPathText').textContent = folderPath || 'Unknown path';
+            openModal('missingDbModal');
+        }
+
+        // Open Existing Company via Native Folder Picker
+        async function browseExistingCompany() {
+            try {
+                const res = await window.electronAPI.company.selectFolder({
+                    title: 'Select Company Folder containing onebook.db'
+                });
+                if (res && res.success && res.folderPath) {
+                    closeModal('missingDbModal');
+                    await openCompanyTarget(res.folderPath);
+                }
+            } catch (err) {
+                alert('Folder selection error: ' + err.message);
+            }
+        }
+
+        // Open Company Folder in native OS Explorer
+        async function openFolderInExplorer(folderPath) {
+            try {
+                await window.electronAPI.company.openFolder(folderPath);
+            } catch (err) {
+                alert('Error opening folder: ' + err.message);
+            }
+        }
+
+        // Remove from recent companies list (Rule: never deletes files on disk)
+        async function removeRecentCompany(companyId, companyName) {
+            if (confirm(`Remove "${companyName}" from your recent companies list?\n\nNOTE: This will NOT delete any company files or databases on disk.`)) {
+                try {
+                    await window.electronAPI.company.removeFromRecent(companyId);
+                    await loadCompanies();
+                } catch (err) {
+                    alert('Error removing company: ' + err.message);
+                }
+            }
+        }
+
+        // Create New Company Flow
+        function openCreateCompanyModal() {
+            document.getElementById('newCompanyNameInput').value = '';
+            document.getElementById('newCompanyFolderInput').value = '';
+            document.getElementById('newCompanyFyInput').value = '2026-2027';
+            openModal('createCompanyModal');
+            setTimeout(() => document.getElementById('newCompanyNameInput').focus(), 100);
+        }
+
+        function updateSuggestedFolder() {
+            const name = document.getElementById('newCompanyNameInput').value.trim();
+            const clean = name.replace(/[\\/:*?"<>|]/g, '').trim() || 'Company';
+            const base = currentDataDir.replace(/[\\/]$/, '');
+            document.getElementById('newCompanyFolderInput').value = `${base}/${clean}`;
+        }
+
+        async function browseNewCompanyFolder() {
+            try {
+                const res = await window.electronAPI.company.selectFolder({
+                    title: 'Select Destination Folder for New Company'
+                });
+                if (res && res.success && res.folderPath) {
+                    document.getElementById('newCompanyFolderInput').value = res.folderPath;
+                }
+            } catch (err) {}
+        }
+
+        async function submitCreateCompany() {
+            const name = document.getElementById('newCompanyNameInput').value.trim();
+            const folder = document.getElementById('newCompanyFolderInput').value.trim();
+            const fy = document.getElementById('newCompanyFyInput').value.trim();
+
+            if (!name) {
+                alert('Please enter a valid company name.');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitCreateCompany');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+
+            try {
+                const res = await window.electronAPI.company.createCompany({
+                    companyName: name,
+                    folderPath: folder,
+                    financialYear: fy
+                });
+
+                if (res && res.success) {
+                    closeModal('createCompanyModal');
+                    // Automatically open the newly created company
+                    await openCompanyTarget(res.folderPath);
+                } else {
+                    alert('Creation error: ' + (res?.error || 'Unknown error'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Create & Open Company';
+                }
+            } catch (err) {
+                alert('Creation failed: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Create & Open Company';
+            }
+        }
+
+        // Change Data Directory
+        function openChangeDataDirModal() {
+            document.getElementById('customDataDirInput').value = currentDataDir;
+            openModal('dataDirModal');
+        }
+
+        async function browseDataDirectory() {
+            try {
+                const res = await window.electronAPI.company.selectFolder({
+                    title: 'Select Root Directory for OneBook Company Data'
+                });
+                if (res && res.success && res.folderPath) {
+                    document.getElementById('customDataDirInput').value = res.folderPath;
+                }
+            } catch (err) {}
+        }
+
+        async function submitDataDirectory() {
+            const newDir = document.getElementById('customDataDirInput').value.trim();
+            if (!newDir) {
+                alert('Please select a valid directory.');
+                return;
+            }
+            try {
+                await window.electronAPI.company.setDataDirectory(newDir);
+                closeModal('dataDirModal');
+                await loadCompanies();
+            } catch (err) {
+                alert('Error updating data directory: ' + err.message);
+            }
+        }
+
+        // Restore Workflow
+        function openRestoreModal() {
+            document.getElementById('restoreTargetFolderInput').value = '';
+            document.getElementById('restoreBackupFileInput').value = '';
+            openModal('restoreModal');
+        }
+
+        async function browseRestoreTargetFolder() {
+            try {
+                const res = await window.electronAPI.company.selectFolder({
+                    title: 'Select Target Company Folder to Restore Into'
+                });
+                if (res && res.success && res.folderPath) {
+                    document.getElementById('restoreTargetFolderInput').value = res.folderPath;
+                }
+            } catch (e) {}
+        }
+
+        async function browseRestoreBackupFile() {
+            try {
+                const res = await window.electronAPI.company.selectBackupFile({
+                    title: 'Select Verified Backup Database File'
+                });
+                if (res && res.success && res.filePath) {
+                    document.getElementById('restoreBackupFileInput').value = res.filePath;
+                }
+            } catch (e) {}
+        }
+
+        async function submitRestoreBackup() {
+            const targetFolder = document.getElementById('restoreTargetFolderInput').value.trim();
+            const backupFile = document.getElementById('restoreBackupFileInput').value.trim();
+
+            if (!targetFolder || !backupFile) {
+                alert('Please select both the target company folder and the backup file.');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to restore this backup?\n\nA safety pre-restore backup of your current database will be saved first.`)) {
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitRestore');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Restoring...';
+
+            try {
+                const res = await window.electronAPI.company.restoreBackup({
+                    companyFolderPath: targetFolder,
+                    backupFilePath: backupFile
+                });
+
+                if (res && res.success) {
+                    alert('✅ Backup restored successfully!\n\nSafety pre-restore backup created at:\n' + (res.safetyBackup || 'Backups/Manual/'));
+                    closeModal('restoreModal');
+                    await loadCompanies();
+                } else {
+                    alert('Restore failed: ' + (res?.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Restore error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Verify & Restore';
+            }
+        }
+
+        // Health Diagnostics
+        async function showHealthCheck(folderPath) {
+            openModal('healthModal');
+            const body = document.getElementById('healthModalBody');
+            body.innerHTML = '<div style="text-align:center; padding: 30px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size: 28px; color: var(--primary);"></i><p style="margin-top: 10px;">Running diagnostics on SQLite database...</p></div>';
+
+            try {
+                const health = await window.electronAPI.company.getHealth(folderPath);
+                if (!health.healthy && health.status === 'MISSING') {
+                    body.innerHTML = `
+                        <div class="alert-box alert-danger">
+                            <i class="fa-solid fa-circle-xmark" style="font-size: 20px;"></i>
+                            <div>
+                                <strong>Database Missing:</strong> Database file was not found in: <code>${escapeHtml(folderPath)}</code>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let recordsHtml = '';
+                if (health.recordCounts) {
+                    for (const [table, count] of Object.entries(health.recordCounts)) {
+                        recordsHtml += `<span style="display:inline-block; margin-right: 14px; margin-bottom: 6px;"><strong>${table}:</strong> ${count}</span>`;
+                    }
+                }
+
+                body.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                        <div>
+                            <h4 style="font-size: 16px; font-weight: 700;">${escapeHtml(health.company?.companyName || 'Company')}</h4>
+                            <span style="font-size: 12px; color: var(--text-muted); font-family: monospace;">${escapeHtml(health.dbPath || '')}</span>
+                        </div>
+                        <span class="status-badge ${health.healthy ? 'healthy' : 'backup-due'}">
+                            <span class="status-dot"></span> ${health.status}
+                        </span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; font-size: 13.5px;">
+                        <div><strong>Database Size:</strong> ${formatBytes(health.dbSize)}</div>
+                        <div><strong>WAL Size:</strong> ${formatBytes(health.walSize)}</div>
+                        <div><strong>Schema Version:</strong> v${health.schemaVersion || 1}</div>
+                        <div><strong>Integrity Check:</strong> <span style="color: var(--success); font-weight: 600;">PASSED (ok)</span></div>
+                    </div>
+
+                    <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);">
+                        <strong style="display: block; margin-bottom: 8px; font-size: 13px;">Latest Backup Status:</strong>
+                        ${health.latestBackup ? `
+                            <div><strong>Type:</strong> ${health.latestBackup.type}</div>
+                            <div><strong>Date:</strong> ${new Date(health.latestBackup.timestamp).toLocaleString()}</div>
+                            <div><strong>Size:</strong> ${formatBytes(health.latestBackup.size)}</div>
+                        ` : '<span style="color: var(--warning); font-weight: 600;">⚠️ No backups found for this company.</span>'}
+                    </div>
+
+                    <div style="margin-top: 14px; font-size: 13px;">
+                        <strong style="display: block; margin-bottom: 6px;">Record Counts:</strong>
+                        <div style="background: #fafbfc; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);">
+                            ${recordsHtml || 'No records counted'}
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                body.innerHTML = `<div class="alert-box alert-danger">Diagnostics error: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str && str !== 0) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                sessionStorage.removeItem('onebook_session_token');
+                sessionStorage.removeItem('currentUser');
+                if (window.electronAPI && window.electronAPI.sqlite && window.electronAPI.sqlite.clearSessionToken) {
+                    window.electronAPI.sqlite.clearSessionToken();
+                }
+            } catch (e) {}
+            loadCompanies();
+        });
+    </script>
+
+</body>
+
+</html>
+

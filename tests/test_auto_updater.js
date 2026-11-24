@@ -44,10 +44,10 @@ class MockAppUpdater extends EventEmitter {
 
         if (this.checkBehavior === 'has-update') {
             const info = {
-                version: '1.0.6',
+                version: '1.0.7',
                 releaseDate: new Date().toISOString(),
                 releaseNotes: 'Fixed issues and improved POS stability.',
-                files: [{ url: 'OneBook-Setup-1.0.6.exe', size: 88500000 }]
+                files: [{ url: 'OneBook-Setup-1.0.7.exe', size: 88500000 }]
             };
             this.emit('update-available', info);
             return { updateInfo: info };
@@ -55,9 +55,9 @@ class MockAppUpdater extends EventEmitter {
 
         // no-update
         const info = {
-            version: '1.0.5',
+            version: '1.0.6',
             releaseDate: new Date().toISOString(),
-            files: [{ url: 'OneBook-Setup-1.0.5.exe', size: 88041620 }]
+            files: [{ url: 'OneBook-Setup-1.0.6.exe', size: 88041620 }]
         };
         this.emit('update-not-available', info);
         return { updateInfo: info };
@@ -78,9 +78,9 @@ class MockAppUpdater extends EventEmitter {
         await new Promise(resolve => setTimeout(resolve, 50));
 
         this.emit('download-progress', { percent: 100, transferred: 88000000, total: 88000000, bytesPerSecond: 2800000 });
-        const info = { version: '1.0.5' };
+        const info = { version: '1.0.6' };
         this.emit('update-downloaded', info);
-        return ['OneBook-Setup-1.0.5.exe'];
+        return ['OneBook-Setup-1.0.6.exe'];
     }
 
     quitAndInstall(isSilent, isForceRunAfter) {
@@ -109,8 +109,8 @@ class MockBrowserWindow {
         const mockUpdater = new MockAppUpdater();
 
         console.log('--- TEST 1: Initialization & Feed Configuration ---');
-        updateService.init(mockWin, mockUpdater, '1.0.5');
-        assert.strictEqual(updateService.currentVersion, '1.0.5');
+        updateService.init(mockWin, mockUpdater, '1.0.6');
+        assert.strictEqual(updateService.currentVersion, '1.0.6');
         assert.strictEqual(updateService.status, 'IDLE');
         assert.deepStrictEqual(mockUpdater.feedConfig, {
             provider: 'github',
@@ -130,20 +130,20 @@ class MockBrowserWindow {
         const lastSent1 = mockWin.sentEvents[mockWin.sentEvents.length - 1];
         assert.strictEqual(lastSent1.channel, 'updater:status-changed');
         assert.strictEqual(lastSent1.data.status, 'NOT_AVAILABLE');
-        assert.strictEqual(lastSent1.data.currentVersion, '1.0.5');
+        assert.strictEqual(lastSent1.data.currentVersion, '1.0.6');
         console.log('✅ "No update available" correctly detected and communicated to UI');
 
-        console.log('\n--- TEST 3: Check For Updates - Update Available (v1.0.6) ---');
+        console.log('\n--- TEST 3: Check For Updates - Update Available (v1.0.7) ---');
         mockUpdater.checkBehavior = 'has-update';
         const check2 = await updateService.checkForUpdates();
         assert.strictEqual(check2.success, true);
         assert.strictEqual(check2.updateAvailable, true);
         assert.strictEqual(updateService.status, 'AVAILABLE');
-        assert.strictEqual(updateService.availableVersion, '1.0.6');
+        assert.strictEqual(updateService.availableVersion, '1.0.7');
         const lastSent2 = mockWin.sentEvents[mockWin.sentEvents.length - 1];
         assert.strictEqual(lastSent2.data.status, 'AVAILABLE');
-        assert.strictEqual(lastSent2.data.availableVersion, '1.0.6');
-        console.log('✅ Newer version (v1.0.6) available state correctly handled');
+        assert.strictEqual(lastSent2.data.availableVersion, '1.0.7');
+        console.log('✅ Newer version (v1.0.7) available state correctly handled');
 
         console.log('\n--- TEST 4: Download Update & Progress Events ---');
         mockUpdater.downloadBehavior = 'success';
